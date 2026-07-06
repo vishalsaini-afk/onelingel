@@ -75,9 +75,12 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <body>
 <div class="wrap">
 
-<div class="langbar" style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+<div class="langbar" style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:10px;">
+  <a href="hub.html" style="text-decoration:none;color:var(--hivis);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);border-radius:8px;padding:6px 14px" title="Back to hub">⌂ Home</a>
+  <div style="display:flex;gap:6px">
   <button class="lb active" id="lb-en" onclick="setLang('en')">EN</button>
   <button class="lb" id="lb-hi" onclick="setLang('hi')">हिं</button>
+  </div>
 </div>
 
 <div class="hdr">
@@ -506,8 +509,10 @@ async function shareReport(){
 /* Drive upload */
 let GDRIVE_CID='',GDRIVE_FID='';
 async function uploadDrive(){
-  if(!GDRIVE_CID){const id=prompt('One-time setup (1/2):\nPaste Google OAuth Client ID\n(ends in .apps.googleusercontent.com)');if(!id)return;GDRIVE_CID=id.trim();}
-  if(!GDRIVE_FID){const fid=prompt('One-time setup (2/2):\nPaste shared Google Drive folder ID');if(!fid)return;GDRIVE_FID=fid.trim();}
+  GDRIVE_CID=GDRIVE_CID||localStorage.getItem('lingel_gdrive_cid')||'';
+  GDRIVE_FID=GDRIVE_FID||localStorage.getItem('lingel_gdrive_fid')||'';
+  if(!GDRIVE_CID){const id=prompt('One-time setup (1/2):\nPaste Google OAuth Client ID\n(ends in .apps.googleusercontent.com)');if(!id)return;GDRIVE_CID=id.trim();localStorage.setItem('lingel_gdrive_cid',GDRIVE_CID);}
+  if(!GDRIVE_FID){const fid=prompt('One-time setup (2/2):\nPaste the shared Google Drive folder ID\n(the long string from the folder URL after /folders/)');if(!fid)return;GDRIVE_FID=fid.trim();localStorage.setItem('lingel_gdrive_fid',GDRIVE_FID);}
   await ensureScript('https://accounts.google.com/gsi/client');
   if(!window._dtc){window._dtc=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CID,scope:'https://www.googleapis.com/auth/drive.file',callback:async resp=>{if(resp&&resp.access_token){window._dtk=resp.access_token;await _doDriveUp();}else toast('⚠ Sign-in failed');}});}
   if(window._dtk)await _doDriveUp();else window._dtc.requestAccessToken({prompt:''});
@@ -516,7 +521,8 @@ async function _doDriveUp(){
   toast('☁ Uploading to Drive…');
   try{
     const pdf=await buildPDF();const blob=pdf.output('blob');
-    const ord=(document.getElementById('ord').value||'handover').replace(/[^\w-]/g,'_');
+    const rawOrd=(document.getElementById('ord').value||'handover').trim();
+    const ord=((rawOrd.split('/')[0])||rawOrd).replace(/[^\w-]/g,'_');  // base offer no = same folder as measure/inspect
     // find/create subfolder
     const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and trashed=false and name='"+ord+"' and '"+GDRIVE_FID+"' in parents");
     let fr=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id)',{headers:{Authorization:'Bearer '+window._dtk}});
