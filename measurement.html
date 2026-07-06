@@ -148,8 +148,8 @@
 </style>
 
 <div class="topbar"><div class="topbar-inner">
-  <div class="brand"><img class="logo" id="brandLogo" alt="Lingel">
-    <div><h1>Lingel Measure</h1><span>Final Window Measurement</span></div></div>
+  <a class="brand" href="hub.html" style="text-decoration:none;color:inherit" title="Back to hub"><img class="logo" id="brandLogo" alt="Lingel">
+    <div><h1>Lingel Measure</h1><span>⌂ Home · Final Window Measurement</span></div></a>
   <div class="unit" id="unitTog" title="Units">
     <button data-u="mm" class="on">mm</button><button data-u="in">inch</button>
   </div>
@@ -280,6 +280,8 @@ async function loadAll(){let meta=null;try{meta=await idbGet("kv","meta");}catch
   if(!$("#m_date").value)$("#m_date").value=new Date().toISOString().slice(0,10);
   try{const id=await idbGet("kv","gdriveClientId");if(id)GDRIVE_CLIENT_ID=id;}catch(e){}
   try{const fid=await idbGet("kv","gdriveFolderId");if(fid)GDRIVE_FOLDER_ID=fid;}catch(e){}
+  if(!GDRIVE_FOLDER_ID){const ls=localStorage.getItem("lingel_gdrive_fid");if(ls)GDRIVE_FOLDER_ID=ls;}
+  if(!GDRIVE_CLIENT_ID){const lc=localStorage.getItem("lingel_gdrive_cid");if(lc)GDRIVE_CLIENT_ID=lc;}
   try{const c=await idbGet("kv","checklist");if(c)checklist=c;}catch(e){}
   try{const s=await idbGet("kv","signatures");if(s)sigs=s;}catch(e){}
   for(const o of openings){if(o.videoId){try{const tx=db.transaction("videos","readonly");const req=tx.objectStore("videos").get(o.videoId);req.onsuccess=()=>{if(req.result)vidCache[o.videoId]=URL.createObjectURL(req.result);};}catch(e){}}}
@@ -602,8 +604,8 @@ async function saveToDrive(){
 $("#driveBtn").onclick=async()=>{
   if(!openings.length){toast("Add at least one opening first");return;}
   if(!($("#m_no").value||"").trim()){toast("Enter the Offer No. first");return;}
-  if(!GDRIVE_CLIENT_ID){const id=prompt("One-time setup (step 1/2):\nPaste your Google OAuth Client ID\n(ends in .apps.googleusercontent.com)");if(!id)return;GDRIVE_CLIENT_ID=id.trim();try{await idbPut("kv",GDRIVE_CLIENT_ID,"gdriveClientId");}catch(e){}}
-  if(!GDRIVE_FOLDER_ID){const fid=prompt("One-time setup (step 2/2):\nPaste the shared Google Drive folder ID\n(the long string from the folder URL after /folders/)");if(!fid)return;GDRIVE_FOLDER_ID=fid.trim();try{await idbPut("kv",GDRIVE_FOLDER_ID,"gdriveFolderId");}catch(e){}}
+  if(!GDRIVE_CLIENT_ID){const id=prompt("One-time setup (step 1/2):\nPaste your Google OAuth Client ID\n(ends in .apps.googleusercontent.com)");if(!id)return;GDRIVE_CLIENT_ID=id.trim();try{await idbPut("kv",GDRIVE_CLIENT_ID,"gdriveClientId");}catch(e){}localStorage.setItem("lingel_gdrive_cid",GDRIVE_CLIENT_ID);}
+  if(!GDRIVE_FOLDER_ID){const fid=prompt("One-time setup (step 2/2):\nPaste the shared Google Drive folder ID\n(the long string from the folder URL after /folders/)");if(!fid)return;GDRIVE_FOLDER_ID=fid.trim();try{await idbPut("kv",GDRIVE_FOLDER_ID,"gdriveFolderId");}catch(e){}localStorage.setItem("lingel_gdrive_fid",GDRIVE_FOLDER_ID);}
   try{await ensureGIS();initDrive();}catch(e){toast("⚠ Couldn't load Google sign-in");return;}
   if(_driveToken)saveToDrive();else{_pendingDrive=saveToDrive;_tokenClient.requestAccessToken({prompt:""});}
 };
