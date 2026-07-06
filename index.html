@@ -126,7 +126,7 @@ async function doLogin(){
   const btn=document.querySelector('.login-box button');
   if(!name){err.textContent='Please type your name';return;}
   if(!pass){err.textContent='Please enter your password';return;}
-  if(!LOGIN_API||LOGIN_API==="PASTE_URL_HERE"){err.textContent='Login not configured — set LOGIN_API in hub.html';return;}
+  if(!LOGIN_API||LOGIN_API==="https://script.google.com/macros/s/AKfycbzqK9n53U0YCVb7IGAboFF2iZOr8g80ZL0MV1k-xUq3T_0Uwzl4se9E5szfxsRT_-aQ/exec"){err.textContent='Login not configured — set LOGIN_API in hub.html';return;}
   err.textContent='';btn.textContent='Checking…';btn.disabled=true;
   try{
     const body=new URLSearchParams({name,pass});
