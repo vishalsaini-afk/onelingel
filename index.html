@@ -109,7 +109,7 @@ const LOGIN_API = "https://script.google.com/macros/s/AKfycbzqK9n53U0YCVb7IGAboF
 // Populate the name suggestions from the sheet
 async function loadNames(){
   const dl=document.getElementById('nameList');
-  if(!LOGIN_API||LOGIN_API==="PASTE_URL_HERE")return;
+  if(!LOGIN_API||LOGIN_API==="https://script.google.com/macros/s/AKfycbzqK9n53U0YCVb7IGAboFF2iZOr8g80ZL0MV1k-xUq3T_0Uwzl4se9E5szfxsRT_-aQ/exec")return;
   try{
     const r=await fetch(LOGIN_API+'?action=names');
     const data=await r.json();
