@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
+<title>Lingel — Customer Handover Form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--paper:#f5f3eb;--paper-line:#d8d4c8;
+  --text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;
+  --hivis:#e2f14d;--ok:#4ade80;--warn:#fbbf24;--danger:#ef4444;
+  --shadow:0 2px 12px rgba(0,0,0,.35);--shadow-sm:0 1px 4px rgba(0,0,0,.22);
+  --r:12px;--rs:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'Spline Sans','Segoe UI',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+.wrap{max-width:800px;margin:0 auto;padding:14px}
+input,textarea{font-family:'Spline Sans',sans-serif;border:1px solid var(--line);border-radius:var(--rs);padding:9px 11px;font-size:14px;background:var(--panel);color:var(--text);width:100%}
+input:focus,textarea:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+.hdr{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--line);padding-bottom:14px;margin-bottom:12px}
+.hdr img{width:48px;height:48px;border-radius:50%;object-fit:cover}
+.hdr .co{font-family:'Archivo';font-weight:900;font-size:17px;letter-spacing:.3px;text-transform:uppercase;color:var(--hivis)}
+.hdr .co small{display:block;font-family:'JetBrains Mono';font-weight:400;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.sec{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--hivis);border-radius:var(--r);padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow-sm)}
+.slbl{font-family:'Archivo';font-weight:700;font-size:12px;color:var(--hivis);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+.gr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.fd{display:flex;flex-direction:column;gap:5px}
+.s2{grid-column:span 2}
+.lbl{font-family:'JetBrains Mono';font-size:10.5px;color:var(--muted);font-weight:400;letter-spacing:.06em;text-transform:uppercase}
+.nt{display:inline-block;font-size:9px;background:rgba(226,241,77,.15);color:var(--hivis);padding:2px 7px;border-radius:var(--rs);font-family:'Archivo Narrow';font-weight:700;margin-left:4px;vertical-align:middle;text-transform:uppercase;letter-spacing:.05em}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-family:'JetBrains Mono';font-size:9.5px;color:var(--muted);font-weight:400;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--text)}
+.tbl tr:last-child td{border-bottom:none}
+.sgrp{display:flex;gap:14px}
+.sopt{display:flex;align-items:center;gap:5px;cursor:pointer}
+.sopt input{width:auto;accent-color:var(--hivis)}
+.sopt span{font-size:12px;color:var(--muted)}
+.iinp{border:none;border-bottom:1px solid var(--line);border-radius:0;background:transparent;font-size:12px;padding:3px 0;color:var(--text)}
+.iinp:focus{outline:none;border-bottom:1px solid var(--hivis)}
+.star{font-size:28px;cursor:pointer;color:var(--muted);line-height:1;transition:.15s}
+.star.on{color:var(--hivis)}
+.sigcv{border:1px dashed var(--line);border-radius:var(--rs);width:100%;height:110px;cursor:crosshair;touch-action:none;display:block;background:#ffffff}
+.signl{border:none;border-bottom:1px solid var(--line);border-radius:0;background:transparent;font-size:13px;padding:5px 0;color:var(--text)}
+.clr{font-family:'Archivo Narrow';font-size:11px;color:var(--hivis);cursor:pointer;border:none;background:none;padding:3px 0;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.btnp{background:var(--hivis);color:#111;border:none;border-radius:var(--rs);padding:11px 20px;font-family:'Archivo Narrow';font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.btns{background:transparent;border:1px solid var(--line);border-radius:var(--rs);padding:10px 16px;font-family:'Archivo Narrow';font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-transform:uppercase;letter-spacing:.03em}
+.btns:hover{background:var(--panel-2)}
+.pbar{height:4px;background:var(--line);border-radius:2px;margin-bottom:14px;overflow:hidden}
+.pfll{height:100%;background:var(--hivis);border-radius:2px;transition:width .3s;width:0%}
+.lb{padding:6px 13px;border-radius:var(--rs);font-family:'Archivo Narrow';font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);text-transform:uppercase}
+.lb.active{background:var(--hivis);color:#111;border-color:var(--hivis)}
+.phgr{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.phth{position:relative}
+.phth img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--rs);border:1px solid var(--line);display:block}
+.phrm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:12px;line-height:1}
+.emP{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-top:12px;display:none}
+.emtxt{font-size:11px;background:var(--panel);border:1px solid var(--line);border-radius:var(--rs);padding:12px;margin:10px 0;font-family:'JetBrains Mono',monospace;width:100%;resize:vertical;line-height:1.6;color:var(--text)}
+.sfbadge{display:inline-flex;align-items:center;gap:5px;background:rgba(74,222,128,.12);color:var(--ok);font-family:'Archivo Narrow';font-size:12px;font-weight:700;padding:5px 12px;border-radius:var(--rs);margin-bottom:10px;text-transform:uppercase}
+.sfmeta{font-size:12px;color:var(--muted);margin-bottom:3px;line-height:1.5}
+.sfmeta b{color:var(--text);font-weight:600}
+.sfproof{font-size:11px;color:var(--muted);margin-top:6px;opacity:.7}
+.tst{display:none;background:rgba(74,222,128,.1);color:var(--ok);border:1px solid rgba(74,222,128,.3);border-radius:var(--rs);padding:10px 14px;font-size:13px;margin-top:12px}
+.logbar{display:flex;align-items:center;gap:10px;padding:9px 0}
+.logbar h3{font-family:'Archivo';font-weight:900;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--text);margin:0}
+@media (max-width:560px){.gr,.g3{grid-template-columns:1fr}.s2{grid-column:span 1}}
+@media print{.acts,.clr,.pbar,.lb,.phrm,.emP,.langbar,.tst{display:none!important}body{background:#fff;color:#111}.sec{break-inside:avoid;border-color:#ddd;border-left-color:var(--hivis)}input,textarea{border-color:#ddd;color:#111;background:#fff}.hdr .co{color:#111}.slbl{color:#333}.tbl th,.lbl,.sopt span,.sfmeta,.sfproof{color:#555}.tbl td{color:#111;border-color:#ddd}.tbl th{border-color:#ddd}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="langbar" style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+  <button class="lb active" id="lb-en" onclick="setLang('en')">EN</button>
+  <button class="lb" id="lb-hi" onclick="setLang('hi')">हिं</button>
+</div>
+
+<div class="hdr">
+  <img src="data:image/png;base64,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" alt="Lingel">
+  <div>
+    <div class="co">Lingel Windows & Doors<small>Technologies Pvt. Ltd.</small></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;font-family:'Archivo Narrow'" data-t="formTitle">Customer Handover Form</div>
+  </div>
+  <div style="margin-left:auto;text-align:right;">
+    <div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase" data-t="formNo">Form no.</div>
+    <div style="font-family:'Archivo';font-size:16px;font-weight:900;color:var(--hivis)">CHF-<span id="fdate">—</span></div>
+  </div>
+</div>
+
+<div class="pbar"><div class="pfll" id="pfll"></div></div>
+
+<div class="sec">
+  <div class="slbl" data-t="custDetails">Customer details</div>
+  <div class="gr">
+    <div class="fd"><div class="lbl" data-t="orderNo">Order no.</div><input type="text" id="ord" placeholder="LW-2025-0041" oninput="prog()"></div>
+    <div class="fd"><div class="lbl" data-t="handoverDate">Date of handover</div><input type="date" id="hdate" oninput="setFn();prog()"></div>
+    <div class="fd s2"><div class="lbl" data-t="custName">Customer name</div><input type="text" id="cname" placeholder="Full name" oninput="prog()"></div>
+    <div class="fd s2"><div class="lbl" data-t="addrSite">Address / site</div><input type="text" id="caddr" placeholder="Installation site address"></div>
+    <div class="fd"><div class="lbl" data-t="contactNo">Contact number</div><input type="tel" id="cph" placeholder="+91 XXXXX XXXXX"></div>
+    <div class="fd"><div class="lbl" data-t="emailLbl">Email</div><input type="email" id="ceml" placeholder="customer@email.com"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="prodDetails">Product / service details</div>
+  <div class="gr">
+    <div class="fd s2"><div class="lbl" data-t="prodDelivered">Product / service delivered</div><input type="text" id="prod" placeholder="e.g. Aluminium Sliding Windows, UPVC Casement Doors" oninput="prog()"></div>
+    <div class="fd"><div class="lbl" data-t="quantity">Quantity (units)</div><input type="number" id="qty" placeholder="No. of units" min="1"></div>
+    <div class="fd"><div class="lbl" data-t="installDate">Delivery / installation date</div><input type="date" id="idate"></div>
+    <div class="fd"><div class="lbl" data-t="nextSvc">Next service / AMC date <span class="nt">new</span></div><input type="date" id="nsvc"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="checklist">Handover checklist</div>
+  <table class="tbl">
+    <thead><tr>
+      <th style="width:26px">#</th><th data-t="itemAct">Item / Activity</th>
+      <th style="width:150px" data-t="statusH">Status</th><th data-t="remarksH">Remarks</th>
+    </tr></thead>
+    <tbody id="clbody"></tbody>
+  </table>
+</div>
+
+
+
+<div class="sec">
+  <div class="slbl">Snag List / Pending Items</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Record any defects, damages, or pending work items</div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="btns" onclick="document.getElementById('snagPdfInp').click()">📄 Import from quotation</button>
+    <input type="file" id="snagPdfInp" accept="application/pdf,.pdf" hidden>
+    <button class="btns" onclick="addSnag()">+ Add manually</button>
+  </div>
+  <div class="snaglist" id="snagList"></div>
+</div>
+
+<div class="sec">
+  <div class="slbl">Balance Material at Site</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Document any leftover materials, spare parts, or items remaining at site</div>
+  <div id="balanceList" class="snaglist"></div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btns" onclick="addBalance()">+ Add item</button>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="selfieTitle">Selfie with customer <span class="nt">new</span></div>
+  <div id="selfieArea"></div>
+  <input type="file" id="selfinp" accept="image/*" capture="user" style="display:none" onchange="captureSelfie(this)">
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="custSat">Customer satisfaction <span class="nt">new</span></div>
+  <div style="display:flex;align-items:center;gap:4px" id="stars"></div>
+  <div style="font-size:13px;color:var(--muted);margin-top:6px" id="rlbl"></div>
+  <div class="fd" style="margin-top:14px">
+    <div class="lbl" data-t="feedbackLbl">Feedback / comments from customer</div>
+    <textarea id="fb" rows="2" placeholder="Any concerns, compliments, or pending issues..." style="resize:vertical"></textarea>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl">Site Engineer details <span class="nt">new</span></div>
+  <div class="gr">
+    <div class="fd"><div class="lbl">Site Engineer name</div><input type="text" id="tname" placeholder="Full name"></div>
+    <div class="fd"><div class="lbl" data-t="contactNo">Contact no.</div><input type="tel" id="tph" placeholder="+91 XXXXX XXXXX"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl">Client Biometric Verification</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Verify the customer's identity using their device fingerprint or Face ID</div>
+  <div id="bioArea">
+    <button class="btns" onclick="doBiometric()" id="bioBtn">🔐 Verify with Fingerprint / Face ID</button>
+  </div>
+  <div id="bioStatus" style="margin-top:10px"></div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="sigs">Signatures</div>
+  <div class="gr">
+    <div class="fd">
+      <div class="lbl" style="margin-bottom:6px" data-t="custSig">Customer signature</div>
+      <canvas class="sigcv" id="sc"></canvas>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input class="signl" type="text" placeholder="Full name">
+        <button class="clr" onclick="clrSig('sc')" data-t="clearBtn">Clear</button>
+      </div>
+    </div>
+    <div class="fd">
+      <div class="lbl" style="margin-bottom:6px">Site Engineer signature</div>
+      <canvas class="sigcv" id="st"></canvas>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input class="signl" type="text" placeholder="Full name">
+        <button class="clr" onclick="clrSig('st')" data-t="clearBtn">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="acts">
+  <button class="btnp" onclick="downloadPDF()">⤓ Download PDF</button>
+  <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
+  <button class="btns" onclick="uploadDrive()">☁ Drive</button>
+  <button class="btns" onclick="doWA()">WhatsApp text</button>
+  <button class="btns" onclick="doReset()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">Reset</button>
+</div>
+
+
+
+<div class="tst" id="tst"><span id="tmsg"></span></div>
+
+</div>
+<script>
+
+const CL=[
+  {orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:1},
+  {orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0}
+];
+const T={
+  en:{
+    formTitle:"Customer Handover Form",formNo:"Form no.",custDetails:"Customer details",
+    orderNo:"Order no.",handoverDate:"Date of handover",custName:"Customer name",
+    addrSite:"Address / site",contactNo:"Contact number",emailLbl:"Email",
+    prodDetails:"Product / service details",prodDelivered:"Product / service delivered",
+    quantity:"Quantity (units)",installDate:"Delivery / installation date",
+    nextSvc:"Next service / AMC date",checklist:"Handover checklist",
+    itemAct:"Item / Activity",statusH:"Status",remarksH:"Remarks",
+    photoDocs:"Photo documentation",photoHint:"Capture each installed window / door",
+    addPhoto:"+ Add photo",locationLbl:"Location / window no.",
+    selfieTitle:"Selfie with customer",
+    selfieHint:"A joint photo with the customer confirms who received the handover — date, time, and order number are stamped automatically",
+    takeSelfieBtn:"Take selfie with customer",selfieOk:"Proof photo captured",
+    selfieRetakeBtn:"Retake",selfieCustomerLbl:"Customer",selfieTimeLbl:"Captured",selfieOrdLbl:"Order",
+    selfieWatermark:"Lingel branding and timestamp auto-stamped on photo",
+    custSat:"Customer satisfaction",feedbackLbl:"Feedback / comments from customer",
+    techDetails:"Technician / installer details",techName:"Technician name",empId:"Employee ID",
+    sigs:"Signatures",custSig:"Customer signature",techSig:"Technician signature",clearBtn:"Clear",
+    printPdf:"Print / Save PDF",sendEmail:"Email to customer",whatsappBtn:"WhatsApp",resetBtn:"Reset",
+    emailPreview:"Email preview",emailNote:"Review and edit, then open in your mail app. Attach the printed PDF if needed.",
+    openMailApp:"Open in mail app",copyTxt:"Copy text",closeBtn:"Close",notRated:"Not rated",
+    rl:["","Very dissatisfied","Dissatisfied","Neutral","Satisfied","Very satisfied"],
+    ci:["Product delivered as per order","Product inspected with customer","Demonstration / training given",
+      "Service / maintenance procedure explained","Pendency from installation team",
+      "All windows / doors open and close smoothly","Locking mechanism tested and functional",
+      "Weather sealing and gaskets intact","Glass surface — no scratches or defects",
+      "Hardware (handles, hinges, stays) all functional","Drainage channels clear","Site cleaned after installation"],
+    ch:["","","","","If yes — describe in remarks","","","","","","",""]
+  },
+  hi:{
+    formTitle:"ग्राहक हस्तांतरण फॉर्म",formNo:"फॉर्म संख्या",custDetails:"ग्राहक विवरण",
+    orderNo:"ऑर्डर संख्या",handoverDate:"हस्तांतरण की तारीख",custName:"ग्राहक का नाम",
+    addrSite:"पता / साइट",contactNo:"संपर्क नंबर",emailLbl:"ईमेल",
+    prodDetails:"उत्पाद / सेवा विवरण",prodDelivered:"दी गई वस्तु / सेवा",
+    quantity:"मात्रा (इकाइयाँ)",installDate:"डिलीवरी / स्थापना तारीख",
+    nextSvc:"अगली सेवा / AMC तारीख",checklist:"हस्तांतरण जाँच सूची",
+    itemAct:"मद / गतिविधि",statusH:"स्थिति",remarksH:"टिप्पणी",
+    photoDocs:"फोटो दस्तावेज़ीकरण",photoHint:"प्रत्येक स्थापित खिड़की / दरवाज़े की फोटो लें",
+    addPhoto:"+ फोटो जोड़ें",locationLbl:"स्थान / खिड़की संख्या",
+    selfieTitle:"ग्राहक के साथ सेल्फी",
+    selfieHint:"ग्राहक के साथ फोटो यह प्रमाणित करती है कि हस्तांतरण किसने प्राप्त किया — तारीख, समय और ऑर्डर नंबर स्वचालित रूप से अंकित होते हैं",
+    takeSelfieBtn:"ग्राहक के साथ सेल्फी लें",selfieOk:"प्रमाण फोटो ली गई",
+    selfieRetakeBtn:"फिर से लें",selfieCustomerLbl:"ग्राहक",selfieTimeLbl:"समय",selfieOrdLbl:"ऑर्डर",
+    selfieWatermark:"लिंगेल ब्रांडिंग और समय-मुद्रा स्वचालित रूप से फोटो पर अंकित है",
+    custSat:"ग्राहक संतुष्टि",feedbackLbl:"ग्राहक की प्रतिक्रिया / टिप्पणी",
+    techDetails:"तकनीशियन विवरण",techName:"तकनीशियन का नाम",empId:"कर्मचारी पहचान",
+    sigs:"हस्ताक्षर",custSig:"ग्राहक हस्ताक्षर",techSig:"तकनीशियन हस्ताक्षर",clearBtn:"साफ़ करें",
+    printPdf:"प्रिंट / PDF सहेजें",sendEmail:"ग्राहक को ईमेल करें",whatsappBtn:"WhatsApp",resetBtn:"रीसेट करें",
+    emailPreview:"ईमेल पूर्वावलोकन",emailNote:"संदेश देखें और संपादित करें, फिर मेल ऐप में खोलें।",
+    openMailApp:"मेल ऐप में खोलें",copyTxt:"टेक्स्ट कॉपी करें",closeBtn:"बंद करें",notRated:"रेटिंग नहीं दी",
+    rl:["","बहुत असंतुष्ट","असंतुष्ट","तटस्थ","संतुष्ट","बहुत संतुष्ट"],
+    ci:["आदेश के अनुसार उत्पाद दिया गया","ग्राहक के साथ उत्पाद की जाँच की गई",
+      "प्रदर्शन / प्रशिक्षण दिया गया","सेवा / रखरखाव प्रक्रिया समझाई गई",
+      "स्थापना टीम से लंबित कार्य","सभी खिड़कियाँ / दरवाज़े सुचारू रूप से खुलते-बंद होते हैं",
+      "लॉकिंग तंत्र परीक्षण किया गया और कार्यात्मक है","मौसम सीलिंग और गास्केट सही हैं",
+      "कांच की सतह — कोई खरोंच या दोष नहीं","हार्डवेयर (हैंडल, टिका, स्टे) सभी कार्यात्मक हैं",
+      "जल निकासी चैनल साफ हैं","स्थापना के बाद साइट साफ की गई"],
+    ch:["","","","","यदि हाँ — टिप्पणी में विवरण दें","","","","","","",""]
+  }
+};
+
+let lang='en',CR=0,photos=[];
+let selfieComposed=null,selfieName='',selfieTs='',selfieOrd='';
+
+function setLang(l){
+  lang=l;syncPhLabels();
+  ['en','hi'].forEach(k=>document.getElementById('lb-'+k).classList.toggle('active',k===l));
+  applyLang();renderPhotos();
+  selfieComposed?renderSelfie():renderSelfieBtn();
+}
+function applyLang(){
+  const t=T[lang];
+  document.querySelectorAll('[data-t]').forEach(el=>{
+    const k=el.getAttribute('data-t');
+    if(t[k]===undefined)return;
+    const nt=el.querySelector('.nt');
+    if(nt){el.childNodes[0].nodeValue=t[k]+' ';}else{el.textContent=t[k];}
+  });
+  document.querySelectorAll('[data-t-i]').forEach(el=>{el.textContent=t.ci[+el.getAttribute('data-t-i')];});
+  document.querySelectorAll('[data-t-h]').forEach(el=>{el.textContent=t.ch[+el.getAttribute('data-t-h')]||'';});
+  document.getElementById('rlbl').textContent=CR>0?t.rl[CR]:t.notRated;
+}
+function buildCL(){
+  const t=T[lang];
+  document.getElementById('clbody').innerHTML=CL.map((it,i)=>`
+    <tr id="clr${i+1}">
+      <td style="font-size:11px;color:var(--txt3);">${i+1}</td>
+      <td style="font-size:13px;"><span data-t-i="${i}">${t.ci[i]}</span>${it.orig?'':" <span class='nt'>new</span>"}${it.hint?`<div style="font-size:11px;color:var(--txt3);margin-top:1px;" data-t-h="${i}">${t.ch[i]}</div>`:''}</td>
+      <td><div class="sgrp">${['Yes','No','NA'].map(s=>`<label class="sopt"><input type="radio" name="cl${i+1}" value="${s}" onchange="prog()"><span>${s}</span></label>`).join('')}</div></td>
+      <td><input class="iinp" type="text" placeholder="—"></td>
+    </tr>`).join('');
+}
+function buildStars(){
+  const c=document.getElementById('stars');c.innerHTML='';
+  for(let i=1;i<=5;i++){const s=document.createElement('span');s.className='star';s.textContent='★';s.onclick=()=>setR(i);s.onmouseenter=()=>hi(i);s.onmouseleave=()=>hi(CR);c.appendChild(s);}
+}
+/* setR moved below */
+function hi(n){document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<n));}
+function setFn(){const v=document.getElementById('hdate').value;if(!v)return;const p=v.split('-');document.getElementById('fdate').textContent=p[0].slice(2)+p[1]+p[2];}
+function prog(){const f=['ord','hdate','cname','prod'].filter(id=>document.getElementById(id)?.value?.trim()).length;const r=Math.min(document.querySelectorAll('input[type=radio]:checked').length,6);document.getElementById('pfll').style.width=Math.round((f+r)/10*100)+'%';}
+
+function setupSig(id){
+  const cv=document.getElementById(id);if(!cv)return;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=(cv.offsetWidth||300)*dpr;cv.height=(cv.offsetHeight||100)*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1.6;ctx.lineCap='round';ctx.lineJoin='round';
+  let draw=false,lx=0,ly=0;
+  const xy=e=>{const r=cv.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return[s.clientX-r.left,s.clientY-r.top];};
+  cv.onmousedown=e=>{draw=true;[lx,ly]=xy(e);};
+  cv.onmousemove=e=>{if(!draw)return;const[x,y]=xy(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(x,y);ctx.stroke();[lx,ly]=[x,y];};
+  cv.onmouseup=cv.onmouseleave=()=>draw=false;
+  cv.ontouchstart=e=>{e.preventDefault();draw=true;[lx,ly]=xy(e);};
+  cv.ontouchmove=e=>{e.preventDefault();if(!draw)return;const[x,y]=xy(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(x,y);ctx.stroke();[lx,ly]=[x,y];};
+  cv.ontouchend=()=>draw=false;
+}
+function clrSig(id){const cv=document.getElementById(id),ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);}
+
+function addPhotos(inp){
+  Array.from(inp.files).forEach(f=>{const r=new FileReader();r.onload=e=>{photos.push({url:e.target.result,lbl:''});renderPhotos();};r.readAsDataURL(f);});
+  inp.value='';
+}
+function syncPhLabels(){document.querySelectorAll('[data-phi]').forEach(el=>{const i=+el.getAttribute('data-phi');if(photos[i])photos[i].lbl=el.value;});}
+function renderPhotos(){
+  const ph=T[lang].locationLbl;
+  document.getElementById('phgr').innerHTML=photos.map((p,i)=>`<div class="phth"><button class="phrm" onclick="syncPhLabels();photos.splice(${i},1);renderPhotos();">✕</button><img src="${p.url}" alt="Photo ${i+1}"><input class="iinp" type="text" data-phi="${i}" value="${p.lbl.replace(/"/g,'&quot;')}" placeholder="${ph}" oninput="photos[${i}].lbl=this.value" style="margin-top:4px;"></div>`).join('');
+}
+
+function renderSelfieBtn(){
+  document.getElementById('selfieArea').innerHTML=`<button class="btns" onclick="document.getElementById('selfinp').click()">📷 ${T[lang].takeSelfieBtn}</button>`;
+}
+function captureSelfie(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    selfieName=document.getElementById('cname').value||'—';
+    selfieOrd=document.getElementById('ord').value||'—';
+    selfieTs=new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    selfieComposed=await composeSelfie(e.target.result,selfieName,selfieOrd,selfieTs);
+    renderSelfie();
+  };
+  reader.readAsDataURL(file);inp.value='';
+}
+function composeSelfie(dataUrl,custName,ordNo,ts){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=900,scale=img.width>maxW?maxW/img.width:1;
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      const ctx=cv.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      const bh=Math.max(80,Math.round(h*0.20));
+      ctx.fillStyle='rgba(0,0,0,0.72)';ctx.fillRect(0,h-bh,w,bh);
+      const f1=Math.round(bh*0.28),f2=Math.round(bh*0.22);
+      ctx.fillStyle='#FFFFFF';ctx.font='bold '+f1+'px sans-serif';
+      ctx.fillText('Lingel Windows & Doors',14,h-bh+Math.round(bh*0.32));
+      ctx.font=f2+'px sans-serif';ctx.fillStyle='rgba(255,255,255,0.9)';
+      ctx.fillText('Customer: '+custName+'   Order: '+ordNo,14,h-bh+Math.round(bh*0.60));
+      ctx.fillText(ts,14,h-bh+Math.round(bh*0.87));
+      resolve(cv.toDataURL('image/jpeg',0.88));
+    };
+    img.src=dataUrl;
+  });
+}
+function renderSelfie(){
+  if(!selfieComposed)return;
+  const t=T[lang];
+  document.getElementById('selfieArea').innerHTML=`
+    <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex-shrink:0;"><img src="${selfieComposed}" style="width:180px;border-radius:var(--rs);border:1px solid var(--bd);display:block;"></div>
+      <div style="flex:1;min-width:140px;">
+        <div class="sfbadge">✓ ${t.selfieOk}</div>
+        <div class="sfmeta">${t.selfieCustomerLbl}: <b>${selfieName}</b></div>
+        <div class="sfmeta">${t.selfieOrdLbl}: <b>${selfieOrd}</b></div>
+        <div class="sfmeta">${t.selfieTimeLbl}: <b>${selfieTs}</b></div>
+        <div class="sfproof">${t.selfieWatermark}</div>
+        <button class="btns" onclick="document.getElementById('selfinp').click()" style="margin-top:12px;font-size:12px;padding:6px 12px;">↻ ${t.selfieRetakeBtn}</button>
+      </div>
+    </div>`;
+}
+
+function buildEmailText(){
+  const g=id=>document.getElementById(id)?.value||'—';
+  const items=CL.map((_,i)=>{const r=document.querySelector('input[name="cl'+(i+1)+'"]:checked');const rem=document.querySelector('#clr'+(i+1)+' .iinp')?.value;return r?'  '+(i+1)+'. '+T.en.ci[i]+': '+r.value+(rem?' ('+rem+')':''):null;}).filter(Boolean).join('\n')||'  Checklist not completed';
+  const snagTxt=snags.length?snags.map((s,i)=>'  '+(i+1)+'. '+(s.pos?'['+s.pos+'] ':'')+s.desc+' ['+s.priority+']'+(s.loc?' at '+s.loc:'')).join('\n'):'  No snags reported';
+  const balTxt=balanceItems.length?balanceItems.map((b,i)=>'  '+(i+1)+'. '+b.desc).join('\n'):'  No balance material';
+  return 'Dear '+g('cname')+',\n\n'+
+'Thank you for choosing Lingel Windows & Doors.\n'+
+'Here is the summary of your product handover.\n\n'+
+'ORDER DETAILS\n'+
+'-----------------------------\n'+
+'Order No.      : '+g('ord')+'\n'+
+'Handover Date  : '+g('hdate')+'\n'+
+'Product        : '+g('prod')+'\n'+
+'Quantity       : '+g('qty')+'\n\n'+
+'HANDOVER CHECKLIST\n'+
+'-----------------------------\n'+
+items+'\n\n'+
+'SNAG LIST / PENDING ITEMS\n'+
+'-----------------------------\n'+
+snagTxt+'\n\n'+
+'BALANCE MATERIAL AT SITE\n'+
+'-----------------------------\n'+
+balTxt+'\n\n'+
+'CUSTOMER SATISFACTION\n'+
+'-----------------------------\n'+
+'Rating         : '+(CR>0?T.en.rl[CR]:'Not rated')+'\n'+
+'Biometric      : '+(bioVerified?'Verified at '+bioTimestamp:'Not verified')+'\n'+
+'Feedback       : '+g('fb')+'\n\n'+
+'SITE ENGINEER\n'+
+'-----------------------------\n'+
+'Name           : '+g('tname')+'\n'+
+'\n'+
+'For any service requests, please contact us.\n\n'+
+'Regards,\n'+
+'Lingel Windows & Doors Technologies Pvt. Ltd.';
+}
+function doEmail(){document.getElementById('emTxt').value=buildEmailText();const p=document.getElementById('emP');p.style.display='block';p.scrollIntoView({behavior:'smooth',block:'nearest'});}
+function openMail(){const to=document.getElementById('ceml').value||'';const sub=encodeURIComponent('Lingel Windows & Doors — Handover Confirmation | Order '+(document.getElementById('ord').value||'—'));const body=encodeURIComponent(document.getElementById('emTxt').value||buildEmailText());window.location.href='mailto:'+to+'?subject='+sub+'&body='+body;}
+function copyEmail(){const txt=document.getElementById('emTxt').value;if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Copied!'));}else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Copied!');}}
+function doWA(){
+  const n=document.getElementById('cname').value||'Customer',o=document.getElementById('ord').value||'—',d=document.getElementById('hdate').value||'—',p=document.getElementById('prod').value||'—';
+  const msg=encodeURIComponent('*Lingel Windows & Doors* ✅\nHandover completed\n\nCustomer: '+n+'\nOrder: '+o+'\nDate: '+d+'\nProduct: '+p+'\n\nThank you for choosing Lingel!');
+  window.open('https://wa.me/?text='+msg,'_blank');
+}
+function doPrint(){window.print();}
+function toast(msg){const t=document.getElementById('tst');document.getElementById('tmsg').textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+
+/* ---- PDF, Share, Drive ---- */
+function ensureLibs(){
+  const libs=["https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"];
+  return Promise.all(libs.map(s=>ensureScript(s)));}
+async function buildPDF(){
+  await ensureLibs();
+  const wrap=document.querySelector('.wrap');
+  const btns=document.querySelectorAll('.acts,.langbar,.pbar,.tst');
+  btns.forEach(b=>b.style.display='none');
+  wrap.style.background='#fff';wrap.style.color='#111';
+  wrap.querySelectorAll('.sec').forEach(s=>{s.style.background='#fff';s.style.borderColor='#ddd';});
+  wrap.querySelectorAll('input,textarea').forEach(el=>{el.style.background='#fff';el.style.color='#111';el.style.borderColor='#ddd';});
+  wrap.querySelectorAll('.slbl').forEach(s=>s.style.color='#333');
+  wrap.querySelectorAll('.lbl,.sopt span').forEach(s=>s.style.color='#555');
+  wrap.querySelectorAll('.hdr .co').forEach(s=>s.style.color='#111');
+  const canvas=await window.html2canvas(wrap,{scale:3,backgroundColor:'#ffffff',useCORS:true,logging:false});
+  // restore
+  btns.forEach(b=>b.style.display='');
+  wrap.style.background='';wrap.style.color='';
+  wrap.querySelectorAll('.sec,.slbl,.lbl,.sopt span,input,textarea,.hdr .co').forEach(s=>{s.style.background='';s.style.color='';s.style.borderColor='';});
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({unit:'pt',format:'a4',orientation:'portrait',compress:true});
+  const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
+  const imgW=pw,imgH=canvas.height*pw/canvas.width;
+  const data=canvas.toDataURL('image/jpeg',0.95);
+  let pos=0,left=imgH;
+  pdf.addImage(data,'JPEG',0,pos,imgW,imgH,undefined,'FAST');left-=ph;
+  while(left>0){pos-=ph;pdf.addPage();pdf.addImage(data,'JPEG',0,pos,imgW,imgH,undefined,'FAST');left-=ph;}
+  return pdf;
+}
+function pdfName(){return 'Lingel_Handover_'+(document.getElementById('ord').value||'form').replace(/[^\w-]/g,'_')+'.pdf';}
+async function downloadPDF(){
+  toast('Building PDF…');
+  try{const pdf=await buildPDF();pdf.save(pdfName());toast('✓ PDF saved');}
+  catch(e){console.error(e);toast('⚠ PDF failed — '+((e&&e.message)||'check internet'));}}
+async function shareReport(){
+  toast('Building report…');
+  try{
+    const pdf=await buildPDF();const blob=pdf.output('blob');
+    const file=new File([blob],pdfName(),{type:'application/pdf'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      const custName=document.getElementById('cname').value||'Customer';
+      const ordNo=document.getElementById('ord').value||'';
+      const text='Dear '+custName+',\n\nThank you for choosing Lingel Windows & Doors!\nPlease find attached your handover report'+(ordNo?' for order '+ordNo:'')+'. For any service needs, contact us anytime.\n\nWarm regards,\nLingel Windows & Doors Technologies Pvt. Ltd.\n+91 9799398394';
+      await navigator.share({title:'Lingel Handover — '+ordNo,text,files:[file]});
+    }else{
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=pdfName();a.click();URL.revokeObjectURL(url);
+      toast('Downloaded — share manually via email/WhatsApp');}
+  }catch(e){if(e.name!=='AbortError')toast('⚠ Share failed');}}
+
+/* Drive upload */
+let GDRIVE_CID='',GDRIVE_FID='';
+async function uploadDrive(){
+  if(!GDRIVE_CID){const id=prompt('One-time setup (1/2):\nPaste Google OAuth Client ID\n(ends in .apps.googleusercontent.com)');if(!id)return;GDRIVE_CID=id.trim();}
+  if(!GDRIVE_FID){const fid=prompt('One-time setup (2/2):\nPaste shared Google Drive folder ID');if(!fid)return;GDRIVE_FID=fid.trim();}
+  await ensureScript('https://accounts.google.com/gsi/client');
+  if(!window._dtc){window._dtc=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CID,scope:'https://www.googleapis.com/auth/drive.file',callback:async resp=>{if(resp&&resp.access_token){window._dtk=resp.access_token;await _doDriveUp();}else toast('⚠ Sign-in failed');}});}
+  if(window._dtk)await _doDriveUp();else window._dtc.requestAccessToken({prompt:''});
+}
+async function _doDriveUp(){
+  toast('☁ Uploading to Drive…');
+  try{
+    const pdf=await buildPDF();const blob=pdf.output('blob');
+    const ord=(document.getElementById('ord').value||'handover').replace(/[^\w-]/g,'_');
+    // find/create subfolder
+    const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and trashed=false and name='"+ord+"' and '"+GDRIVE_FID+"' in parents");
+    let fr=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id)',{headers:{Authorization:'Bearer '+window._dtk}});
+    let fd=await fr.json();let folderId=(fd.files&&fd.files[0])?fd.files[0].id:null;
+    if(!folderId){const r=await fetch('https://www.googleapis.com/drive/v3/files?fields=id',{method:'POST',headers:{Authorization:'Bearer '+window._dtk,'Content-Type':'application/json'},body:JSON.stringify({name:ord,mimeType:'application/vnd.google-apps.folder',parents:[GDRIVE_FID]})});folderId=(await r.json()).id;}
+    const meta={name:pdfName(),parents:[folderId]};const form=new FormData();form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));form.append('file',blob);
+    const up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:'Bearer '+window._dtk},body:form});
+    const res=await up.json();
+    if(res&&res.id)toast('✓ Saved to Drive › '+ord);else toast('⚠ Upload failed');
+  }catch(e){console.error(e);toast('⚠ Drive error — '+(e.message||'try again'));}
+}
+
+function doReset(){
+  document.querySelectorAll('input:not([type=radio]),textarea').forEach(el=>el.value='');
+  document.querySelectorAll('input[type=radio]').forEach(el=>el.checked=false);
+  CR=0;photos=[];snags=[];balanceItems=[];selfieComposed=null;selfieName='';selfieTs='';selfieOrd='';
+  hi(0);document.getElementById('rlbl').textContent=T[lang].notRated;
+  clrSig('sc');clrSig('st');
+  document.getElementById('fdate').textContent='—';
+  document.getElementById('pfll').style.width='0%';
+  document.getElementById('phgr').innerHTML='';
+  document.getElementById('emP').style.display='none';
+  renderSnags();renderBalance();bioVerified=false;bioTimestamp='';document.getElementById('bioStatus').innerHTML='';document.getElementById('bioBtn').style.display='';renderSelfieBtn();toast('Form has been reset.');
+}
+
+
+/* ---- Snag List with PDF import ---- */
+let snags=[];
+function addSnag(posNo){snags.push({id:Date.now(),pos:posNo||'',desc:'',loc:'',priority:'Medium',photo:''});renderSnags();}
+function removeSnag(id){snags=snags.filter(s=>s.id!==id);renderSnags();}
+function renderSnags(){
+  const el=document.getElementById('snagList');if(!el)return;
+  el.innerHTML=snags.map((s,i)=>`<div class="snag-item">
+    <button class="snag-rm" onclick="removeSnag(${s.id})">✕</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="lbl">Snag #${i+1}</div>
+      ${s.pos?`<span class="snag-pos">${s.pos.replace(/</g,'&lt;')}</span>`:''}
+    </div>
+    <input type="text" placeholder="Position no. / ref" value="${(s.pos||'').replace(/"/g,'&quot;')}" oninput="snags[${i}].pos=this.value" style="margin-top:6px">
+    <input type="text" placeholder="Describe the issue / defect" value="${(s.desc||'').replace(/"/g,'&quot;')}" oninput="snags[${i}].desc=this.value" style="margin-top:4px">
+    <div class="snag-row">
+      <input type="text" placeholder="Location / room" value="${(s.loc||'').replace(/"/g,'&quot;')}" oninput="snags[${i}].loc=this.value">
+      <select onchange="snags[${i}].priority=this.value">
+        <option ${s.priority==='Low'?'selected':''}>Low</option>
+        <option ${s.priority==='Medium'?'selected':''}>Medium</option>
+        <option ${s.priority==='High'?'selected':''}>High</option>
+        <option ${s.priority==='Critical'?'selected':''}>Critical</option>
+      </select>
+      ${s.photo?`<img src="${s.photo}" class="snag-photo"><button class="btns" style="padding:4px 8px;font-size:10px" onclick="snags[${i}].photo='';renderSnags()">✕</button>`:`<button class="btns" style="padding:6px 10px;font-size:11px" onclick="snagPhoto(${i})">📷</button>`}
+    </div>
+  </div>`).join('');
+}
+function snagPhoto(idx){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{snags[idx].photo=ev.target.result;renderSnags();};r.readAsDataURL(f);};
+  inp.click();
+}
+function ensureScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load failed'));document.head.appendChild(s);});}
+async function ensurePdfjs(){
+  if(window.pdfjsLib&&window.pdfjsLib.getDocument)return;
+  const cdns=[['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'],
+    ['https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js','https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'],
+    ['https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js','https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js']];
+  for(const [lib,worker] of cdns){try{await ensureScript(lib);if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc=worker;return;}}catch(e){}}
+  throw new Error('PDF reader needs internet — try on your https link');}
+
+/* import quotation PDF into snag list */
+const _SNAG_RE=/^(\d{1,3}-.+?)\s+((?:[A-Za-z]\d?=[\d.,]+;)+)\s+(\d+)/;
+document.getElementById('snagPdfInp').addEventListener('change',async ev=>{
+  const f=ev.target.files[0];if(!f)return;ev.target.value='';
+  toast('📄 Reading quotation…');
+  try{
+    await ensurePdfjs();
+    const buf=await f.arrayBuffer();
+    const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+    let count=0;
+    for(let pn=1;pn<=pdf.numPages;pn++){
+      const page=await pdf.getPage(pn);const tc=await page.getTextContent();
+      const _spans=[];tc.items.forEach(it=>{if(!it.str)return;_spans.push({x:it.transform[4],y:it.transform[5],str:it.str});});
+      _spans.sort((a,b)=>b.y-a.y);
+      const _bk=[];for(const sp of _spans){let placed=false;for(const b of _bk){if(Math.abs(sp.y-b.y)<5){b.items.push(sp);placed=true;break;}}if(!placed)_bk.push({y:sp.y,items:[sp]});}
+      const lines=_bk.sort((a,b)=>b.y-a.y).map(b=>b.items.sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim());
+      for(const ln of lines){const m=_SNAG_RE.exec(ln);if(m){snags.push({id:Date.now()+count,pos:m[1],desc:'',loc:'',priority:'Medium',photo:''});count++;}}
+      /* also grab offer no + client */
+      if(pn===1){
+        for(const ln of lines){
+          const nr=ln.match(/-?Nr\.?:?\s*([0-9]{3,7}\/[0-9]+)/i);if(nr&&!document.getElementById('ord').value)document.getElementById('ord').value=nr[1];
+          const cl=ln.match(/(Mr|Mrs|Ms|M\/s)\.?\s+\S.*/i);if(cl&&!document.getElementById('cname').value&&!/Sales|Manager|Sr\./i.test(ln))document.getElementById('cname').value=ln.trim();
+        }
+      }
+    }
+    renderSnags();
+    toast(count?'✓ Imported '+count+' positions':'⚠ No positions found');
+  }catch(e){console.error(e);toast('⚠ '+((e&&e.message)||"Couldn't read PDF"));}
+});
+
+/* ---- Balance Material at Site ---- */
+let balanceItems=[];
+function addBalance(){balanceItems.push({id:Date.now(),desc:'',photo:''});renderBalance();}
+function removeBalance(id){balanceItems=balanceItems.filter(b=>b.id!==id);renderBalance();}
+function renderBalance(){
+  const el=document.getElementById('balanceList');if(!el)return;
+  el.innerHTML=balanceItems.map((b,i)=>`<div class="snag-item">
+    <button class="snag-rm" onclick="removeBalance(${b.id})">✕</button>
+    <div class="lbl">Item #${i+1}</div>
+    <input type="text" placeholder="Material description (e.g. 2x spare gaskets, leftover silicon tubes)" value="${(b.desc||'').replace(/"/g,'&quot;')}" oninput="balanceItems[${i}].desc=this.value" style="margin-top:6px">
+    <div class="snag-row">
+      ${b.photo?`<img src="${b.photo}" class="snag-photo"><button class="btns" style="padding:4px 8px;font-size:10px" onclick="balanceItems[${i}].photo='';renderBalance()">✕</button>`:`<button class="btns" style="padding:6px 10px;font-size:11px" onclick="balancePhoto(${i})">📷 Photo</button>`}
+    </div>
+  </div>`).join('');
+}
+function balancePhoto(idx){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{balanceItems[idx].photo=ev.target.result;renderBalance();};r.readAsDataURL(f);};
+  inp.click();
+}
+
+/* ---- 5-star → Google Review ---- */
+const _origSetR=typeof setR==='function'?setR:null;
+function setR(n){CR=n;hi(n);
+  const t=T[lang];document.getElementById('rlbl').textContent=CR>0?t.rl[CR]:t.notRated;
+  if(CR===5){window.open('https://share.google/tpEKjnPKtsrmzHoZ3','_blank','noopener');}
+
+  prog();}
+
+/* ---- Biometric Verification (WebAuthn) ---- */
+let bioVerified=false,bioTimestamp='';
+async function doBiometric(){
+  if(!window.PublicKeyCredential){toast('Biometric not available — needs https + a supported device');return;}
+  const avail=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(()=>false);
+  if(!avail){toast('No fingerprint/Face ID detected on this device');return;}
+  try{
+    const challenge=new Uint8Array(32);crypto.getRandomValues(challenge);
+    const userId=new Uint8Array(16);crypto.getRandomValues(userId);
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge,rp:{id:location.hostname,name:'Lingel Handover'},
+      user:{id:userId,name:'customer-'+Date.now(),displayName:document.getElementById('cname').value||'Customer'},
+      pubKeyCredParams:[{alg:-7,type:'public-key'}],
+      authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'discouraged',userVerification:'required'},
+      timeout:60000,attestation:'none'}});
+    if(cred){
+      bioVerified=true;bioTimestamp=new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      document.getElementById('bioStatus').innerHTML=`<div class="bio-badge">✓ Identity verified at ${bioTimestamp}</div>`;
+      document.getElementById('bioBtn').style.display='none';
+      toast('✓ Biometric verification successful');}
+  }catch(e){
+    console.warn('Bio:',e);
+    if(e.name==='NotAllowedError')toast('Verification cancelled by user');
+    else if(e.name==='SecurityError')toast('⚠ Biometric needs https — deploy on Netlify first');
+    else toast('⚠ Verification failed — '+(e.message||'try again'));
+  }
+}
+
+buildCL();buildStars();renderSelfieBtn();
+document.getElementById('hdate').valueAsDate=new Date();setFn();
+window.addEventListener('load',()=>{setupSig('sc');setupSig('st');});
+
+</script>
+</body>
+</html>
