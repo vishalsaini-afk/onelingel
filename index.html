@@ -49,19 +49,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     <div class="sub">Site Supervisor Access</div>
     <div class="fd">
       <label>Supervisor name</label>
-      <select id="loginName">
-        <option value="">— Select your name —</option>
-        <option>Vishal Saini</option>
-        <option>Amit Kumar Singh</option>
-        <option>Anil</option>
-        <option>Yash</option>
-        <option>Kunal</option>
-        <option>Other</option>
-      </select>
-    </div>
-    <div class="fd" id="otherNameWrap" style="display:none">
-      <label>Enter name</label>
-      <input id="loginOther" placeholder="Your full name">
+      <input id="loginName" list="nameList" placeholder="Type your name" autocomplete="off">
+      <datalist id="nameList"></datalist>
     </div>
     <div class="fd">
       <label>Password</label>
@@ -113,23 +102,47 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div class="foot">Lingel Field Operations · Works offline after first load</div>
 </div>
 <script>
-/* ---- Site Supervisor login ---- */
-// NOTE: client-side gate — password is visible in source. Identifies the supervisor & stamps reports.
-const SHARED_PASS="lingel2025"; // change this to your team password
-document.getElementById('loginName').addEventListener('change',function(){
-  document.getElementById('otherNameWrap').style.display=this.value==='Other'?'flex':'none';
-});
-function doLogin(){
-  const sel=document.getElementById('loginName').value;
-  const name=sel==='Other'?document.getElementById('loginOther').value.trim():sel;
+/* ---- Site Supervisor login (Google Sheet backed) ---- */
+// Paste your deployed Apps Script /exec URL here:
+const LOGIN_API = "https://script.google.com/macros/s/AKfycbzqK9n53U0YCVb7IGAboFF2iZOr8g80ZL0MV1k-xUq3T_0Uwzl4se9E5szfxsRT_-aQ/exec";
+
+// Populate the name suggestions from the sheet
+async function loadNames(){
+  const dl=document.getElementById('nameList');
+  if(!LOGIN_API||LOGIN_API==="PASTE_URL_HERE")return;
+  try{
+    const r=await fetch(LOGIN_API+'?action=names');
+    const data=await r.json();
+    if(Array.isArray(data.names)&&data.names.length){
+      dl.innerHTML=data.names.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">').join('');
+    }
+  }catch(e){/* datalist stays empty — user can still type */}
+}
+
+async function doLogin(){
+  const name=document.getElementById('loginName').value.trim();
   const pass=document.getElementById('loginPass').value;
   const err=document.getElementById('loginErr');
-  if(!name){err.textContent='Please select or enter your name';return;}
-  if(pass!==SHARED_PASS){err.textContent='Incorrect password';return;}
-  // store session
-  const session={name,at:new Date().toISOString()};
-  localStorage.setItem('lingel_supervisor',JSON.stringify(session));
-  showLoggedIn(name);
+  const btn=document.querySelector('.login-box button');
+  if(!name){err.textContent='Please type your name';return;}
+  if(!pass){err.textContent='Please enter your password';return;}
+  if(!LOGIN_API||LOGIN_API==="PASTE_URL_HERE"){err.textContent='Login not configured — set LOGIN_API in hub.html';return;}
+  err.textContent='';btn.textContent='Checking…';btn.disabled=true;
+  try{
+    const body=new URLSearchParams({name,pass});
+    const r=await fetch(LOGIN_API,{method:'POST',body});
+    const data=await r.json();
+    if(data.ok){
+      localStorage.setItem('lingel_supervisor',JSON.stringify({name:data.name,at:new Date().toISOString()}));
+      showLoggedIn(data.name);
+    }else{
+      err.textContent=data.error||'Login failed';
+      btn.textContent='Login →';btn.disabled=false;
+    }
+  }catch(e){
+    err.textContent='Network error — check internet';
+    btn.textContent='Login →';btn.disabled=false;
+  }
 }
 function showLoggedIn(name){
   document.getElementById('loginOverlay').style.display='none';
@@ -139,14 +152,13 @@ function doLogout(){
   localStorage.removeItem('lingel_supervisor');
   location.reload();
 }
-// check existing session on load
 (function(){
   try{const s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null');
-    if(s&&s.name){showLoggedIn(s.name);}
-  }catch(e){}
+    if(s&&s.name){showLoggedIn(s.name);}else{loadNames();}
+  }catch(e){loadNames();}
 })();
-// allow Enter key to submit
 document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('loginName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginPass').focus();});
 </script>
 </body>
 </html>
