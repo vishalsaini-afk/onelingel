@@ -210,8 +210,8 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="brand"><img class="logo" id="brandLogo" alt="Lingel">
-      <div><h1>Lingel Windows &amp; Doors</h1><span>Technologies Pvt. Ltd. · Inspection Portal</span></div></div>
+    <a class="brand" href="hub.html" style="text-decoration:none;color:inherit" title="Back to hub"><img class="logo" id="brandLogo" alt="Lingel">
+      <div><h1>Lingel Windows &amp; Doors</h1><span>⌂ Home · Inspection Portal</span></div></a>
     <div class="langtog" id="langTog" title="Dictation language">
       <button data-lang="en-IN" class="on">EN</button>
       <button data-lang="hi-IN">हिं</button>
@@ -352,6 +352,8 @@ async function loadAll(){
   try{const t=await idbGet("kv","translateEN");translateOn=!!t;}catch(e){}
   try{const id=await idbGet("kv","gdriveClientId");if(id)GDRIVE_CLIENT_ID=id;}catch(e){}
   try{const fid=await idbGet("kv","gdriveFolderId");if(fid)GDRIVE_FOLDER_ID=fid;}catch(e){}
+  if(!GDRIVE_FOLDER_ID){const ls=localStorage.getItem("lingel_gdrive_fid");if(ls)GDRIVE_FOLDER_ID=ls;}
+  if(!GDRIVE_CLIENT_ID){const lc=localStorage.getItem("lingel_gdrive_cid");if(lc)GDRIVE_CLIENT_ID=lc;}
   syncLangTog();syncTrBtn();
   if(meta){$("#o_no").value=meta.no||"";$("#o_client").value=meta.client||"";$("#o_loc").value=meta.loc||"";
     $("#o_sales").value=meta.sales||"";$("#o_insp").value=meta.insp||"";$("#o_date").value=meta.date||"";}
@@ -968,12 +970,12 @@ $("#driveBtn").onclick=async()=>{
   if(!GDRIVE_CLIENT_ID){
     const id=prompt("One-time setup (step 1/2):\nPaste your Google OAuth Client ID\n(ends in .apps.googleusercontent.com)");
     if(!id)return;
-    GDRIVE_CLIENT_ID=id.trim();try{await idbPut("kv",GDRIVE_CLIENT_ID,"gdriveClientId");}catch(e){}
+    GDRIVE_CLIENT_ID=id.trim();try{await idbPut("kv",GDRIVE_CLIENT_ID,"gdriveClientId");}catch(e){}localStorage.setItem("lingel_gdrive_cid",GDRIVE_CLIENT_ID);
   }
   if(!GDRIVE_FOLDER_ID){
     const fid=prompt("One-time setup (step 2/2):\nPaste the shared Google Drive folder ID\n(the long string from the folder URL after /folders/)");
     if(!fid)return;
-    GDRIVE_FOLDER_ID=fid.trim();try{await idbPut("kv",GDRIVE_FOLDER_ID,"gdriveFolderId");}catch(e){}
+    GDRIVE_FOLDER_ID=fid.trim();try{await idbPut("kv",GDRIVE_FOLDER_ID,"gdriveFolderId");}catch(e){}localStorage.setItem("lingel_gdrive_fid",GDRIVE_FOLDER_ID);
   }
   try{await ensureGIS();initDrive();}catch(e){toast("⚠ Couldn't load Google sign-in");return;}
   if(_driveToken)saveToDrive();
