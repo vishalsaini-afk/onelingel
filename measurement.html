@@ -145,6 +145,51 @@
   .vid-thumb .vdel{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:10px;cursor:pointer;line-height:1}
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:#13161b;color:#fff;border:1px solid var(--line);border-left:4px solid var(--hivis);padding:11px 18px;border-radius:9px;font-size:13px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;z-index:90}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* ONR sub-options */
+  .onr-panel{background:#3a2a12;border:1px solid #6b4e1f;border-left:4px solid var(--hivis);border-radius:10px;padding:11px 13px;margin-top:-4px;display:flex;flex-direction:column;gap:9px}
+  .onr-panel .onr-q{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#ffe6a8}
+  .onr-seg{display:inline-flex;border:1px solid #6b4e1f;border-radius:8px;overflow:hidden;align-self:flex-start;flex-wrap:wrap}
+  .onr-seg button{border:none;background:#241a0c;color:#e9d9b6;font-family:'Archivo Narrow';font-weight:700;font-size:12px;padding:8px 13px;cursor:pointer}
+  .onr-seg button+button{border-left:1px solid #6b4e1f}
+  .onr-seg button.on{background:var(--hivis);color:#231a06}
+  .onr-note{font-size:12px;line-height:1.4;color:#fff;background:#11341f;border:1px solid #2f7a4d;border-radius:8px;padding:9px 11px;display:flex;gap:8px;align-items:flex-start}
+  .onr-note b{color:#9fe3bd}
+  /* position search */
+  .possearch{position:relative;flex:1 1 100%;margin-top:2px}
+  .possearch input{width:100%;font-family:'Spline Sans';font-size:14px;color:#e7ebf1;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:9px 34px 9px 32px}
+  .possearch input:focus{outline:none;border-color:var(--hivis)}
+  .possearch .si{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.6;pointer-events:none}
+  .possearch .sx{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#8b93a1;font-size:15px;cursor:pointer;display:none}
+  .op.dimmed{display:none}
+  .op.hit{box-shadow:0 0 0 2px var(--hivis),var(--shadow)}
+  .searchmiss{text-align:center;color:#7a828f;font-family:'JetBrains Mono';font-size:12px;padding:20px}
+  /* sketch edit button + thumb */
+  .sketch-thumb{max-width:100%;border-radius:9px;border:1px solid var(--paper-line);display:block;margin-bottom:8px;background:#fff}
+  .sketch-btnrow{display:flex;gap:8px;flex-wrap:wrap}
+  .sketch-edit-btn{border:none;background:var(--panel-2);color:#cfd6e0;font-family:'Archivo Narrow';font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;padding:9px 15px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+  .sketch-edit-btn:hover{background:#2a313d}
+  .sketch-edit-btn.primary{background:var(--hivis);color:#231a06}
+  /* vector sketch editor */
+  .vs-overlay{position:fixed;inset:0;background:#0d0f13;z-index:210;display:flex;flex-direction:column}
+  .vs-top{display:flex;align-items:center;gap:8px;padding:10px 12px;background:linear-gradient(180deg,#191d25,#14171d);border-bottom:2px solid var(--hivis);flex-wrap:wrap}
+  .vs-top .vs-title{font-family:'Archivo';font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#ffce1f;margin-right:auto}
+  .vs-tool{border:none;background:var(--panel-2);color:#dfe4ec;font-family:'Archivo Narrow';font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em;padding:9px 12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+  .vs-tool:hover{background:#2a313d}
+  .vs-tool.on{background:var(--hivis);color:#231a06}
+  .vs-tool.save{background:var(--hivis);color:#231a06}
+  .vs-tool.del{background:#3a1c1a;color:#ffb3ad}
+  .vs-tool.cancel{background:#262b33;color:#cbd2dc}
+  .vs-stage-wrap{flex:1;overflow:hidden;position:relative;background:#fff;background-image:linear-gradient(#eef0f3 1px,transparent 1px),linear-gradient(90deg,#eef0f3 1px,transparent 1px);background-size:26px 26px}
+  .vs-svg{width:100%;height:100%;display:block;touch-action:none}
+  .vs-hint{position:absolute;left:0;right:0;bottom:0;text-align:center;font-family:'JetBrains Mono';font-size:11px;color:#8a93a1;padding:7px;background:rgba(255,255,255,.85);pointer-events:none}
+  .vs-handle{fill:#ffce1f;stroke:#231a06;stroke-width:1.5;cursor:move}
+  .vs-shape{fill:none;stroke:#111;stroke-width:2.4;cursor:move}
+  .vs-shape.sel{stroke:#e0a800}
+  .vs-txt{font-family:Arial,Helvetica,sans-serif;font-size:20px;fill:#111;cursor:move;user-select:none}
+  .vs-txt.sel{fill:#c88400}
+  .vs-colorbar{display:flex;gap:6px;align-items:center}
+  .vs-colorbar button{width:24px;height:24px;border-radius:50%;border:2px solid #2b313b;cursor:pointer;padding:0}
+  .vs-colorbar button.on{border-color:#fff}
 </style>
 
 <div class="topbar"><div class="topbar-inner">
@@ -187,7 +232,9 @@
 
   <div class="logbar"><h3>Site Checklist</h3></div>
   <div id="checklist" class="checklist"></div>
-  <div class="logbar"><h3>Openings</h3><div class="tally" id="tally"></div></div>
+  <div class="logbar"><h3>Openings</h3><div class="tally" id="tally"></div>
+    <div class="possearch"><span class="si">🔍</span><input id="posSearch" type="search" placeholder="Search positions — ref, room, type, size…" autocomplete="off"><button type="button" class="sx" id="posSearchClear">✕</button></div>
+  </div>
   <div class="openings" id="openings"></div>
   <button class="btn addop-btn" id="addOp">+ Add Opening</button>
   <div class="logbar"><h3>Sign-off</h3></div>
@@ -326,6 +373,16 @@ function render(){const wrap=$("#openings");
       <div class="op-body">
         <div class="readyrow"><span class="rl">Opening status</span>
           <span class="yn"><button type="button" class="ynb ${o.ready==='Ready'?'y':''}" data-ready="${o.id}" data-v="Ready">READY</button><button type="button" class="ynb ${o.ready==='ONR'?'n':''}" data-ready="${o.id}" data-v="ONR">ONR</button></span></div>
+        <div class="onr-panel" data-onrpanel="${o.id}" style="display:${o.ready==='ONR'?'flex':'none'}">
+          <span class="onr-q">ONR — opening not ready. How to proceed?</span>
+          <span class="onr-seg">
+            <button type="button" data-onr="${o.id}" data-v="theoretical" class="${o.onrType==='theoretical'?'on':''}">Theoretical size (confirm)</button>
+            <button type="button" data-onr="${o.id}" data-v="hold" class="${o.onrType==='hold'?'on':''}">Measurement hold</button>
+          </span>
+          <div class="onr-note" data-onrnote="${o.id}" style="display:${o.onrType==='theoretical'?'flex':'none'}">
+            <span>⚠</span><span>Theoretical size <b>confirmed</b>. It is the <b>client's responsibility</b> to maintain the opening exactly as per the size recorded for this position. Lingel will manufacture to this theoretical size.</span>
+          </div>
+        </div>
         <div class="row2">
           <div class="ctl"><label>Location / room</label><input data-f="loc" data-id="${o.id}" value="${esc(o.loc)}" placeholder="e.g. 1st floor, kitchen"></div>
           <div class="ctl"><label>Type</label><select data-f="type" data-id="${o.id}">${TYPES.map(t=>`<option ${o.type===t?'selected':''}>${t}</option>`).join("")}</select></div>
@@ -379,8 +436,13 @@ function render(){const wrap=$("#openings");
           </div></div>
         <div><span class="tiny-label">Design (from quotation)</span><div class="photos">${o.designId&&imgCache[o.designId]?`<div class="thumb"><img src="${imgCache[o.designId]}"><button class="x" data-deldesign="${o.id}">✕</button></div>`:`<label class="addphoto"><input type="file" accept="image/*" hidden data-adddesign="${o.id}"><span class="p">✎</span><small>DESIGN</small></label>`}</div></div>
         <div><span class="tiny-label">Sketch this opening</span>
-          <div class="sketchwrap"><canvas class="opsketch" data-sketch="${o.id}"></canvas>
-            <button type="button" class="sigclr" data-sketchclear="${o.id}">Clear sketch</button></div></div>
+          <div class="sketchwrap">
+            ${o.sketchId&&imgCache[o.sketchId]?`<img class="sketch-thumb" src="${imgCache[o.sketchId]}" data-sketchedit="${o.id}" title="Tap to edit">`:''}
+            <div class="sketch-btnrow">
+              <button type="button" class="sketch-edit-btn ${o.sketchId?'':'primary'}" data-sketchedit="${o.id}">✎ ${o.sketchId?'Edit sketch':'Add sketch'}</button>
+              ${o.sketchId?`<button type="button" class="sketch-edit-btn" data-sketchclear="${o.id}">🗑 Clear</button>`:''}
+            </div>
+          </div></div>
         ${o.videoId?`<div><span class="tiny-label">Video</span><div class="vid-thumb"><video src="${vidCache[o.videoId]||''}" preload="metadata" onclick="this.paused?this.play():this.pause()"></video><span class="vplay">▶</span><button class="vdel" data-delvideo="${o.id}">✕</button></div></div>`:''}
         <div><span class="tiny-label">Photos</span><div class="photos">${photos}
           <label class="addphoto"><input type="file" accept="image/*" capture="environment" hidden data-addphoto="${o.id}"><span class="p">📷</span><small>CAMERA</small></label>
@@ -389,7 +451,19 @@ function render(){const wrap=$("#openings");
         </div></div>
       </div></div>`;
   }).join("");bindCards();}
-  renderTally();}
+  renderTally();applyPosSearch();}
+function applyPosSearch(){
+  const box=$("#posSearch");if(!box)return;const q=(box.value||"").trim().toLowerCase();
+  const clr=$("#posSearchClear");if(clr)clr.style.display=q?"block":"none";
+  const cards=document.querySelectorAll("#openings .op");let shown=0;
+  cards.forEach((card,i)=>{const o=openings[i];let hay;
+    if(o){const W=tripleVal(o.w),Hh=tripleVal(o.h);hay=[o.ref,o.loc,o.type,o.gnote,o.note,o.spec,o.ready,fmt(W.v),fmt(Hh.v)].filter(Boolean).join(" ").toLowerCase();}
+    else hay=(card.textContent||"").toLowerCase();
+    const hit=!q||hay.indexOf(q)>=0;card.classList.toggle("dimmed",!hit);card.classList.toggle("hit",!!q&&hit);if(hit)shown++;});
+  let miss=$("#posMiss");
+  if(q&&shown===0){if(!miss){miss=document.createElement("div");miss.id="posMiss";miss.className="searchmiss";$("#openings").appendChild(miss);}miss.textContent='No positions match "'+box.value.trim()+'"';}
+  else if(miss)miss.remove();
+}
 function renderTally(){let q=0;openings.forEach(o=>{q+=(parseInt(o.qty,10)||0);});$("#tally").innerHTML=`<b>${openings.length}</b> openings · <b>${q}</b> units`;}
 function getOp(id){return openings.find(o=>o.id===id);}
 
@@ -414,7 +488,8 @@ function bindCards(){
   document.querySelectorAll('[data-adddesign]').forEach(inp=>{inp.addEventListener("change",async ev=>{const o=getOp(inp.dataset.adddesign);if(!o)return;const f=ev.target.files[0];if(!f)return;toast("Processing design…");try{const data=await compress(f);const id=uid();imgCache[id]=data;o.designId=id;await savePhoto(id,data);await saveOp(o);render();toast("✓ Design added");}catch(e){}});});
   document.querySelectorAll('[data-deldesign]').forEach(b=>{b.onclick=async()=>{const o=getOp(b.dataset.deldesign);if(!o)return;if(o.designId){delete imgCache[o.designId];try{await idbDel("photos",o.designId);}catch(e){}o.designId="";}await saveOp(o);render();};});
   document.querySelectorAll('[data-delop]').forEach(b=>{b.onclick=async()=>{const o=getOp(b.dataset.delop);if(!o)return;if(!confirm("Delete this opening?"))return;openings=openings.filter(x=>x.id!==o.id);await delOp(o);await saveMeta();render();toast("Opening removed");};});
-  document.querySelectorAll('[data-ready]').forEach(b=>{b.onclick=()=>{const o=getOp(b.dataset.ready);if(!o)return;o.ready=(o.ready===b.dataset.v?"":b.dataset.v);saveOp(o);const grp=b.closest('.yn');grp.querySelectorAll('.ynb').forEach(x=>x.classList.remove('y','n'));if(o.ready==='Ready')grp.querySelector('[data-v="Ready"]').classList.add('y');else if(o.ready==='ONR')grp.querySelector('[data-v="ONR"]').classList.add('n');};});
+  document.querySelectorAll('[data-ready]').forEach(b=>{b.onclick=()=>{const o=getOp(b.dataset.ready);if(!o)return;o.ready=(o.ready===b.dataset.v?"":b.dataset.v);if(o.ready!=='ONR')o.onrType="";saveOp(o);const grp=b.closest('.yn');grp.querySelectorAll('.ynb').forEach(x=>x.classList.remove('y','n'));if(o.ready==='Ready')grp.querySelector('[data-v="Ready"]').classList.add('y');else if(o.ready==='ONR')grp.querySelector('[data-v="ONR"]').classList.add('n');const panel=document.querySelector('[data-onrpanel="'+o.id+'"]');if(panel){panel.style.display=o.ready==='ONR'?'flex':'none';if(o.ready!=='ONR'){panel.querySelectorAll('[data-onr]').forEach(x=>x.classList.remove('on'));const nt=panel.querySelector('[data-onrnote]');if(nt)nt.style.display='none';}}};});
+  document.querySelectorAll('[data-onr]').forEach(b=>{b.onclick=()=>{const o=getOp(b.dataset.onr);if(!o)return;o.onrType=(o.onrType===b.dataset.v?"":b.dataset.v);saveOp(o);const seg=b.closest('.onr-seg');seg.querySelectorAll('[data-onr]').forEach(x=>x.classList.toggle('on',x.dataset.v===o.onrType));const nt=document.querySelector('[data-onrnote="'+o.id+'"]');if(nt)nt.style.display=o.onrType==='theoretical'?'flex':'none';};});
   document.querySelectorAll('[data-reveal]').forEach(b=>{b.onclick=()=>{const card=b.closest('.op');if(!card)return;const ins=card.querySelectorAll('input.mask');const hidden=ins[0]&&ins[0].type==='password';ins.forEach(x=>x.type=hidden?'text':'password');b.style.opacity=hidden?1:.55;};});
   document.querySelectorAll('[data-dictate]').forEach(b=>{b.onclick=()=>startDict(b.dataset.dictate);});
 
@@ -428,10 +503,12 @@ function liveCalc(o){const i=openings.indexOf(o);if(i<0)return;const card=docume
   const fin=card.querySelector('[data-fin]');const fb=finBoxInner(o);if(fin){fin.style.background=fb.ok?'#11341f':'#3a2a12';fin.innerHTML=fb.html;}
   renderTally();}
 
-$("#addOp").onclick=async()=>{const o={id:uid(),ref:"",loc:"",type:"Casement",w:["","",""],h:["","",""],d:["",""],qty:"1",note:"",sill:"",wall:"",mesh:"None",lock:"—",dtrack:"—",silicon:"—",gnote:"",spec:"",ready:"",sketchId:"",designId:"",photos:[]};
+$("#addOp").onclick=async()=>{const o={id:uid(),ref:"",loc:"",type:"Casement",w:["","",""],h:["","",""],d:["",""],qty:"1",note:"",sill:"",wall:"",mesh:"None",lock:"—",dtrack:"—",silicon:"—",gnote:"",spec:"",ready:"",onrType:"",sketchId:"",sketchData:null,designId:"",photos:[]};
   openings.push(o);await saveOp(o);await saveMeta();render();window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});};
 
 ["m_no","m_client","m_phone","m_site","m_movein","m_sales","m_color","m_profile","m_by","m_date"].forEach(id=>{let t;$("#"+id).addEventListener("input",()=>{clearTimeout(t);t=setTimeout(saveMeta,350);});});
+if($("#posSearch"))$("#posSearch").addEventListener("input",applyPosSearch);
+if($("#posSearchClear"))$("#posSearchClear").onclick=()=>{$("#posSearch").value="";applyPosSearch();$("#posSearch").focus();};
 document.querySelectorAll("#unitTog button").forEach(b=>{b.onclick=()=>{unit=b.dataset.u;saveMeta();syncUnit();};});
 document.querySelectorAll("#topLang .lt").forEach(b=>{b.onclick=()=>{recogLang=b.dataset.l;if(recogActive){try{recog&&recog.stop();}catch(e){}}reflectDict();};});
 if($("#translateAll"))$("#translateAll").onclick=translateAll;
@@ -495,7 +572,42 @@ const REPORT_STYLE=`*{box-sizing:border-box}
   .rwrap .spec-tbl{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:4px}
   .rwrap .spec-tbl td{padding:3px 6px;border-bottom:1px solid #eee;vertical-align:top}
   .rwrap .spec-tbl .sk{color:#888;text-transform:uppercase;font-size:8.5px;letter-spacing:.4px;width:28%;white-space:nowrap}
-  .rwrap .foot{margin-top:14px;border-top:1px solid #ccc;padding-top:7px;font-size:10px;color:#999;text-align:center}`;
+  .rwrap .foot{margin-top:14px;border-top:1px solid #ccc;padding-top:7px;font-size:10px;color:#999;text-align:center}
+  /* full-page position layout */
+  .rwrap .ppage{min-height:1170px;display:flex;flex-direction:column;page-break-inside:avoid}
+  .rwrap .pp-head{display:flex;align-items:center;gap:12px;border-bottom:3px solid #111;padding-bottom:9px;margin-bottom:10px}
+  .rwrap .pp-idx{background:#222732;color:#fff;font-weight:800;font-size:15px;border-radius:7px;padding:5px 12px}
+  .rwrap .pp-ref{font-weight:800;font-size:22px;flex:1;line-height:1.1}
+  .rwrap .pp-ref small{display:block;font-weight:600;font-size:12px;color:#666;margin-top:2px}
+  .rwrap .pp-status{font-weight:800;font-size:12px;padding:6px 13px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+  .rwrap .pp-status.r{background:#dff3e4;color:#1f7a3d;border:1px solid #9fd6b2}
+  .rwrap .pp-status.o{background:#fde4e1;color:#b8362c;border:1px solid #f0b3ab}
+  .rwrap .pp-top{display:flex;gap:16px;margin-bottom:10px}
+  .rwrap .pp-sizebox{flex:0 0 auto;min-width:220px;border:2px solid #12331f;border-radius:9px;padding:10px 14px;background:#f4fbf6}
+  .rwrap .pp-sizebox.bad{border-color:#c0271c;background:#fdf1f0}
+  .rwrap .pp-sizelabel{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:#5b7a66}
+  .rwrap .pp-sizebox.bad .pp-sizelabel{color:#a04b43}
+  .rwrap .pp-size{font-size:30px;font-weight:800;color:#12331f;line-height:1.05}
+  .rwrap .pp-size.bad{font-size:18px;color:#c0271c}
+  .rwrap .pp-reads{font-size:11px;color:#555;margin-top:4px}
+  .rwrap .pp-spec{flex:1}
+  .rwrap .pp-spec table{width:100%;border-collapse:collapse}
+  .rwrap .pp-spec td{padding:3px 6px;font-size:12px;border-bottom:1px solid #eee;vertical-align:top}
+  .rwrap .pp-spec td.k{color:#777;text-transform:uppercase;font-size:9px;letter-spacing:.4px;width:38%;white-space:nowrap}
+  .rwrap .pp-onrnote{margin:0 0 10px;border:1.5px solid #2f7a4d;background:#eefaf1;border-left:5px solid #1f9d55;border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.4;color:#164a2c}
+  .rwrap .pp-onrnote b{color:#12331f}
+  .rwrap .pp-onrhold{margin:0 0 10px;border:1.5px solid #d6a017;background:#fff7e6;border-left:5px solid #e0a800;border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.4;color:#7a5b12}
+  .rwrap .pp-note{font-size:12px;color:#333;margin-bottom:8px;line-height:1.4;background:#f7f6f2;border-radius:6px;padding:7px 10px}
+  .rwrap .pp-qspec{font-size:10px;color:#555;line-height:1.35;margin-bottom:10px;padding:7px 9px;background:#f8f7f3;border-radius:6px;border:1px solid #e8e5dc}
+  .rwrap .pp-qspec .qh{font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px}
+  .rwrap .pp-media{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+  .rwrap .pp-media.single{grid-template-columns:1fr}
+  .rwrap .pp-m{border:1px solid #d9d6cc;border-radius:8px;overflow:hidden;background:#fafafa;display:flex;flex-direction:column}
+  .rwrap .pp-m .mh{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:#777;padding:5px 8px;border-bottom:1px solid #eee;background:#f3f2ec;font-weight:700}
+  .rwrap .pp-m img{display:block;width:100%;max-height:640px;object-fit:contain;background:#fff}
+  .rwrap .pp-m.wide{grid-column:1 / -1}
+  .rwrap .pp-m.wide img{max-height:760px}
+  .rwrap .pp-novid{background:#111;border-radius:8px;padding:14px;text-align:center;color:#fff;font-size:13px}`;
 function metaPairs(){return [["Offer No.",$("#m_no").value],["Client",$("#m_client").value],["Customer mobile",$("#m_phone").value],["Site",$("#m_site").value],["Client move-in",$("#m_movein").value],["Salesperson",$("#m_sales").value],["Color",$("#m_color").value],["Glass / Profile",$("#m_profile").value],["Measured by",$("#m_by").value],["Date",$("#m_date").value]];}
 function reportCoverHTML(){
   const metaH=metaPairs().filter(m=>m[1]).map(m=>`<div><span>${esc(m[0])}</span><b>${esc(m[1])}</b></div>`).join("");
@@ -518,31 +630,51 @@ function reportSignHTML(){
 }
 function reportPosCard(o,i){
   const {cw,ch,ws,hs}=confirmedFor(o);const ok=(ws==="ok"&&hs==="ok");const u=unitLabel();
-  const badge=o.ready==="Ready"?`<span class="pc-ready r">Ready</span>`:(o.ready==="ONR"?`<span class="pc-ready o">ONR — not ready</span>`:"");
+  // status badge with ONR sub-type
+  let statusTxt="",statusCls="";
+  if(o.ready==="Ready"){statusTxt="Ready";statusCls="r";}
+  else if(o.ready==="ONR"){statusCls="o";statusTxt=o.onrType==="theoretical"?"ONR · Theoretical size":(o.onrType==="hold"?"ONR · Measurement hold":"ONR — not ready");}
+  const badge=statusTxt?`<span class="pp-status ${statusCls}">${statusTxt}</span>`:"";
   const row=r=>`<tr><td class="k">${r[0]}</td><td>${r[1]}</td></tr>`;
   const prod=[["Type",esc(o.type)||"—"],["Color",esc($("#m_color").value)||"—"],["Quantity",esc(o.qty)||"1"],
     ["Mesh",(o.mesh&&o.mesh!=="None")?esc(o.mesh)+((o.lock&&o.lock!=="—")?" / "+esc(o.lock):""):"—"],
     ["Dummy track",(o.dtrack&&o.dtrack!=="—")?esc(o.dtrack):"—"],
     ["Glass / profile",esc($("#m_profile").value)||"—"]].map(row).join("");
-  const inst=[["Opening status",o.ready||"—"],
-    ["Sill height",o.sill?esc(o.sill)+" "+u:"—"],["Wall / fixing",o.wall?esc(o.wall):"—"],
+  const inst=[["Sill height",o.sill?esc(o.sill)+" "+u:"—"],["Wall / fixing",o.wall?esc(o.wall):"—"],
     ["Silicon (fixed)",(o.silicon&&o.silicon!=="—")?esc(o.silicon):"—"]].map(row).join("");
   const spec=`<tr><td colspan="2" class="pc-bh">Production &amp; design</td></tr>${prod}
     <tr><td colspan="2" class="pc-bh inst">Site installation</td></tr>${inst}`;
-  const sizeHTML=ok?`<div class="pc-size">${fmt(cw)} × ${fmt(ch)} <span style="font-size:12px;font-weight:600">${u}</span></div>`:`<div class="pc-size bad">SIZE NOT CONFIRMED</div>`;
-  const reads=`<div class="pc-read">W: ${(o.w||[]).slice(0,3).map(fmt).join(' / ')} &nbsp;|&nbsp; H: ${(o.h||[]).slice(0,3).map(fmt).join(' / ')}</div>`;
-  const note=o.note?esc(o.note):"";
-  const specHTML=o.spec?`<div style="font-size:10px;color:#555;line-height:1.35;margin-top:6px;padding:6px 8px;background:#f8f7f3;border-radius:5px;border:1px solid #e8e5dc"><span style="font-size:9px;color:#999;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:3px">Quotation spec</span>${esc(o.spec).substring(0,300)}</div>`:"";
+  const sizeHTML=ok?`<div class="pp-size">${fmt(cw)} × ${fmt(ch)}</div><div style="font-size:11px;color:#5b7a66">${u}</div>`:`<div class="pp-size bad">SIZE NOT CONFIRMED</div>`;
+  const reads=`<div class="pp-reads">W: ${(o.w||[]).slice(0,3).map(fmt).join(' / ')} &nbsp;|&nbsp; H: ${(o.h||[]).slice(0,3).map(fmt).join(' / ')} ${u}</div>`;
+  // ONR client-responsibility / hold note
+  let onrNote="";
+  if(o.ready==="ONR"&&o.onrType==="theoretical")onrNote=`<div class="pp-onrnote">⚠ <b>Theoretical size confirmed.</b> It is the <b>client's responsibility</b> to maintain the opening exactly as per the size mentioned above (${ok?fmt(cw)+" × "+fmt(ch)+" "+u:"see quotation"}). Lingel will manufacture to this theoretical size.</div>`;
+  else if(o.ready==="ONR"&&o.onrType==="hold")onrNote=`<div class="pp-onrhold">⏸ <b>Measurement on hold.</b> Final size is not confirmed for this position — measurement to be re-taken once the site opening is ready.</div>`;
+  const note=o.note?`<div class="pp-note"><b>Note:</b> ${esc(o.note)}</div>`:"";
+  const qspec=o.spec?`<div class="pp-qspec"><span class="qh">Quotation spec</span>${esc(o.spec).substring(0,600)}</div>`:"";
 
+  // large media
   const media=[];
-  if(o.videoId)media.push(`<div style="background:#111;border-radius:7px;padding:12px 16px;text-align:center;color:#fff;font-size:13px">📹 <b>Video recorded</b><br><span style="font-size:10px;color:#999">Uploaded to Drive with this report</span></div>`);
-  if(o.designId&&imgCache[o.designId])media.push(`<div class="mediabox"><div class="mh">Design (from quotation)</div><img src="${imgCache[o.designId]}"></div>`);
-  if(o.sketchId&&imgCache[o.sketchId])media.push(`<div class="mediabox"><div class="mh">Site sketch</div><img src="${imgCache[o.sketchId]}"></div>`);
+  if(o.designId&&imgCache[o.designId])media.push(`<div class="pp-m"><div class="mh">Design (from quotation)</div><img src="${imgCache[o.designId]}"></div>`);
+  if(o.sketchId&&imgCache[o.sketchId])media.push(`<div class="pp-m"><div class="mh">Site sketch</div><img src="${imgCache[o.sketchId]}"></div>`);
   const ph=(o.photos||[]).filter(p=>imgCache[p]);
-  if(ph.length)media.push(`<div class="pc-photos">`+ph.slice(0,6).map(p=>`<img src="${imgCache[p]}">`).join("")+`</div>`);
-  return `<div class="pcard"><div class="pc-head"><span class="pc-ref">${esc(o.ref)||("Opening "+(i+1))}${o.loc?` — <span style="font-weight:600;color:#666">${esc(o.loc)}</span>`:""}</span>${badge}</div>
-    <div class="pc-grid"><div class="pc-info">${sizeHTML}${reads}<table class="pc-spec">${spec}</table>${note?`<div class="pc-note">${note}</div>`:""}${specHTML}</div>
-    <div class="pc-media">${media.join("")||'<div style="font-size:11px;color:#aaa;padding:8px">No image attached</div>'}</div></div></div>`;
+  ph.slice(0,8).forEach((p,k)=>media.push(`<div class="pp-m"><div class="mh">Site photo ${k+1}</div><img src="${imgCache[p]}"></div>`));
+  if(o.videoId)media.push(`<div class="pp-m"><div class="pp-novid">📹 <b>Video recorded</b><br><span style="font-size:10px;color:#aaa">Uploaded to Drive with this report</span></div></div>`);
+  // if a single media item, let it span full width & go extra large
+  const single=media.length===1;
+  const mediaHTML=media.length?`<div class="pp-media${single?' single':''}">${media.map(m=>single?m.replace('class="pp-m"','class="pp-m wide"'):m).join("")}</div>`
+    :`<div class="pp-media single"><div class="pp-m"><div class="pp-novid" style="background:#f3f2ec;color:#999">No image attached for this position</div></div></div>`;
+
+  const refLine=`${esc(o.ref)||("Opening "+(i+1))}${o.loc?`<small>${esc(o.loc)}</small>`:""}`;
+  return `<div class="ppage">
+    <div class="pp-head"><span class="pp-idx">${String(i+1).padStart(2,'0')}</span><span class="pp-ref">${refLine}</span>${badge}</div>
+    <div class="pp-top">
+      <div class="pp-sizebox${ok?'':' bad'}"><div class="pp-sizelabel">Final size (min of 3)</div>${sizeHTML}${reads}</div>
+      <div class="pp-spec"><table>${spec}</table></div>
+    </div>
+    ${onrNote}${note}${qspec}
+    ${mediaHTML}
+  </div>`;
 }
 function pdfName(){return ((($("#m_no").value)||"lingel-measure").replace(/[^\w-]+/g,"_"))+"_measure.pdf";}
 async function renderPageImg(pdf,inner,scale){
@@ -561,12 +693,8 @@ async function makePDF(){
   const {jsPDF}=window.jspdf;const pdf=new jsPDF({unit:"pt",format:"a4",orientation:"portrait",compress:true});
   const cover=reportCoverHTML()+reportChecklistHTML();
   const cards=openings.map((o,i)=>reportPosCard(o,i));
-  const pages=[];
-  if(!cards.length){pages.push(cover);}
-  else{
-    pages.push(cover+cards[0]);
-    for(let i=1;i<cards.length;i++){pages.push(cards[i]);}
-  }
+  const pages=[cover];
+  cards.forEach(c=>pages.push(c));
   pages.push(reportSignHTML());
   const scale=3;
   for(let p=0;p<pages.length;p++){
@@ -671,8 +799,8 @@ function setupSignatures(){
   document.querySelectorAll('canvas[data-sig]').forEach(cv=>{const key=cv.dataset.sig;crispPen(cv,()=>sigs[key]||null,data=>{sigs[key]=data;sigSave();},2.2);});
   document.querySelectorAll('[data-sigclear]').forEach(b=>{b.onclick=()=>{const key=b.dataset.sigclear;const cv=document.querySelector('canvas[data-sig="'+key+'"]');if(cv)cv.getContext("2d").clearRect(0,0,cv.width,cv.height);sigs[key]="";sigSave();};});}
 function setupSketches(){
-  document.querySelectorAll('canvas[data-sketch]').forEach(cv=>{const o=getOp(cv.dataset.sketch);if(!o)return;crispPen(cv,()=>(o.sketchId&&imgCache[o.sketchId])?imgCache[o.sketchId]:null,async data=>{if(!o.sketchId)o.sketchId=uid();imgCache[o.sketchId]=data;await savePhoto(o.sketchId,data);await saveOp(o);},2.4);});
-  document.querySelectorAll('[data-sketchclear]').forEach(b=>{b.onclick=async()=>{const o=getOp(b.dataset.sketchclear);if(!o)return;const cv=document.querySelector('canvas[data-sketch="'+o.id+'"]');if(cv)cv.getContext("2d").clearRect(0,0,cv.width,cv.height);if(o.sketchId){delete imgCache[o.sketchId];try{await idbDel("photos",o.sketchId);}catch(e){}o.sketchId="";}await saveOp(o);};});}
+  document.querySelectorAll('[data-sketchedit]').forEach(b=>{b.onclick=()=>{const o=getOp(b.dataset.sketchedit);if(o)openSketchEditor(o);};});
+  document.querySelectorAll('[data-sketchclear]').forEach(b=>{b.onclick=async()=>{const o=getOp(b.dataset.sketchclear);if(!o)return;if(!confirm("Clear this sketch?"))return;if(o.sketchId){delete imgCache[o.sketchId];try{await idbDel("photos",o.sketchId);}catch(e){}o.sketchId="";}o.sketchData=null;await saveOp(o);render();};});}
 
 /* ---- dictation (EN / हिं) + Hindi→English translation ---- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -741,6 +869,120 @@ function openAnnot(oid,phId){
   document.getElementById("annotSave").onclick=async()=>{
     const data=cv.toDataURL("image/jpeg",0.88);imgCache[_annotPhId]=data;await savePhoto(_annotPhId,data);ov.remove();render();toast("✓ Annotation saved");};
 }
+/* ---- vector sketch editor: rectangles (4 movable corners → any angle), lines, text ---- */
+const SVGNS="http://www.w3.org/2000/svg";
+function openSketchEditor(o){
+  const COLORS=["#111111","#d6342c","#1f7a3d","#2166c9","#e0a800"];
+  let color=COLORS[0], sel=-1, drag=null, mode="select", penPts=null;
+  let shapes=(o.sketchData&&Array.isArray(o.sketchData.shapes))?JSON.parse(JSON.stringify(o.sketchData.shapes)):[];
+  const ov=document.createElement("div");ov.className="vs-overlay";
+  ov.innerHTML=`
+    <div class="vs-top">
+      <span class="vs-title">✎ Sketch — ${esc(o.ref||"opening")}</span>
+      <button type="button" class="vs-tool" data-t="pen">✏️ Freehand</button>
+      <button type="button" class="vs-tool" data-t="rect">▭ Rectangle</button>
+      <button type="button" class="vs-tool" data-t="line">╱ Line</button>
+      <button type="button" class="vs-tool" data-t="text">🅣 Text</button>
+      <span class="vs-colorbar">${COLORS.map((c,i)=>`<button type="button" data-col="${c}" class="${i===0?'on':''}" style="background:${c}"></button>`).join("")}</span>
+      <button type="button" class="vs-tool del" data-t="delete">🗑 Delete</button>
+      <button type="button" class="vs-tool cancel" data-t="cancel">✕ Cancel</button>
+      <button type="button" class="vs-tool save" data-t="save">✓ Save</button>
+    </div>
+    <div class="vs-stage-wrap">
+      <svg class="vs-svg" id="vsSvg"></svg>
+      <div class="vs-hint" id="vsHint">Add a shape, then drag it to move · drag a yellow corner to reshape · tap a shape to select · double-tap text to edit</div>
+    </div>`;
+  document.body.appendChild(ov);
+  const wrap=ov.querySelector(".vs-stage-wrap"),svg=ov.querySelector("#vsSvg"),hint=ov.querySelector("#vsHint");
+  const r=wrap.getBoundingClientRect();
+  const W=Math.max(320,Math.round(r.width)),H=Math.max(320,Math.round(r.height));
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+  function toXY(e){const p=svg.createSVGPoint();const t=e.touches?e.touches[0]:e;p.x=t.clientX;p.y=t.clientY;const m=svg.getScreenCTM();return m?p.matrixTransform(m.inverse()):{x:t.clientX,y:t.clientY};}
+  function mkEl(tag,attrs){const el=document.createElementNS(SVGNS,tag);for(const k in attrs)el.setAttribute(k,attrs[k]);return el;}
+  function draw(){
+    while(svg.firstChild)svg.removeChild(svg.firstChild);
+    shapes.forEach((s,i)=>{
+      const selCls=(i===sel?" sel":"");
+      if(s.type==="rect"){
+        svg.appendChild(mkEl("polygon",{points:s.pts.map(p=>p[0]+","+p[1]).join(" "),fill:"none","stroke-width":"2.6",stroke:(s.color||"#111"),class:"vs-shape"+selCls,"pointer-events":"all","data-i":i}));
+      } else if(s.type==="line"){
+        // fat invisible hit line first (easy to tap), then the visible line on top
+        svg.appendChild(mkEl("line",{x1:s.pts[0][0],y1:s.pts[0][1],x2:s.pts[1][0],y2:s.pts[1][1],stroke:"transparent","stroke-width":"22","stroke-linecap":"round",class:"vs-hit","pointer-events":"stroke","data-i":i}));
+        svg.appendChild(mkEl("line",{x1:s.pts[0][0],y1:s.pts[0][1],x2:s.pts[1][0],y2:s.pts[1][1],stroke:(s.color||"#111"),"stroke-width":"2.6","stroke-linecap":"round",class:"vs-shape"+selCls,"pointer-events":"none"}));
+      } else if(s.type==="path"){
+        const d=s.pts.map(p=>p[0]+","+p[1]).join(" ");
+        svg.appendChild(mkEl("polyline",{points:d,fill:"none",stroke:"transparent","stroke-width":"22","stroke-linejoin":"round","stroke-linecap":"round",class:"vs-hit","pointer-events":"stroke","data-i":i}));
+        svg.appendChild(mkEl("polyline",{points:d,fill:"none",stroke:(s.color||"#111"),"stroke-width":"2.6","stroke-linejoin":"round","stroke-linecap":"round",class:"vs-shape"+selCls,"pointer-events":"none"}));
+      } else if(s.type==="text"){
+        const t=mkEl("text",{x:s.x,y:s.y,"font-family":"Arial, Helvetica, sans-serif","font-size":"20",fill:(s.color||"#111"),class:"vs-txt"+selCls,"pointer-events":"all","data-i":i});t.textContent=s.text||"";svg.appendChild(t);
+      }
+    });
+    // live freehand stroke in progress
+    if(penPts&&penPts.length>1){svg.appendChild(mkEl("polyline",{points:penPts.map(p=>p[0]+","+p[1]).join(" "),fill:"none",stroke:color,"stroke-width":"2.6","stroke-linejoin":"round","stroke-linecap":"round","pointer-events":"none"}));}
+    // corner/endpoint handles for the selected rect/line/text (not freehand paths)
+    if(sel>=0&&shapes[sel]){const s=shapes[sel];
+      if(s.type==="rect"||s.type==="line"||s.type==="text"){
+        const hp=s.type==="text"?[[s.x,s.y]]:s.pts;
+        hp.forEach((p,hi)=>svg.appendChild(mkEl("circle",{cx:p[0],cy:p[1],r:11,class:"vs-handle","data-hi":hi})));
+      }
+    }
+  }
+  function addShape(type,at){
+    const cx=at?at.x:W/2,cy=at?at.y:H/2;
+    if(type==="rect"){const w=Math.min(240,W*0.42),h=Math.min(160,H*0.3);const x=cx-w/2,y=cy-h/2;shapes.push({type:"rect",pts:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]],color});}
+    else if(type==="line"){const L=Math.min(220,W*0.42);shapes.push({type:"line",pts:[[cx-L/2,cy],[cx+L/2,cy]],color});}
+    else if(type==="text"){const t=prompt("Enter text:","");if(t===null)return;shapes.push({type:"text",x:cx,y:cy,text:t||"Text",color});}
+    sel=shapes.length-1;draw();
+  }
+  function setMode(m){mode=m;ov.querySelectorAll('.vs-tool[data-t="pen"]').forEach(b=>b.classList.toggle("on",m==="draw"));
+    hint.textContent=(m==="draw")?"Freehand: drag to draw. Tap ✏️ again to stop and select/move strokes.":"Add a shape, then drag it to move · drag a yellow corner to reshape · tap a shape to select · double-tap text to edit";}
+  svg.addEventListener("pointerdown",e=>{const tgt=e.target,xy=toXY(e);
+    if(mode==="draw"){penPts=[[xy.x,xy.y]];sel=-1;e.preventDefault();return;}
+    if(tgt.classList.contains("vs-handle")){drag={mode:"handle",hi:+tgt.dataset.hi};e.preventDefault();return;}
+    if(tgt.dataset&&tgt.dataset.i!==undefined){sel=+tgt.dataset.i;const s=shapes[sel];
+      drag=(s.type==="text")?{mode:"shape",offs:[[xy.x-s.x,xy.y-s.y]]}:{mode:"shape",offs:s.pts.map(p=>[xy.x-p[0],xy.y-p[1]])};
+      draw();e.preventDefault();return;}
+    sel=-1;draw();
+  });
+  svg.addEventListener("pointermove",e=>{const xy=toXY(e);
+    if(penPts){penPts.push([xy.x,xy.y]);draw();e.preventDefault();return;}
+    if(!drag)return;const s=shapes[sel];if(!s){drag=null;return;}
+    if(drag.mode==="handle"){if(s.type==="text"){s.x=xy.x;s.y=xy.y;}else{s.pts[drag.hi]=[xy.x,xy.y];}}
+    else{if(s.type==="text"){s.x=xy.x-drag.offs[0][0];s.y=xy.y-drag.offs[0][1];}else{s.pts=s.pts.map((p,k)=>[xy.x-drag.offs[k][0],xy.y-drag.offs[k][1]]);}}
+    draw();e.preventDefault();});
+  const end=()=>{
+    if(penPts){if(penPts.length>2)shapes.push({type:"path",pts:penPts,color});penPts=null;draw();return;}
+    drag=null;};
+  svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);svg.addEventListener("pointerleave",end);
+  svg.addEventListener("dblclick",e=>{if(e.target.classList.contains("vs-txt")){const i=+e.target.dataset.i;const t=prompt("Edit text:",shapes[i].text||"");if(t!==null){shapes[i].text=t;draw();}}});
+  ov.querySelectorAll("[data-col]").forEach(b=>{b.onclick=()=>{color=b.dataset.col;ov.querySelectorAll("[data-col]").forEach(x=>x.classList.toggle("on",x===b));if(sel>=0&&shapes[sel]){shapes[sel].color=color;draw();}};});
+  ov.querySelectorAll(".vs-tool[data-t]").forEach(b=>{b.onclick=()=>{const t=b.dataset.t;
+    if(t==="pen"){setMode(mode==="draw"?"select":"draw");}
+    else if(t==="rect"){setMode("select");addShape("rect");}
+    else if(t==="line"){setMode("select");addShape("line");}
+    else if(t==="text"){setMode("select");addShape("text");}
+    else if(t==="delete"){if(sel>=0){shapes.splice(sel,1);sel=-1;draw();}else toast("Tap a shape first");}
+    else if(t==="cancel"){ov.remove();}
+    else if(t==="save"){saveSketch();}
+  };});
+  function saveSketch(){
+    sel=-1;penPts=null;draw();
+    if(!shapes.length){if(o.sketchId){delete imgCache[o.sketchId];try{idbDel("photos",o.sketchId);}catch(e){}o.sketchId="";}o.sketchData=null;saveOp(o);ov.remove();render();toast("Sketch cleared");return;}
+    const clone=svg.cloneNode(true);clone.setAttribute("xmlns",SVGNS);clone.setAttribute("width",W);clone.setAttribute("height",H);
+    // strip interaction-only elements (fat hit targets, handles) from the exported image
+    clone.querySelectorAll(".vs-hit,.vs-handle").forEach(el=>el.remove());
+    const bg=mkEl("rect",{x:0,y:0,width:W,height:H,fill:"#ffffff"});clone.insertBefore(bg,clone.firstChild);
+    const xml=new XMLSerializer().serializeToString(clone);
+    const url=URL.createObjectURL(new Blob([xml],{type:"image/svg+xml;charset=utf-8"}));
+    const img=new Image();
+    img.onload=async()=>{const SS=2;const cv=document.createElement("canvas");cv.width=W*SS;cv.height=H*SS;const ctx=cv.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,cv.width,cv.height);ctx.drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
+      const data=cv.toDataURL("image/png");if(!o.sketchId)o.sketchId=uid();imgCache[o.sketchId]=data;o.sketchData={W,H,shapes};
+      try{await savePhoto(o.sketchId,data);}catch(e){}await saveOp(o);ov.remove();render();toast("✓ Sketch saved");};
+    img.onerror=()=>{URL.revokeObjectURL(url);toast("⚠ Couldn't render sketch");};
+    img.src=url;
+  }
+  draw();
+}
 function parseSpec(raw){
   if(!raw)return [];
   const keys=["System","Colour","Color","Hardware","Frame","Sash","Handle","Bearings","Lock","Mesh","Silicon","Coupler"];
@@ -806,7 +1048,63 @@ else if(typeof globalThis.pdfjsLib!=="undefined")window.pdfjsLib=globalThis.pdfj
 })();
 async function ensurePdfjs(){}
 const RE_HDR=/^(\d{1,3}-.+?)\s+((?:[A-Za-z]\d?=[\d.,]+;)+)\s+(\d+)/;
+const RE_ENDMARK=/viewed\s*from\s*inside/i;                 // marks the end of every position
+const RE_MEASTOK=/\b([A-Za-z]\d?)\s*=\s*([\d][\d.,]*)/g;      // tolerant B=1500 / H = 1200 etc.
+const RE_POSSTART=/^\s*(\d{1,3})\s*[-–—.\)]\s*(\S.*)$/;       // loose "1-Living Room" / "2) Kitchen"
 function normNum(v){if(v==null)return null;const n=parseFloat(String(v).replace(/\./g,"").replace(",","."));return isFinite(n)?n:null;}
+function collectMeasures(text){
+  const found={};let mm,any=false;RE_MEASTOK.lastIndex=0;
+  while((mm=RE_MEASTOK.exec(text))!==null){const k=mm[1].toUpperCase();if(!(k in found)){found[k]=mm[2];any=true;}}
+  if(!any)return "";
+  return Object.keys(found).map(k=>k+"="+found[k]+";").join("");
+}
+function hasSize(measure){const s=" "+measure.toUpperCase();return (/[ ;]B=/.test(s)&&/[ ;]H=/.test(s))||(/[ ;]L=/.test(s)&&/[ ;]A=/.test(s));}
+/* Build the list of positions on a page. Uses the "viewed from inside" end-marker as a hard
+   boundary so a position is never missed even when its header line is broken up by PDF extraction. */
+const RE_MEAS1=/[A-Za-z]\d?\s*=\s*\d/;                        // a single measure assignment, e.g. B=950 or L1 = 1.9
+const RE_QTYPRICE=/\b(\d{1,3})\s+\d[\d.]*,\d{2}\s+\d[\d.]*,\d{2}/; // qty followed by unit & total price (…,dd …,dd)
+function detectPositions(lines){
+  const ends=[];lines.forEach((ln,i)=>{if(RE_ENDMARK.test(ln.text))ends.push(i);});
+  const strong=[];lines.forEach((ln,i)=>{const m=ln.text.match(RE_HDR);if(m)strong.push({i,y:ln.y,label:m[1].trim(),measure:m[2],qty:m[3]});});
+  // No end-markers on this page → fall back to header-only detection (backward compatible)
+  if(!ends.length){
+    return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));
+  }
+  // End-marker segmentation: one block per "viewed from inside" — a position is never missed
+  const pos=[];let start=0,posNo=0;
+  for(const endLine of ends){
+    const block=lines.slice(start,endLine+1);
+    const blockTxt=block.map(l=>l.text).join(" ");
+    // The header line is the position's table row = the FIRST line in the block that carries a
+    // measure assignment (label + B=/L=… + qty + price all share one row). Falls back to a loose
+    // "N-Name" line, else the block start.
+    let hdrRel=block.findIndex(l=>RE_MEAS1.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
+    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_HDR.test(l.text));
+    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_POSSTART.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
+    const measure=collectMeasures(blockTxt);
+    // Accept as a real position only if it has a header row or real dimensions (skips preamble/footers/T&C)
+    if((hdrRel>=0&&(RE_MEAS1.test(block[hdrRel].text)||RE_HDR.test(block[hdrRel].text)||RE_POSSTART.test(block[hdrRel].text)))||hasSize(measure)){
+      posNo++;
+      const hi=(hdrRel>=0)?(start+hdrRel):start;
+      const hline=lines[hi];const htext=hline?hline.text:"";
+      // label = everything on the header row before the first measure token
+      let label="";
+      const lm=htext.match(/^\s*(.*?)\s+[A-Za-z]\d?\s*=\s*\d/);
+      if(lm&&lm[1].trim())label=lm[1].trim();
+      if(!label){const pm=htext.match(RE_HDR);if(pm)label=pm[1].trim();}
+      if(!label){const pm=htext.match(RE_POSSTART);if(pm)label=(pm[1]+"-"+pm[2]).replace(/\s+/g," ").trim();}
+      if(!label)label=posNo+"-Position "+posNo;
+      // qty = the integer just before the two price columns (search whole block; prices look like 123456,78)
+      let qty="1";const qm=blockTxt.match(RE_QTYPRICE);if(qm)qty=qm[1];
+      const measFinal=measure||collectMeasures(htext);
+      pos.push({i:hi,y:(hline?hline.y:(block[0]&&block[0].y)),topY:(block[0]?block[0].y:(hline?hline.y:null)),label,measure:measFinal,qty,endI:endLine+1,endY:lines[endLine]?lines[endLine].y:null});
+    }
+    start=endLine+1;
+  }
+  // If nothing captured via markers but strong headers exist, use them
+  if(!pos.length&&strong.length)return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));
+  return pos;
+}
 async function importQuotation(file){
   toast("📄 Reading quotation…");
   await ensurePdfjs();
@@ -831,9 +1129,8 @@ async function importQuotation(file){
       if(ni>=0){if(!client)client=lines[ni].text.trim();const nx=lines[ni+1];if(nx&&!/^\+?\d/.test(nx.text)&&!/quotation/i.test(nx.text))site=nx.text.trim();}
       const on=lines.find(l=>/^\d{3,7}\/\d+$/.test(l.text.trim()));if(on&&!offerNo)offerNo=on.text.trim();
     }
-    // find position headers on this page
-    const pos=[];
-    lines.forEach((ln,i)=>{const m=ln.text.match(RE_HDR);if(m)pos.push({i,y:ln.y,label:m[1].trim(),measure:m[2],qty:m[3]});});
+    // find positions on this page — never misses one (anchored on "viewed from inside")
+    const pos=detectPositions(lines);
     if(!pos.length)continue;
     // render page once for cropping the drawings
     let canvas=null;
@@ -841,24 +1138,31 @@ async function importQuotation(file){
       await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;}catch(e){console.warn("Page render skipped:",e);canvas=null;}
     for(let k=0;k<pos.length;k++){
       const p=pos[k];
-      const endI=(k+1<pos.length)?pos[k+1].i:lines.length;
+      const endI=(p.endI!=null)?p.endI:((k+1<pos.length)?pos[k+1].i:lines.length);
       const desc=lines.slice(p.i+1,endI).map(l=>l.text).join(" ");
       // measure tokens
       const tk={};p.measure.replace(/([A-Za-z]\d?)=([\d.,]+)/g,(_,a,b)=>{tk[a]=normNum(b);return _;});
       let W=null,H=null;
       if(tk.B!=null&&tk.H!=null){W=tk.B;H=tk.H;}else if(tk.L!=null&&tk.A!=null){W=tk.L;H=tk.A;}
       let type="",mesh="None",dtrack="—";
-      const cm=desc.match(/Colou?r\s*:?\s*(?:Profiles?\s*[-:]?\s*)?(.*?)(?:both\s*sides|Hardware|System|Sash|Frame|$)/i);
+      // clean out the drawing's dimension annotations (e.g. "L = 7.720", "H1 = 400") so captions read cleanly
+      const descClean=desc.replace(/\b[A-Za-z]\d?\s*=\s*[\d.,]+\s*;?/g," ").replace(/\s+/g," ").trim();
+      const cm=descClean.match(/Colou?r\s*:?\s*(?:Profiles?\s*[-:]?\s*)?(.*?)(?:both\s*sides|Hardware|System|Sash|Frame|$)/i);
       const color=cm?cm[1].replace(/\s+/g," ").trim():"";
-      const glass=(desc.split(/System\s*:/i)[0]||"").replace(/\s+/g," ").trim();
-      // crop drawing (left "Position" column)
+      const glass=(descClean.split(/System\s*:/i)[0]||"").replace(/\s+/g," ").trim();
+      // crop drawing (left "Position" column) — capture the FULL window. Each position occupies one
+      // table row bounded by "Viewed from Inside" markers, so we crop from the divider above this
+      // position (previous marker, or the header row for the first on the page) down to this marker.
       let designId="";
       if(canvas){try{
-        let hy,nextY;
-        try{hy=vp.convertToViewportPoint(0,p.y)[1];nextY=(k+1<pos.length)?vp.convertToViewportPoint(0,pos[k+1].y)[1]:Math.min(vp.height-20,hy+vp.height*0.30);}
-        catch(ce){hy=Math.max(0,vp.height-p.y*2);nextY=(k+1<pos.length)?(vp.height-pos[k+1].y*2):Math.min(vp.height,hy+vp.height*0.3);}
-        const top=Math.max(0,hy+6),bottom=Math.min(vp.height,nextY-6);
-        const left=Math.round(vp.width*0.02),right=Math.round(vp.width*0.30);
+        const toV=y=>{try{return vp.convertToViewportPoint(0,y)[1];}catch(e){return vp.height-y*2;}};
+        let topV;
+        if(k>0&&pos[k-1].endY!=null){topV=toV(pos[k-1].endY)+4;}      // just below the divider from the previous position
+        else{topV=toV(p.y)-vp.height*0.025;}                          // first on page: from the header row, tiny pad up
+        const botY=(p.endY!=null)?p.endY:((k+1<pos.length)?pos[k+1].y:null);
+        let botV=(botY!=null)?toV(botY):Math.min(vp.height-14,topV+vp.height*0.45);
+        const top=Math.max(0,topV),bottom=Math.min(vp.height,botV+8);
+        const left=Math.round(vp.width*0.005),right=Math.round(vp.width*0.33);
         const cw=right-left,chh=Math.max(20,Math.round(bottom-top));
         if(cw>10&&chh>20){const crop=document.createElement("canvas");crop.width=cw;crop.height=chh;
           crop.getContext("2d").drawImage(canvas,left,Math.round(top),cw,chh,0,0,cw,chh);
@@ -866,7 +1170,7 @@ async function importQuotation(file){
       }catch(e){}}
       const gnote=[glass,(W!=null&&H!=null)?("Quoted "+fmt(W)+"×"+fmt(H)+" mm"):""].filter(Boolean).join(" · ");
       newOps.push({id:uid(),ref:p.label,loc:"",type,w:["","",""],h:["","",""],d:["",""],qty:String(parseInt(p.qty,10)||1),
-        note:"",sill:"",wall:"",mesh,lock:"—",dtrack,silicon:"—",gnote,spec:desc||"",ready:"",sketchId:"",designId,photos:[]});
+        note:"",sill:"",wall:"",mesh,lock:"—",dtrack,silicon:"—",gnote,spec:descClean||desc||"",ready:"",onrType:"",sketchId:"",sketchData:null,designId,photos:[]});
     }
   }
   if(!newOps.length){toast("⚠ No positions found in this PDF");return;}
