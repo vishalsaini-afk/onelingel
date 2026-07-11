@@ -75,12 +75,9 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <body>
 <div class="wrap">
 
-<div class="langbar" style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:10px;">
-  <a href="index.html" style="text-decoration:none;color:var(--hivis);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--line);border-radius:8px;padding:6px 14px" title="Back to hub">⌂ Home</a>
-  <div style="display:flex;gap:6px">
+<div class="langbar" style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
   <button class="lb active" id="lb-en" onclick="setLang('en')">EN</button>
   <button class="lb" id="lb-hi" onclick="setLang('hi')">हिं</button>
-  </div>
 </div>
 
 <div class="hdr">
@@ -115,7 +112,6 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     <div class="fd s2"><div class="lbl" data-t="prodDelivered">Product / service delivered</div><input type="text" id="prod" placeholder="e.g. Aluminium Sliding Windows, UPVC Casement Doors" oninput="prog()"></div>
     <div class="fd"><div class="lbl" data-t="quantity">Quantity (units)</div><input type="number" id="qty" placeholder="No. of units" min="1"></div>
     <div class="fd"><div class="lbl" data-t="installDate">Delivery / installation date</div><input type="date" id="idate"></div>
-    <div class="fd"><div class="lbl" data-t="nextSvc">Next service / AMC date <span class="nt">new</span></div><input type="date" id="nsvc"></div>
   </div>
 </div>
 
@@ -153,6 +149,22 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 </div>
 
 <div class="sec">
+  <div class="slbl" data-t="keyTitle">Key Handover</div>
+  <div class="gr">
+    <div class="fd">
+      <div class="lbl" data-t="keysGiven">Keys handed over to customer</div>
+      <div class="sgrp">
+        <label class="sopt"><input type="radio" name="keysHo" value="Yes" onchange="prog()"><span data-t="yesL">Yes</span></label>
+        <label class="sopt"><input type="radio" name="keysHo" value="No" onchange="prog()"><span data-t="noL">No</span></label>
+        <label class="sopt"><input type="radio" name="keysHo" value="NA" onchange="prog()"><span data-t="naL">NA</span></label>
+      </div>
+    </div>
+    <div class="fd"><div class="lbl" data-t="keyCount">No. of keys handed over</div><input type="number" id="keyqty" min="0" placeholder="e.g. 12" oninput="prog()"></div>
+    <div class="fd s2"><div class="lbl" data-t="keyRemarks">Key remarks (type / set details)</div><input type="text" id="keyrem" placeholder="e.g. 4 window keys + 2 door keys, 1 spare set with client"></div>
+  </div>
+</div>
+
+<div class="sec">
   <div class="slbl" data-t="selfieTitle">Selfie with customer <span class="nt">new</span></div>
   <div id="selfieArea"></div>
   <input type="file" id="selfinp" accept="image/*" capture="user" style="display:none" onchange="captureSelfie(this)">
@@ -174,15 +186,6 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     <div class="fd"><div class="lbl">Site Engineer name</div><input type="text" id="tname" placeholder="Full name"></div>
     <div class="fd"><div class="lbl" data-t="contactNo">Contact no.</div><input type="tel" id="tph" placeholder="+91 XXXXX XXXXX"></div>
   </div>
-</div>
-
-<div class="sec">
-  <div class="slbl">Client Biometric Verification</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Verify the customer's identity using their device fingerprint or Face ID</div>
-  <div id="bioArea">
-    <button class="btns" onclick="doBiometric()" id="bioBtn">🔐 Verify with Fingerprint / Face ID</button>
-  </div>
-  <div id="bioStatus" style="margin-top:10px"></div>
 </div>
 
 <div class="sec">
@@ -224,7 +227,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 
 const CL=[
   {orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:1},
-  {orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0}
+  {orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0}
 ];
 const T={
   en:{
@@ -233,7 +236,9 @@ const T={
     addrSite:"Address / site",contactNo:"Contact number",emailLbl:"Email",
     prodDetails:"Product / service details",prodDelivered:"Product / service delivered",
     quantity:"Quantity (units)",installDate:"Delivery / installation date",
-    nextSvc:"Next service / AMC date",checklist:"Handover checklist",
+    checklist:"Handover checklist",
+    keyTitle:"Key Handover",keysGiven:"Keys handed over to customer",keyCount:"No. of keys handed over",
+    keyRemarks:"Key remarks (type / set details)",yesL:"Yes",noL:"No",naL:"NA",
     itemAct:"Item / Activity",statusH:"Status",remarksH:"Remarks",
     photoDocs:"Photo documentation",photoHint:"Capture each installed window / door",
     addPhoto:"+ Add photo",locationLbl:"Location / window no.",
@@ -252,9 +257,9 @@ const T={
     ci:["Product delivered as per order","Product inspected with customer","Demonstration / training given",
       "Service / maintenance procedure explained","Pendency from installation team",
       "All windows / doors open and close smoothly","Locking mechanism tested and functional",
-      "Weather sealing and gaskets intact","Glass surface — no scratches or defects",
+      "Weather sealing and gaskets intact",
       "Hardware (handles, hinges, stays) all functional","Drainage channels clear","Site cleaned after installation"],
-    ch:["","","","","If yes — describe in remarks","","","","","","",""]
+    ch:["","","","","If yes — describe in remarks","","","","","",""]
   },
   hi:{
     formTitle:"ग्राहक हस्तांतरण फॉर्म",formNo:"फॉर्म संख्या",custDetails:"ग्राहक विवरण",
@@ -262,7 +267,9 @@ const T={
     addrSite:"पता / साइट",contactNo:"संपर्क नंबर",emailLbl:"ईमेल",
     prodDetails:"उत्पाद / सेवा विवरण",prodDelivered:"दी गई वस्तु / सेवा",
     quantity:"मात्रा (इकाइयाँ)",installDate:"डिलीवरी / स्थापना तारीख",
-    nextSvc:"अगली सेवा / AMC तारीख",checklist:"हस्तांतरण जाँच सूची",
+    checklist:"हस्तांतरण जाँच सूची",
+    keyTitle:"चाबी हस्तांतरण",keysGiven:"ग्राहक को चाबियाँ सौंपी गईं",keyCount:"सौंपी गई चाबियों की संख्या",
+    keyRemarks:"चाबी टिप्पणी (प्रकार / सेट विवरण)",yesL:"हाँ",noL:"नहीं",naL:"लागू नहीं",
     itemAct:"मद / गतिविधि",statusH:"स्थिति",remarksH:"टिप्पणी",
     photoDocs:"फोटो दस्तावेज़ीकरण",photoHint:"प्रत्येक स्थापित खिड़की / दरवाज़े की फोटो लें",
     addPhoto:"+ फोटो जोड़ें",locationLbl:"स्थान / खिड़की संख्या",
@@ -282,9 +289,9 @@ const T={
       "प्रदर्शन / प्रशिक्षण दिया गया","सेवा / रखरखाव प्रक्रिया समझाई गई",
       "स्थापना टीम से लंबित कार्य","सभी खिड़कियाँ / दरवाज़े सुचारू रूप से खुलते-बंद होते हैं",
       "लॉकिंग तंत्र परीक्षण किया गया और कार्यात्मक है","मौसम सीलिंग और गास्केट सही हैं",
-      "कांच की सतह — कोई खरोंच या दोष नहीं","हार्डवेयर (हैंडल, टिका, स्टे) सभी कार्यात्मक हैं",
+      "हार्डवेयर (हैंडल, टिका, स्टे) सभी कार्यात्मक हैं",
       "जल निकासी चैनल साफ हैं","स्थापना के बाद साइट साफ की गई"],
-    ch:["","","","","यदि हाँ — टिप्पणी में विवरण दें","","","","","","",""]
+    ch:["","","","","यदि हाँ — टिप्पणी में विवरण दें","","","","","",""]
   }
 };
 
@@ -425,6 +432,11 @@ function buildEmailText(){
 'HANDOVER CHECKLIST\n'+
 '-----------------------------\n'+
 items+'\n\n'+
+'KEY HANDOVER\n'+
+'-----------------------------\n'+
+'Keys handed over: '+(document.querySelector('input[name="keysHo"]:checked')?.value||'—')+'\n'+
+'No. of keys    : '+g('keyqty')+'\n'+
+'Key remarks    : '+g('keyrem')+'\n\n'+
 'SNAG LIST / PENDING ITEMS\n'+
 '-----------------------------\n'+
 snagTxt+'\n\n'+
@@ -434,7 +446,6 @@ balTxt+'\n\n'+
 'CUSTOMER SATISFACTION\n'+
 '-----------------------------\n'+
 'Rating         : '+(CR>0?T.en.rl[CR]:'Not rated')+'\n'+
-'Biometric      : '+(bioVerified?'Verified at '+bioTimestamp:'Not verified')+'\n'+
 'Feedback       : '+g('fb')+'\n\n'+
 'SITE ENGINEER\n'+
 '-----------------------------\n'+
@@ -509,10 +520,8 @@ async function shareReport(){
 /* Drive upload */
 let GDRIVE_CID='',GDRIVE_FID='';
 async function uploadDrive(){
-  GDRIVE_CID=GDRIVE_CID||localStorage.getItem('lingel_gdrive_cid')||'';
-  GDRIVE_FID=GDRIVE_FID||localStorage.getItem('lingel_gdrive_fid')||'';
-  if(!GDRIVE_CID){const id=prompt('One-time setup (1/2):\nPaste Google OAuth Client ID\n(ends in .apps.googleusercontent.com)');if(!id)return;GDRIVE_CID=id.trim();localStorage.setItem('lingel_gdrive_cid',GDRIVE_CID);}
-  if(!GDRIVE_FID){const fid=prompt('One-time setup (2/2):\nPaste the shared Google Drive folder ID\n(the long string from the folder URL after /folders/)');if(!fid)return;GDRIVE_FID=fid.trim();localStorage.setItem('lingel_gdrive_fid',GDRIVE_FID);}
+  if(!GDRIVE_CID){const id=prompt('One-time setup (1/2):\nPaste Google OAuth Client ID\n(ends in .apps.googleusercontent.com)');if(!id)return;GDRIVE_CID=id.trim();}
+  if(!GDRIVE_FID){const fid=prompt('One-time setup (2/2):\nPaste shared Google Drive folder ID');if(!fid)return;GDRIVE_FID=fid.trim();}
   await ensureScript('https://accounts.google.com/gsi/client');
   if(!window._dtc){window._dtc=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CID,scope:'https://www.googleapis.com/auth/drive.file',callback:async resp=>{if(resp&&resp.access_token){window._dtk=resp.access_token;await _doDriveUp();}else toast('⚠ Sign-in failed');}});}
   if(window._dtk)await _doDriveUp();else window._dtc.requestAccessToken({prompt:''});
@@ -521,8 +530,7 @@ async function _doDriveUp(){
   toast('☁ Uploading to Drive…');
   try{
     const pdf=await buildPDF();const blob=pdf.output('blob');
-    const rawOrd=(document.getElementById('ord').value||'handover').trim();
-    const ord=((rawOrd.split('/')[0])||rawOrd).replace(/[^\w-]/g,'_');  // base offer no = same folder as measure/inspect
+    const ord=(document.getElementById('ord').value||'handover').replace(/[^\w-]/g,'_');
     // find/create subfolder
     const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and trashed=false and name='"+ord+"' and '"+GDRIVE_FID+"' in parents");
     let fr=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id)',{headers:{Authorization:'Bearer '+window._dtk}});
@@ -545,7 +553,7 @@ function doReset(){
   document.getElementById('pfll').style.width='0%';
   document.getElementById('phgr').innerHTML='';
   document.getElementById('emP').style.display='none';
-  renderSnags();renderBalance();bioVerified=false;bioTimestamp='';document.getElementById('bioStatus').innerHTML='';document.getElementById('bioBtn').style.display='';renderSelfieBtn();toast('Form has been reset.');
+  renderSnags();renderBalance();renderSelfieBtn();toast('Form has been reset.');
 }
 
 
@@ -647,34 +655,6 @@ function setR(n){CR=n;hi(n);
   if(CR===5){window.open('https://share.google/tpEKjnPKtsrmzHoZ3','_blank','noopener');}
 
   prog();}
-
-/* ---- Biometric Verification (WebAuthn) ---- */
-let bioVerified=false,bioTimestamp='';
-async function doBiometric(){
-  if(!window.PublicKeyCredential){toast('Biometric not available — needs https + a supported device');return;}
-  const avail=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(()=>false);
-  if(!avail){toast('No fingerprint/Face ID detected on this device');return;}
-  try{
-    const challenge=new Uint8Array(32);crypto.getRandomValues(challenge);
-    const userId=new Uint8Array(16);crypto.getRandomValues(userId);
-    const cred=await navigator.credentials.create({publicKey:{
-      challenge,rp:{id:location.hostname,name:'Lingel Handover'},
-      user:{id:userId,name:'customer-'+Date.now(),displayName:document.getElementById('cname').value||'Customer'},
-      pubKeyCredParams:[{alg:-7,type:'public-key'}],
-      authenticatorSelection:{authenticatorAttachment:'platform',residentKey:'discouraged',userVerification:'required'},
-      timeout:60000,attestation:'none'}});
-    if(cred){
-      bioVerified=true;bioTimestamp=new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      document.getElementById('bioStatus').innerHTML=`<div class="bio-badge">✓ Identity verified at ${bioTimestamp}</div>`;
-      document.getElementById('bioBtn').style.display='none';
-      toast('✓ Biometric verification successful');}
-  }catch(e){
-    console.warn('Bio:',e);
-    if(e.name==='NotAllowedError')toast('Verification cancelled by user');
-    else if(e.name==='SecurityError')toast('⚠ Biometric needs https — deploy on Netlify first');
-    else toast('⚠ Verification failed — '+(e.message||'try again'));
-  }
-}
 
 buildCL();buildStars();renderSelfieBtn();
 document.getElementById('hdate').valueAsDate=new Date();setFn();
