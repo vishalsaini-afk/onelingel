@@ -206,11 +206,20 @@
   .report-header .rh-co{font-family:'Archivo';font-weight:800;font-size:15px;letter-spacing:.02em;text-transform:uppercase}
   .report-header .rh-title{font-family:'Archivo';font-weight:800;font-size:22px;letter-spacing:.03em;text-transform:uppercase}
   .report-header .rh-sub{font-family:'JetBrains Mono';font-size:11px;color:#444;margin-top:3px}
+  /* position search */
+  .possearch{position:relative;flex:1 1 100%;margin-top:2px}
+  .possearch input{width:100%;font-family:'Spline Sans';font-size:14px;color:#e7ebf1;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:9px 34px 9px 32px}
+  .possearch input:focus{outline:none;border-color:var(--hivis)}
+  .possearch .si{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.6;pointer-events:none}
+  .possearch .sx{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#8b93a1;font-size:15px;cursor:pointer;display:none}
+  .pos.dimmed{display:none}
+  .pos.hit{box-shadow:0 0 0 2px var(--hivis),var(--shadow)}
+  .searchmiss{text-align:center;color:#7a828f;font-family:'JetBrains Mono';font-size:12px;padding:20px}
 </style>
 
 <div class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="index.html" style="text-decoration:none;color:inherit" title="Back to hub"><img class="logo" id="brandLogo" alt="Lingel">
+    <a class="brand" href="hub.html" style="text-decoration:none;color:inherit" title="Back to hub"><img class="logo" id="brandLogo" alt="Lingel">
       <div><h1>Lingel Windows &amp; Doors</h1><span>⌂ Home · Inspection Portal</span></div></a>
     <div class="langtog" id="langTog" title="Dictation language">
       <button data-lang="en-IN" class="on">EN</button>
@@ -258,6 +267,7 @@
   <div class="logbar">
     <h3>Positions</h3>
     <div class="counts" id="counts"></div>
+    <div class="possearch"><span class="si">🔍</span><input id="posSearch" type="search" placeholder="Search positions — ref, status, observation…" autocomplete="off"><button type="button" class="sx" id="posSearchClear">✕</button></div>
   </div>
 
   <div class="positions" id="positions"></div>
@@ -416,7 +426,19 @@ function render(){
     }).join("");
     bindCards();
   }
-  renderCounts();
+  renderCounts();applyPosSearch();
+}
+function applyPosSearch(){
+  const box=$("#posSearch");if(!box)return;const q=(box.value||"").trim().toLowerCase();
+  const clr=$("#posSearchClear");if(clr)clr.style.display=q?"block":"none";
+  const cards=document.querySelectorAll("#positions .pos");let shown=0;
+  cards.forEach((card,i)=>{const p=positions[i];let hay;
+    if(p){const st=(STATUS[p.status]||{}).label||"";hay=[p.ref,st,p.obs,p.spec,(p.status==="issue"&&p.resp&&RESP[p.resp])?RESP[p.resp].label:""].filter(Boolean).join(" ").toLowerCase();}
+    else hay=(card.textContent||"").toLowerCase();
+    const hit=!q||hay.indexOf(q)>=0;card.classList.toggle("dimmed",!hit);card.classList.toggle("hit",!!q&&hit);if(hit)shown++;});
+  let miss=$("#posMiss");
+  if(q&&shown===0){if(!miss){miss=document.createElement("div");miss.id="posMiss";miss.className="searchmiss";$("#positions").appendChild(miss);}miss.textContent='No positions match "'+box.value.trim()+'"';}
+  else if(miss)miss.remove();
 }
 function renderCounts(){
   const c={};Object.keys(STATUS).forEach(k=>c[k]=0);
@@ -618,7 +640,7 @@ function bindCards(){
 
 /* ---- add position ---- */
 $("#addPos").onclick=async()=>{
-  const p={id:uid(),ref:"",status:"onr",resp:"",obs:"",photos:[],audios:[]};
+  const p={id:uid(),ref:"",status:"onr",onrType:"",resp:"",obs:"",photos:[],audios:[]};
   positions.push(p);await savePos(p);await saveMeta();render();
   window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
 };
@@ -627,6 +649,8 @@ $("#addPos").onclick=async()=>{
 ["o_no","o_client","o_loc","o_sales","o_insp","o_date"].forEach(id=>{
   let t;$("#"+id).addEventListener("input",()=>{clearTimeout(t);t=setTimeout(saveMeta,400);});
 });
+if($("#posSearch"))$("#posSearch").addEventListener("input",applyPosSearch);
+if($("#posSearchClear"))$("#posSearchClear").onclick=()=>{$("#posSearch").value="";applyPosSearch();$("#posSearch").focus();};
 
 /* ---- geolocation ---- */
 async function reverseGeocode(lat,lon){
@@ -671,24 +695,75 @@ function reportData(){
   const metaRows=meta.filter(m=>m[1]).map(m=>`<div class="m"><span>${esc(m[0])}</span><b>${esc(m[1])}</b></div>`).join("");
   const chips=Object.keys(STATUS).map(k=>{const col=STATUS[k].color;
     return `<span class="chip" style="color:${col};border-color:${col}">${c[k]} ${STATUS[k].label}</span>`;}).join("");
-  const issueChips=c.issue?`<div class="chips small">Issues by party:&nbsp; ${r.factory} Factory · ${r.customer} Customer · ${r.installer} Installer</div>`:"";
-  const cards=positions.map((p,i)=>{
+  // card background by status: completed=green, issue or ONR=red, not started=white, everything else=yellow
+  const GREEN={bg:"#dff3e4",bd:"#1f9d55"};
+  const RED={bg:"#ffdad4",bd:"#d6342c"};
+  const YELLOW={bg:"#fff2c2",bd:"#d9a200"};
+  const WHITE={bg:"#ffffff",bd:"#cccccc"};
+  const bgFor=st=>st==="completed"?GREEN:((st==="issue"||st==="onr")?RED:(st==="notstarted"?WHITE:YELLOW));
+  // stable position number by original order
+  const posNo=new Map(); positions.forEach((p,idx)=>posNo.set(p.id,idx+1));
+  // ---- issues & ONR overview table (top of report) ----
+  const ATTN=["issue","onr"];                       // red statuses — these go in the top table
+  const issueList=positions.filter(p=>ATTN.includes(p.status));
+  const issuesTable=issueList.length?`
+    <div class="sumwrap">
+      <div class="sumhead issues">⚠ Issues &amp; ONR — ${issueList.length} position${issueList.length>1?"s":""}</div>
+      <table class="sumtbl">
+        <thead><tr><th style="width:42px">No.</th><th>Description</th><th style="width:104px">Status</th><th style="width:96px">Responsible</th><th>Observation</th></tr></thead>
+        <tbody>${issueList.map(p=>{
+          const stl=(STATUS[p.status]||{label:"—"}).label;
+          const party=(p.status==="issue"&&p.resp&&RESP[p.resp])?RESP[p.resp].label:"—";
+          const obs=p.obs?esc(p.obs).slice(0,150):"—";
+          return `<tr style="background:${RED.bg}"><td class="c"><b>${posNo.get(p.id)}</b></td><td>${esc(p.ref)||"(no description)"}</td><td>${stl}</td><td>${party}</td><td>${obs}</td></tr>`;
+        }).join("")}</tbody>
+      </table>
+    </div>`:"";
+  // ---- status-wise summary table (all other statuses) ----
+  const restKeys=Object.keys(STATUS).filter(k=>!ATTN.includes(k)&&c[k]>0);
+  const restTotal=restKeys.reduce((a,k)=>a+c[k],0);
+  const statusSummary=restKeys.length?`
+    <div class="sumwrap">
+      <div class="sumhead">Status Summary</div>
+      <table class="sumtbl">
+        <thead><tr><th>Status</th><th style="width:56px">Count</th><th>Position numbers</th></tr></thead>
+        <tbody>${restKeys.map(k=>{
+          const nums=positions.filter(p=>p.status===k).map(p=>posNo.get(p.id)).sort((a,b)=>a-b).join(", ");
+          return `<tr><td><span class="stdot" style="background:${bgFor(k).bd}"></span>${STATUS[k].label}</td><td class="c"><b>${c[k]}</b></td><td class="posnums">${nums}</td></tr>`;
+        }).join("")}
+        <tr class="sumtotal"><td>Total</td><td class="c"><b>${restTotal}</b></td><td></td></tr></tbody>
+      </table>
+    </div>`:"";
+  // ---- group positions by status (issues first, then STATUS order); keep original order within a group ----
+  const statusOrder=["issue",...Object.keys(STATUS).filter(k=>k!=="issue")];
+  const rankOf=s=>{const i=statusOrder.indexOf(s);return i<0?999:i;};
+  const ordered=positions.map((p,idx)=>({p,idx})).sort((a,b)=>(rankOf(a.p.status)-rankOf(b.p.status))||(a.idx-b.idx)).map(o=>o.p);
+  let prevStatus=null;
+  const cards=ordered.map((p)=>{
     const st=STATUS[p.status]||{label:"—",color:"#888"};
-    const respTxt=(p.status==="issue"&&p.resp&&RESP[p.resp])?`<span class="resp" style="background:${RESP[p.resp].color}">Responsible: ${RESP[p.resp].label}</span>`:"";
-    const photos=(p.photos||[]).map(ph=>imgCache[ph]?`<img src="${imgCache[ph]}">`:"").join("");
-    return `<div class="rcard">
+    const isIssue=p.status==="issue";
+    const bg=bgFor(p.status);
+    const cardStyle=`background:${bg.bg};border:1px solid ${bg.bd};border-left:6px solid ${bg.bd};border-radius:8px;padding:12px 14px;margin:12px 0`;
+    const partyTag=(isIssue&&p.resp&&RESP[p.resp])?`<span class="party-tag" style="background:#fff">${RESP[p.resp].label}</span>`:"";
+    const groupHead=(p.status!==prevStatus)?`<div class="grouphead" style="border-left-color:${bg.bd}"><span class="stdot" style="background:${bg.bd}"></span>${st.label} — ${c[p.status]} position${c[p.status]>1?"s":""}</div>`:"";
+    prevStatus=p.status;
+    const numBadge=`<span class="rno">#${posNo.get(p.id)}</span>`;
+    const phList=(p.photos||[]).filter(ph=>imgCache[ph]);
+    const photos=phList.map(ph=>`<img src="${imgCache[ph]}">`).join("");
+    const pcls=phList.length===1?"p1":(phList.length<=4?"p"+phList.length:"p5");
+    return `<div class="rcard" style="${cardStyle}">
+      ${groupHead}
       <div class="rhd">
-        
-        <span class="rref">${esc(p.ref)||"(no description)"}</span>
-        <span class="rbadge" style="background:${st.color}">${st.label}</span>${respTxt}
+        ${numBadge}<span class="rref">${esc(p.ref)||"(no description)"}</span>
+        <span class="rbadge" style="background:${st.color}">${st.label}</span>${partyTag}
       </div>
       ${p.obs?`<div class="robs">${esc(p.obs)}</div>`:""}
       ${p.spec?`<div style="margin:8px 0;padding:8px 10px;background:#f8f7f3;border-radius:6px;border:1px solid #e8e5dc"><span style="font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">Quotation spec</span>${specTableHTML(p.spec)}</div>`:""}
       ${p.videoId?`<div style="background:#111;border-radius:6px;padding:10px 14px;text-align:center;color:#fff;font-size:12px;margin-top:8px">📹 <b>Video recorded</b></div>`:""}
-      ${photos?`<div class="rphotos">${photos}</div>`:""}
+      ${photos?`<div class="rphotos ${pcls}">${photos}</div>`:""}
     </div>`;
   });
-  return {title,metaRows,chips,issueChips,cards:cards.join(""),cardList:cards};
+  return {title,metaRows,issuesTable,statusSummary,cards:cards.join(""),cardList:cards};
 }
 const REPORT_STYLE=`
   *{box-sizing:border-box}
@@ -706,7 +781,7 @@ const REPORT_STYLE=`
   .rwrap .chips.small{font-family:Arial,sans-serif;font-size:11px;color:#444;border-top:1px solid #ddd;padding-top:8px;margin-top:4px}
   .rwrap .rcard{border:1px solid #ccc;border-radius:8px;padding:12px 14px;margin:12px 0;page-break-inside:avoid}
   .rwrap .rhd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .rwrap .rno{font-family:Arial,sans-serif;font-weight:800;font-size:12px;background:#ffce1f;color:#1a1a1a;padding:3px 9px;border-radius:5px}
+  .rwrap .rno{display:inline-block;font-family:Arial,sans-serif;font-weight:800;font-size:12px;background:#ffce1f;color:#1a1a1a;padding:3px 9px;border-radius:5px;margin-right:8px}
   .rwrap .rref{font-family:Arial,sans-serif;font-weight:700;font-size:15px;flex:1;min-width:120px}
   .rwrap .rbadge{font-family:Arial,sans-serif;font-weight:700;font-size:10.5px;color:#fff;padding:4px 10px;border-radius:13px;text-transform:uppercase;letter-spacing:.4px}
   .rwrap .resp{font-family:Arial,sans-serif;font-weight:700;font-size:10.5px;color:#fff;padding:4px 10px;border-radius:13px}
@@ -714,6 +789,27 @@ const REPORT_STYLE=`
   .rwrap .rphotos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .rwrap .rphotos img{width:260px;height:260px;object-fit:cover;border-radius:6px;border:1px solid #ddd}
   .rwrap .foot{margin-top:24px;border-top:1px solid #ccc;padding-top:8px;font-family:Arial,sans-serif;font-size:10px;color:#999;text-align:center}
+  .rwrap .rcard{display:flex;flex-direction:column;min-height:1120px;page-break-inside:avoid}
+  .rwrap .rphotos{display:grid;gap:10px;flex:1;align-content:start;grid-template-columns:1fr 1fr}
+  .rwrap .rphotos img{width:100%;height:auto;object-fit:contain;border-radius:6px;border:1px solid #ddd;background:#fafafa}
+  /* photo count drives the grid so a page can never grow tall enough to blow the canvas limit */
+  .rwrap .rphotos.p1{grid-template-columns:1fr}
+  .rwrap .rphotos.p1 img{max-height:700px}
+  .rwrap .rphotos.p2 img,.rwrap .rphotos.p3 img,.rwrap .rphotos.p4 img{max-height:460px}
+  .rwrap .rphotos.p5{grid-template-columns:1fr 1fr 1fr}
+  .rwrap .rphotos.p5 img{max-height:330px}
+  .rwrap .party-tag{font-family:Arial,sans-serif;font-weight:800;font-size:10.5px;color:#111;padding:4px 10px;border-radius:13px;text-transform:uppercase;letter-spacing:.4px;border:1.5px solid rgba(0,0,0,.25)}
+  .rwrap .sumwrap{margin:14px 0 4px;font-family:Arial,Helvetica,sans-serif}
+  .rwrap .sumhead{font-weight:800;font-size:13px;letter-spacing:.03em;text-transform:uppercase;color:#222;margin-bottom:6px;padding-bottom:4px;border-bottom:2px solid #222}
+  .rwrap .sumhead.issues{color:#b8241a;border-bottom-color:#b8241a}
+  .rwrap .sumtbl{width:100%;border-collapse:collapse;font-size:11.5px}
+  .rwrap .sumtbl th{text-align:left;background:#f0efe9;color:#555;font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border:1px solid #dcd9cf}
+  .rwrap .sumtbl td{padding:6px 8px;border:1px solid #e4e1d7;vertical-align:top;color:#222}
+  .rwrap .sumtbl td.c{text-align:center}
+  .rwrap .sumtbl .posnums{color:#555;font-family:'JetBrains Mono',monospace;font-size:11px}
+  .rwrap .sumtbl .sumtotal td{background:#222732;color:#fff;font-weight:800;border-color:#222732}
+  .rwrap .stdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;border:1px solid rgba(0,0,0,.28)}
+  .rwrap .grouphead{font-family:Arial,sans-serif;font-weight:800;font-size:14px;letter-spacing:.02em;text-transform:uppercase;color:#222;background:#f4f3ee;border-left:5px solid #888;border-radius:6px;padding:8px 12px;margin:0 0 12px}
 `;
 function reportBodyHTML(){
   const d=reportData();
@@ -722,8 +818,8 @@ function reportBodyHTML(){
       <div class="co">Lingel Windows &amp; Doors<small>Technologies Pvt. Ltd.</small></div></div>
     <h1>${esc(d.title)}</h1>
     <div class="metawrap">${d.metaRows}</div>
-    <div class="chips">${d.chips}</div>
-    ${d.issueChips}
+    ${d.issuesTable}
+    ${d.statusSummary}
     ${d.cards}
     <div class="foot">Generated ${new Date().toLocaleString()} · ${positions.length} positions · Lingel Windows &amp; Doors Technologies Pvt. Ltd.</div>
   </div>`;
@@ -731,7 +827,7 @@ function reportBodyHTML(){
 function buildReportNode(){return `<style>${REPORT_STYLE}</style>`+reportBodyHTML();}
 function buildReportHTML(){
   return `<!doctype html><html><head><meta charset="utf-8"><title>Lingel Inspection Report</title>
-  <style>body{margin:0;background:#fff}${REPORT_STYLE} @media print{@page{margin:12mm}.rwrap{padding:0}}</style>
+  <style>body{margin:0;background:#fff}${REPORT_STYLE} @media print{@page{margin:12mm}.rwrap{padding:0}.rcard{page-break-after:always}}</style>
   </head><body>${reportBodyHTML()}</body></html>`;
 }
 
@@ -776,6 +872,40 @@ else if(typeof globalThis.pdfjsLib!=="undefined")window.pdfjsLib=globalThis.pdfj
 async function ensurePdfjs(){}
 const RE_HDR=/^(\d{1,3}-.+?)\s+((?:[A-Za-z]\d?=[\d.,]+;)+)\s+(\d+)/;
 function _nn(v){if(v==null)return null;const n=parseFloat(String(v).replace(/\./g,"").replace(",","."));return isFinite(n)?n:null;}
+const RE_ENDMARK=/viewed\s*from\s*inside/i;
+const RE_MEASTOK=/\b([A-Za-z]\d?)\s*=\s*([\d][\d.,]*)/g;
+const RE_POSSTART=/^\s*(\d{1,3})\s*[-.)]\s*(\S.*)$/;
+const RE_MEAS1=/[A-Za-z]\d?\s*=\s*\d/;
+const RE_QTYPRICE=/\b(\d{1,3})\s+\d[\d.]*,\d{2}\s+\d[\d.]*,\d{2}/;
+function collectMeasures(text){const found={};let mm,any=false;RE_MEASTOK.lastIndex=0;while((mm=RE_MEASTOK.exec(text))!==null){const k=mm[1].toUpperCase();if(!(k in found)){found[k]=mm[2];any=true;}}if(!any)return "";return Object.keys(found).map(k=>k+"="+found[k]+";").join("");}
+function hasSize(measure){const s=" "+measure.toUpperCase();return (/[ ;]B=/.test(s)&&/[ ;]H=/.test(s))||(/[ ;]L=/.test(s)&&/[ ;]A=/.test(s));}
+function detectPositions(lines){
+  const ends=[];lines.forEach((ln,i)=>{if(RE_ENDMARK.test(ln.text))ends.push(i);});
+  const strong=[];lines.forEach((ln,i)=>{const m=ln.text.match(RE_HDR);if(m)strong.push({i,y:ln.y,label:m[1].trim(),measure:m[2],qty:m[3]});});
+  if(!ends.length){return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));}
+  const pos=[];let start=0,posNo=0;
+  for(const endLine of ends){
+    const block=lines.slice(start,endLine+1);const blockTxt=block.map(l=>l.text).join(" ");
+    let hdrRel=block.findIndex(l=>RE_MEAS1.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
+    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_HDR.test(l.text));
+    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_POSSTART.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
+    const measure=collectMeasures(blockTxt);
+    if((hdrRel>=0&&(RE_MEAS1.test(block[hdrRel].text)||RE_HDR.test(block[hdrRel].text)||RE_POSSTART.test(block[hdrRel].text)))||hasSize(measure)){
+      posNo++;
+      const hi=(hdrRel>=0)?(start+hdrRel):start;const hline=lines[hi];const htext=hline?hline.text:"";
+      let label="";const lm=htext.match(/^\s*(.*?)\s+[A-Za-z]\d?\s*=\s*\d/);
+      if(lm&&lm[1].trim())label=lm[1].trim();
+      if(!label){const pm=htext.match(RE_HDR);if(pm)label=pm[1].trim();}
+      if(!label){const pm=htext.match(RE_POSSTART);if(pm)label=(pm[1]+"-"+pm[2]).replace(/\s+/g," ").trim();}
+      if(!label)label=posNo+"-Position "+posNo;
+      let qty="1";const qm=blockTxt.match(RE_QTYPRICE);if(qm)qty=qm[1];
+      pos.push({i:hi,y:(hline?hline.y:(block[0]&&block[0].y)),topY:(block[0]?block[0].y:(hline?hline.y:null)),label,measure:measure||collectMeasures(htext),qty,endI:endLine+1,endY:lines[endLine]?lines[endLine].y:null});
+    }
+    start=endLine+1;
+  }
+  if(!pos.length&&strong.length)return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));
+  return pos;
+}
 function _fn(n){return n==null?"":(Math.round(n*100)/100).toString();}
 async function importQuotation(file){
   toast("📄 Reading quotation…"); await ensurePdfjs();
@@ -793,23 +923,27 @@ async function importQuotation(file){
     if(pn===1){const ni=lines.findIndex(l=>/(Mr|Mrs|Ms|M\/s)\.?\s+\S/i.test(l.text)&&!/quotation/i.test(l.text)&&!/Sales|Manager|Sr\./i.test(l.text));
       if(ni>=0){if(!client)client=lines[ni].text.trim();const nx=lines[ni+1];if(nx&&!/^\+?\d/.test(nx.text)&&!/quotation/i.test(nx.text))site=nx.text.trim();}
       const on=lines.find(l=>/^\d{3,7}\/\d+$/.test(l.text.trim()));if(on&&!offerNo)offerNo=on.text.trim();}
-    const pos=[]; lines.forEach((ln,i)=>{const m=ln.text.match(RE_HDR);if(m)pos.push({i,y:ln.y,label:m[1].trim(),measure:m[2],qty:m[3]});});
+    const pos=detectPositions(lines);
     if(!pos.length)continue;
     let canvas=null; try{canvas=document.createElement("canvas");canvas.width=Math.min(vp.width,3000);canvas.height=Math.min(vp.height,4000);await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;}catch(e){console.warn("Page render skipped:",e);canvas=null;}
     for(let k=0;k<pos.length;k++){
-      const p=pos[k]; const endI=(k+1<pos.length)?pos[k+1].i:lines.length; const desc=lines.slice(p.i+1,endI).map(l=>l.text).join(" ");
+      const p=pos[k]; const endI=(p.endI!=null)?p.endI:((k+1<pos.length)?pos[k+1].i:lines.length); const desc=lines.slice(p.i+1,endI).map(l=>l.text).join(" ");
+      const descClean=desc.replace(/\b[A-Za-z]\d?\s*=\s*[\d.,]+\s*;?/g," ").replace(/\s+/g," ").trim();
       const tk={}; p.measure.replace(/([A-Za-z]\d?)=([\d.,]+)/g,(m0,a,b)=>{tk[a]=_nn(b);return m0;});
       let W=null,H=null; if(tk.B!=null&&tk.H!=null){W=tk.B;H=tk.H;}else if(tk.L!=null&&tk.A!=null){W=tk.L;H=tk.A;}
       let designId=""; if(canvas){try{
-        let hy,nextY;
-        try{hy=vp.convertToViewportPoint(0,p.y)[1];nextY=(k+1<pos.length)?vp.convertToViewportPoint(0,pos[k+1].y)[1]:Math.min(vp.height-20,hy+vp.height*0.30);}
-        catch(ce){hy=Math.max(0,vp.height-p.y*2);nextY=(k+1<pos.length)?(vp.height-pos[k+1].y*2):Math.min(vp.height,hy+vp.height*0.3);}
-        const top=Math.max(0,hy+6),bottom=Math.min(vp.height,nextY-6);
-        const left=Math.round(vp.width*0.02),right=Math.round(vp.width*0.30);
+        const toV=y=>{try{return vp.convertToViewportPoint(0,y)[1];}catch(e){return vp.height-y*2;}};
+        let topV;
+        if(k>0&&pos[k-1].endY!=null){topV=toV(pos[k-1].endY)+4;}
+        else{topV=toV(p.y)-vp.height*0.025;}
+        const botY=(p.endY!=null)?p.endY:((k+1<pos.length)?pos[k+1].y:null);
+        let botV=(botY!=null)?toV(botY):Math.min(vp.height-14,topV+vp.height*0.45);
+        const top=Math.max(0,topV),bottom=Math.min(vp.height,botV+8);
+        const left=Math.round(vp.width*0.005),right=Math.round(vp.width*0.33);
         const cw=right-left,chh=Math.max(20,Math.round(bottom-top));
         if(cw>10&&chh>20){const crop=document.createElement("canvas");crop.width=cw;crop.height=chh;crop.getContext("2d").drawImage(canvas,left,Math.round(top),cw,chh,0,0,cw,chh);const data=crop.toDataURL("image/jpeg",0.82);designId=uid();imgCache[designId]=data;await savePhoto(designId,data);}
       }catch(e){}}
-      newPos.push({id:uid(),ref:p.label,status:"onr",resp:"",obs:"",spec:desc||"",photos:designId?[designId]:[],audios:[]});
+      newPos.push({id:uid(),ref:p.label,status:"onr",onrType:"",resp:"",obs:"",spec:descClean||desc||"",photos:designId?[designId]:[],audios:[]});
     }
   }
   if(!newPos.length){toast("⚠ No positions found in this PDF");return;}
@@ -835,18 +969,27 @@ function ensureLibs(){
   return _libsP;
 }
 function pdfName(){return ((($("#o_no").value)||"lingel-report").replace(/[^\w-]+/g,"_"))+".pdf";}
+// Browsers cap canvas area (iOS Safari ~16.7M px — above it the canvas silently returns BLANK).
+// Stay well under, and never render more pixels than the source photos actually have.
+const CANVAS_PX_CAP=11e6;
 async function renderPageImg(pdf,inner,scale){
   const holder=document.createElement("div");
   holder.style.cssText="position:fixed;left:-10000px;top:0;width:880px;background:#fff;z-index:-1;";
   holder.innerHTML=`<style>${REPORT_STYLE}</style><div class="rwrap">${inner}</div>`;
   document.body.appendChild(holder);
   await new Promise(r=>setTimeout(r,60));
-  const canvas=await window.html2canvas(holder,{scale,backgroundColor:"#ffffff",useCORS:true,logging:false});
+  // shrink this page's scale if it would exceed the cap (tall cards with many photos)
+  const h=Math.max(holder.scrollHeight,1);
+  let s=scale;
+  while(s>0.8 && (880*s)*(h*s)>CANVAS_PX_CAP) s-=0.2;
+  let canvas=await window.html2canvas(holder,{scale:s,backgroundColor:"#ffffff",useCORS:true,logging:false});
   document.body.removeChild(holder);
   const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
   let imgW=pw,imgH=canvas.height*pw/canvas.width,x=0;
-  if(imgH>ph){const s=ph/imgH;imgH=ph;imgW=imgW*s;x=(pw-imgW)/2;}
-  return {data:canvas.toDataURL("image/jpeg",0.97),x,imgW,imgH};
+  if(imgH>ph){const k=ph/imgH;imgH=ph;imgW=imgW*k;x=(pw-imgW)/2;}
+  const data=canvas.toDataURL("image/jpeg",0.85);
+  canvas.width=canvas.height=0;canvas=null;   // release the bitmap immediately
+  return {data,x,imgW,imgH};
 }
 async function makePDF(){
   const d=reportData();
@@ -854,27 +997,26 @@ async function makePDF(){
       <div class="co">Lingel Windows &amp; Doors<small>Technologies Pvt. Ltd.</small></div></div>
     <h1>${esc(d.title)}</h1>
     <div class="metawrap">${d.metaRows}</div>
-    <div class="chips">${d.chips}</div>
-    ${d.issueChips}`;
+    ${d.issuesTable}
+    ${d.statusSummary}`;
   const foot=`<div class="foot">Generated ${new Date().toLocaleString()} · ${positions.length} positions · Lingel Windows &amp; Doors Technologies Pvt. Ltd.</div>`;
   const pages=[];
   if(!d.cardList.length){pages.push(cover+foot);}
   else{
-    pages.push(cover+d.cardList[0]);
-    for(let i=1;i<d.cardList.length;i++){
-      let pg=d.cardList[i];
-      if(i===d.cardList.length-1)pg+=foot;
-      pages.push(pg);
-    }
-    if(d.cardList.length===1)pages[0]+=foot;
+    pages.push(cover);
+    d.cardList.forEach((c,i)=>pages.push(i===d.cardList.length-1?c+foot:c));
   }
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF({unit:"pt",format:"a4",compress:true});
-  const scale=3;
+  // Scale 2 already exceeds the source photos (1100px), so scale 3 only wasted memory.
+  // Big reports step down further to stay inside phone memory.
+  const scale = pages.length>60 ? 1.6 : (pages.length>25 ? 1.8 : 2);
   for(let p=0;p<pages.length;p++){
+    if(pages.length>6 && p%5===0) toast(`📄 Building sheet… page ${p+1} of ${pages.length}`);
     const r=await renderPageImg(pdf,pages[p],scale);
     if(p>0)pdf.addPage();
     pdf.addImage(r.data,"JPEG",r.x,0,r.imgW,r.imgH,undefined,"FAST");
+    await new Promise(res=>setTimeout(res,0)); // yield: keeps the tab alive and lets GC run
   }
   return pdf;
 }
