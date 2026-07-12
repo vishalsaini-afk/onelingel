@@ -71,6 +71,15 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div class="intro">Field Tools · Select a tool to begin</div>
 
   <div class="tiles">
+    <a class="tile" href="daily-report.html">
+      <div class="ic">🗓️</div>
+      <div class="txt">
+        <div class="tt">Daily Report</div>
+        <div class="td">Log today's visit · upload quotation · measurement or site visit · saves to Google Sheet</div>
+      </div>
+      <div class="arr">→</div>
+    </a>
+
     <a class="tile" href="measurement.html">
       <div class="ic">📐</div>
       <div class="txt">
@@ -105,6 +114,9 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 /* ---- Site Supervisor login (Google Sheet backed) ---- */
 // Paste your deployed Apps Script /exec URL here:
 const LOGIN_API = "https://script.google.com/macros/s/AKfycbzqK9n53U0YCVb7IGAboFF2iZOr8g80ZL0MV1k-xUq3T_0Uwzl4se9E5szfxsRT_-aQ/exec";
+
+// Share the endpoint with the other apps (Daily Report reads this)
+try{ localStorage.setItem('lingel_api', LOGIN_API); }catch(e){}
 
 // Populate the name suggestions from the sheet
 async function loadNames(){
