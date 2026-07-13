@@ -1325,14 +1325,18 @@ async function logIssuesToSheet(){
     SHEET_API = u.trim();
     localStorage.setItem("lingel_api", SHEET_API);
   }
-  _sheetSig = sig;
   try{
     const n = await sheetPost(rows);
+    _sheetSig = sig;                             // only lock in on success
     toast("✓ " + n + " issue" + (n>1?"s":"") + " logged to Sheet");
   }catch(e){
-    console.error(e);
-    sheetQueue(rows);
-    toast("⚠ Offline — issues queued, will sync later");
+    console.error("Sheet log failed:", e);
+    if(navigator.onLine){
+      toast("⚠ Sheet error: " + (e.message||"check /exec URL & deployment"));
+    }else{
+      sheetQueue(rows);
+      toast("⚠ Offline — issues queued, will sync later");
+    }
   }
 }
 window.addEventListener("online", sheetFlush);
