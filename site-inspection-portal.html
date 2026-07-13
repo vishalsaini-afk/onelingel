@@ -1029,7 +1029,7 @@ function fallbackReport(){
 $("#pdfBtn").onclick=async()=>{
   if(!positions.length){toast("Add at least one position first");return;}
   toast("📄 Building PDF…");
-  try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ PDF saved");}
+  try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ PDF saved");logIssuesToSheet();}
   catch(e){console.error(e);toast("⚠ PDF needs internet — opening printable report");fallbackReport();}
 };
 $("#shareBtn").onclick=async()=>{
@@ -1038,6 +1038,7 @@ $("#shareBtn").onclick=async()=>{
   let blob;
   try{await ensureLibs();const pdf=await makePDF();blob=pdf.output("blob");}
   catch(e){console.error(e);toast("⚠ Couldn't build PDF — check connection");return;}
+  logIssuesToSheet();
   const file=new File([blob],pdfName(),{type:"application/pdf"});
   try{
     if(navigator.canShare&&navigator.canShare({files:[file]})){
@@ -1102,7 +1103,7 @@ async function saveToDrive(){
     const stamp=d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"_"+p2(d.getHours())+p2(d.getMinutes());
     const fname=offer.replace(/[^\w-]+/g,"_")+"_"+stamp+".pdf";
     const res=await driveUpload(blob,fname,folder);
-    if(res&&res.id)toast("✓ Saved to Drive › "+baseNo);
+    if(res&&res.id){toast("✓ Saved to Drive › "+baseNo);logIssuesToSheet();}
     else toast("⚠ Upload failed");
   }catch(e){console.error(e);toast(e&&e.message==="auth"?"Session expired — tap Drive again":"⚠ Drive save failed");}
 }
@@ -1254,5 +1255,89 @@ document.getElementById("trBtn").onclick=async()=>{
 };
 document.getElementById("brandLogo").src=LOGO;
 if(!window.isSecureContext){const w=document.getElementById("ctxWarn");if(w)w.style.display="block";}
+
+/* ================= Google Sheet — log issues on every report =================
+   Sends one row per Issue / ONR position to the SiteIssues tab of the
+   shared Lingel Apps Script (same /exec deployment the hub + Daily Report use).
+   Fires on PDF, Share and Drive. Offline-safe: queues and syncs on reconnect.
+   ========================================================================== */
+const SHEET_STATUSES = ["issue","onr"];      // set to ["issue"] for issues only
+let SHEET_API = localStorage.getItem("lingel_api") || "";
+let _sheetSig = "";
+
+function issueRows(){
+  const ts = new Date().toISOString();
+  const orderNo = ($("#o_no").value||"").trim();
+  const reportId = (orderNo || "NO-ORDER") + "_" + Date.now().toString(36);
+  const meta = {
+    client:    ($("#o_client").value||"").trim(),
+    loc:       ($("#o_loc").value||"").trim(),
+    sales:     ($("#o_sales").value||"").trim(),
+    inspector: ($("#o_insp").value||"").trim(),
+    date:      ($("#o_date").value||"").trim()
+  };
+  return positions
+    .map((p,i)=>({p, n:i+1}))
+    .filter(x=>SHEET_STATUSES.includes(x.p.status))
+    .map(({p,n})=>Object.assign({
+      ts, reportId, orderNo,
+      posNo:  n,
+      ref:    (p.ref||"").trim() || "(no description)",
+      status: (STATUS[p.status]||{}).label || p.status,
+      resp:   (p.status==="issue" && p.resp && RESP[p.resp]) ? RESP[p.resp].label : "",
+      obs:    (p.obs||"").trim(),
+      photos: (p.photos||[]).length
+    }, meta));
+}
+
+async function sheetPost(rows){
+  const body = new URLSearchParams({action:"siteIssues", rows:JSON.stringify(rows)});
+  const r = await fetch(SHEET_API, {method:"POST", body});   // simple request: no preflight
+  const d = await r.json();
+  if(!d.ok) throw new Error(d.error || "sheet rejected");
+  return d.added;
+}
+
+const SHEET_QK = "lingel_issue_queue";
+function sheetQueue(rows){
+  const q = JSON.parse(localStorage.getItem(SHEET_QK)||"[]");
+  q.push(rows);
+  localStorage.setItem(SHEET_QK, JSON.stringify(q));
+}
+async function sheetFlush(){
+  if(!SHEET_API) return;
+  const q = JSON.parse(localStorage.getItem(SHEET_QK)||"[]");
+  if(!q.length) return;
+  const left = [];
+  for(const rows of q){ try{ await sheetPost(rows); }catch(e){ left.push(rows); } }
+  localStorage.setItem(SHEET_QK, JSON.stringify(left));
+  if(q.length && !left.length) toast("✓ Pending issues synced to Sheet");
+}
+
+async function logIssuesToSheet(){
+  const rows = issueRows();
+  if(!rows.length) return;                       // no issues / ONR → nothing to log
+  const sig = JSON.stringify(rows.map(r=>[r.posNo,r.status,r.resp,r.obs]));
+  if(sig === _sheetSig) return;                  // PDF then Share = one write, not two
+  if(!SHEET_API){
+    const u = prompt("One-time setup:\nPaste the Lingel Apps Script /exec URL");
+    if(!u) return;
+    SHEET_API = u.trim();
+    localStorage.setItem("lingel_api", SHEET_API);
+  }
+  _sheetSig = sig;
+  try{
+    const n = await sheetPost(rows);
+    toast("✓ " + n + " issue" + (n>1?"s":"") + " logged to Sheet");
+  }catch(e){
+    console.error(e);
+    sheetQueue(rows);
+    toast("⚠ Offline — issues queued, will sync later");
+  }
+}
+window.addEventListener("online", sheetFlush);
+sheetFlush();
+
+
 loadAll();
 </script>
