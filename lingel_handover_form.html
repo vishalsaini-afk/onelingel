@@ -664,6 +664,142 @@ buildCL();buildStars();renderSelfieBtn();
 document.getElementById('hdate').valueAsDate=new Date();setFn();
 window.addEventListener('load',()=>{setupSig('sc');setupSig('st');});
 
+
+/* ============ Google Sheet - log handover on PDF / Share / Drive ============
+   Posts to the shared Lingel Apps Script /exec (same one the hub, Daily Report
+   and SiteLog use). action=handover (summary row) + action=handoverSnags
+   (one row per snag). Offline-safe: queues and syncs on reconnect.
+   ========================================================================== */
+let HO_API = localStorage.getItem("lingel_api") || "";
+let _hoSig = "";
+
+function handoverPayload(){
+  const v  = id => (document.getElementById(id)?.value || "").trim();
+  const rd = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || "";
+
+  const cl = {yes:0, no:0, na:0};
+  const noItems = [];
+  for(let i=1; i<=CL.length; i++){
+    const a = rd("cl"+i);
+    if(a==="Yes") cl.yes++;
+    else if(a==="No"){ cl.no++; noItems.push(i); }
+    else if(a==="NA") cl.na++;
+  }
+
+  const summary = {
+    formNo:      "CHF-" + (document.getElementById("fdate")?.textContent || "").trim(),
+    date:        v("hdate"),
+    orderNo:     v("ord"),
+    customer:    v("cname"),
+    site:        v("caddr"),
+    contact:     v("cph"),
+    email:       v("ceml"),
+    product:     v("prod"),
+    qty:         v("qty"),
+    installDate: v("idate"),
+    engineer:    v("tname"),
+    engPhone:    v("tph"),
+    clYes: cl.yes, clNo: cl.no, clNa: cl.na,
+    clNoItems: noItems.join(", "),
+    snagCount:    snags.length,
+    balanceCount: balanceItems.length,
+    keysGiven:  rd("keysHo"),
+    keyCount:   v("keyqty"),
+    keyRemarks: v("keyrem"),
+    stars:       CR || "",
+    ratingLabel: (CR>0 && T.en.rl[CR]) ? T.en.rl[CR] : "Not rated"
+  };
+
+  const snagRows = snags.map((s,i) => ({
+    n: i+1,
+    posNo:    s.pos || "",
+    desc:     s.desc || "",
+    loc:      s.loc || "",
+    priority: s.priority || "",
+    photo:    !!s.photo
+  })).filter(s => s.desc || s.posNo);
+
+  return { summary, snagRows };
+}
+
+async function hoPost(params){
+  const r = await fetch(HO_API, {method:"POST", body:new URLSearchParams(params)});
+  const d = await r.json();
+  if(!d.ok) throw new Error(d.error || "sheet rejected");
+  return d;
+}
+
+const HO_QK = "lingel_handover_queue";
+function hoQueue(job){
+  const q = JSON.parse(localStorage.getItem(HO_QK)||"[]");
+  q.push(job);
+  localStorage.setItem(HO_QK, JSON.stringify(q));
+}
+
+async function hoSend(job, quiet){
+  await hoPost(Object.assign({action:"handover"}, job.summary));
+  if(job.snagRows.length){
+    const ts = new Date().toISOString(), s = job.summary;
+    const rows = job.snagRows.map(x => Object.assign({
+      ts, formNo:s.formNo, orderNo:s.orderNo, customer:s.customer, site:s.site
+    }, x));
+    await hoPost({action:"handoverSnags", rows:JSON.stringify(rows)});
+  }
+  if(!quiet) toast("\u2713 Handover logged to Sheet (" + job.snagRows.length + " snags)");
+}
+
+async function hoFlush(){
+  if(!HO_API) return;
+  const q = JSON.parse(localStorage.getItem(HO_QK)||"[]");
+  if(!q.length) return;
+  const left = [];
+  for(const j of q){ try{ await hoSend(j, true); }catch(e){ left.push(j); } }
+  localStorage.setItem(HO_QK, JSON.stringify(left));
+  if(q.length && !left.length) toast("\u2713 Pending handovers synced to Sheet");
+}
+
+async function logHandoverToSheet(){
+  const job = handoverPayload();
+  if(!job.summary.orderNo && !job.summary.customer) return;   // empty form, nothing to log
+  const sig = JSON.stringify(job);
+  if(sig === _hoSig) return;                                  // PDF then Share = one write
+  if(!HO_API) HO_API = localStorage.getItem("lingel_api") || "";   // hub may have set it since load
+  if(!HO_API){
+    const u = prompt("One-time setup:\nPaste the Lingel Apps Script /exec URL");
+    if(!u) return;
+    HO_API = u.trim();
+    localStorage.setItem("lingel_api", HO_API);
+  }
+  try{
+    await hoSend(job);
+    _hoSig = sig;                                             // only lock in on success
+  }catch(e){
+    console.error("Sheet log failed:", e);
+    if(navigator.onLine){
+      toast("\u26a0 Sheet error: " + (e.message || "check /exec URL & deployment"));
+    }else{
+      hoQueue(job);
+      _hoSig = sig;
+      toast("\u26a0 Offline \u2014 handover queued, will sync later");
+    }
+  }
+}
+
+/* the report buttons use inline onclick, so wrap the functions themselves */
+["downloadPDF","shareReport","uploadDrive"].forEach(fn => {
+  const o = window[fn];
+  if(typeof o !== "function") return;
+  window[fn] = async function(){
+    const out = await o.apply(this, arguments);
+    logHandoverToSheet();
+    return out;
+  };
+});
+
+window.addEventListener("online", hoFlush);
+hoFlush();
+
+
 </script>
 </body>
 </html>
