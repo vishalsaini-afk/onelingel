@@ -190,7 +190,31 @@
   .vs-colorbar{display:flex;gap:6px;align-items:center}
   .vs-colorbar button{width:24px;height:24px;border-radius:50%;border:2px solid #2b313b;cursor:pointer;padding:0}
   .vs-colorbar button.on{border-color:#fff}
+
+/* upload progress overlay */
+#luOv{position:fixed;inset:0;background:rgba(10,10,12,.72);backdrop-filter:blur(2px);
+  display:none;align-items:center;justify-content:center;z-index:99999}
+#luOv.on{display:flex}
+#luCard{width:min(340px,86vw);background:#1c1c22;border:1px solid #333;border-radius:14px;
+  padding:22px 22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.5);font-family:inherit}
+#luTitle{font-size:14px;font-weight:800;color:#fff;letter-spacing:.02em;margin:0 0 4px}
+#luSub{font-size:12px;color:#9a9aa2;margin:0 0 16px}
+#luTrack{height:8px;background:#2c2c34;border-radius:5px;overflow:hidden}
+#luFill{height:100%;width:0;background:linear-gradient(90deg,#f5a623,#ffcb6b);
+  border-radius:5px;transition:width .25s ease}
+#luPct{margin-top:10px;font-size:12px;font-weight:700;color:#f5a623;text-align:right}
+#luOv.err #luFill{background:#d64545}
+#luOv.err #luPct{color:#d64545}
+#luOv.done #luFill{background:#1f9d55}
+#luOv.done #luPct{color:#1f9d55}
 </style>
+<div id="luOv"><div id="luCard">
+  <p id="luTitle">Uploading to Drive</p>
+  <p id="luSub">Preparing…</p>
+  <div id="luTrack"><div id="luFill"></div></div>
+  <div id="luPct">0%</div>
+</div></div>
+
 
 <div class="topbar"><div class="topbar-inner">
   <a class="brand" href="index.html" style="text-decoration:none;color:inherit" title="Back to hub"><img class="logo" id="brandLogo" alt="Lingel">
@@ -715,27 +739,60 @@ async function driveFolder(name,parent){return (await driveFindFolder(name,paren
 async function driveUpload(blob,name,parent){const meta={name:name,parents:[parent]};const fd=new FormData();fd.append("metadata",new Blob([JSON.stringify(meta)],{type:"application/json"}));fd.append("file",blob);const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",{method:"POST",headers:{Authorization:"Bearer "+_driveToken},body:fd});return r.json();}
 async function saveToDrive(){
   const offer=($("#m_no").value||"").trim();
-  toast("📄 Building sheet…");let blob;
-  try{await ensureLibs();const pdf=await makePDF();blob=pdf.output("blob");}catch(e){toast("⚠ Couldn't build PDF");return;}
-  toast("☁ Saving to Google Drive…");
-  try{const root=GDRIVE_FOLDER_ID;const baseNo=((offer.split("/")[0])||offer).trim();
-    const folder=await driveFolder(baseNo.replace(/[\\/]/g,"-"),root);
-    const d=new Date();const p2=n=>String(n).padStart(2,"0");
-    const stamp=d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"_"+p2(d.getHours())+p2(d.getMinutes());
-    const fname=offer.replace(/[^\w-]+/g,"_")+"_"+stamp+"_measure.pdf";
-    const res=await driveUpload(blob,fname,folder);
-    // upload videos
-    for(const o of openings){if(o.videoId){try{const tx=db.transaction("videos","readonly");const req=tx.objectStore("videos").get(o.videoId);req.onsuccess=async()=>{if(req.result){const vn=offer.replace(/[^\w-]+/g,"_")+"_"+o.ref.replace(/[^\w-]+/g,"_")+"_video.mp4";const vm={name:vn,parents:[folder]};const vfd=new FormData();vfd.append("metadata",new Blob([JSON.stringify(vm)],{type:"application/json"}));vfd.append("file",req.result);await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:"Bearer "+_driveToken},body:vfd});}};}catch(e){}}}
-    if(res&&res.id)toast("✓ Saved to Drive › "+baseNo);else toast("⚠ Upload failed");
-  }catch(e){console.error(e);toast(e&&e.message==="auth"?"Session expired — tap Drive again":"⚠ Drive save failed");}
+  const api=luApi(); if(!api) return;
+  const hasVideos = openings.some(o=>o.videoId);
+  luShow("Uploading to Drive","Building sheet…");
+  let b64;
+  try{ await ensureLibs(); const pdf=await makePDF(); b64=pdf.output("datauristring").split(",")[1]; }
+  catch(e){ luFail("couldn't build PDF"); return; }
+  let folderId=null;
+  try{
+    const name="Measurement_"+(offer||"form").replace(/[^\w-]+/g,"-")+"_"+luStamp()+".pdf";
+    const d=await lingelUpload({ api, folder: offer||"Misc", name, base64: b64 });
+    folderId=d.folderId||null;
+    if(hasVideos){ luDone("PDF saved — videos next"); }
+    else { luDone("Saved to "+d.folder); }
+  }catch(e){ console.error(e); luFail(e.message||"check connection"); return; }
+
+  /* videos still use OAuth (kept intentionally); land in the SAME folder via folderId */
+  if(hasVideos && folderId){
+    try{
+      await ensureGIS(); initDrive();
+      const doVid = async ()=>{ await uploadVideos(folderId, offer); };
+      if(_driveToken) doVid(); else { _pendingDrive=doVid; _tokenClient.requestAccessToken({prompt:""}); }
+    }catch(e){ toast("⚠ Videos need Google sign-in — tap Drive again"); }
+  }
+}
+
+async function uploadVideos(folderId, offer){
+  let n=0, done=0;
+  const vids=openings.filter(o=>o.videoId);
+  if(!vids.length) return;
+  luShow("Uploading videos","0 / "+vids.length); 
+  for(const o of vids){
+    try{
+      const blob=await new Promise((res,rej)=>{ const tx=db.transaction("videos","readonly");
+        const rq=tx.objectStore("videos").get(o.videoId);
+        rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
+      if(blob){
+        const vn=(offer||"form").replace(/[^\w-]+/g,"_")+"_"+(o.ref||("op"+(++n))).replace(/[^\w-]+/g,"_")+"_video.mp4";
+        const meta={name:vn,parents:[folderId]};
+        const fd=new FormData();
+        fd.append("metadata",new Blob([JSON.stringify(meta)],{type:"application/json"}));
+        fd.append("file",blob);
+        await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+          {method:"POST",headers:{Authorization:"Bearer "+_driveToken},body:fd});
+      }
+    }catch(e){ console.error("video fail",e); }
+    done++; luSet(Math.round(done/vids.length*100));
+    document.getElementById("luSub").textContent=done+" / "+vids.length;
+  }
+  luDone(done+" video"+(done>1?"s":"")+" uploaded");
 }
 $("#driveBtn").onclick=async()=>{
   if(!openings.length){toast("Add at least one opening first");return;}
   if(!($("#m_no").value||"").trim()){toast("Enter the Offer No. first");return;}
-  if(!GDRIVE_CLIENT_ID){const id=prompt("One-time setup (step 1/2):\nPaste your Google OAuth Client ID\n(ends in .apps.googleusercontent.com)");if(!id)return;GDRIVE_CLIENT_ID=id.trim();try{await idbPut("kv",GDRIVE_CLIENT_ID,"gdriveClientId");}catch(e){}localStorage.setItem("lingel_gdrive_cid",GDRIVE_CLIENT_ID);}
-  if(!GDRIVE_FOLDER_ID){const fid=prompt("One-time setup (step 2/2):\nPaste the shared Google Drive folder ID\n(the long string from the folder URL after /folders/)");if(!fid)return;GDRIVE_FOLDER_ID=fid.trim();try{await idbPut("kv",GDRIVE_FOLDER_ID,"gdriveFolderId");}catch(e){}localStorage.setItem("lingel_gdrive_fid",GDRIVE_FOLDER_ID);}
-  try{await ensureGIS();initDrive();}catch(e){toast("⚠ Couldn't load Google sign-in");return;}
-  if(_driveToken)saveToDrive();else{_pendingDrive=saveToDrive;_tokenClient.requestAccessToken({prompt:""});}
+  saveToDrive();
 };
 
 $("#shareBtn").onclick=async()=>{if(!openings.length){toast("Add at least one opening first");return;}toast("📄 Preparing sheet…");
@@ -1195,4 +1252,60 @@ document.getElementById("brandLogo").src=LOGO;
 if(!window.isSecureContext){const w=$("#ctxWarn");if(w)w.style.display="block";}
 loadAll();
 setTimeout(()=>{try{ensureLibs();}catch(e){}},1500);
+
+/* ---- Drive upload with progress (Apps Script route, no login) ---- */
+function luShow(title,sub){
+  const ov=document.getElementById('luOv');
+  ov.className='on';
+  document.getElementById('luTitle').textContent=title||'Uploading to Drive';
+  document.getElementById('luSub').textContent=sub||'Preparing\u2026';
+  luSet(0);
+}
+function luSet(p){
+  document.getElementById('luFill').style.width=p+'%';
+  document.getElementById('luPct').textContent=p+'%';
+}
+function luDone(msg){
+  const ov=document.getElementById('luOv'); ov.className='on done';
+  document.getElementById('luSub').textContent=msg||'Done';
+  luSet(100);
+  setTimeout(()=>ov.className='',1400);
+}
+function luFail(msg){
+  const ov=document.getElementById('luOv'); ov.className='on err';
+  document.getElementById('luSub').textContent=msg||'Upload failed';
+  document.getElementById('luPct').textContent='\u2715';
+  setTimeout(()=>ov.className='',2600);
+}
+function luHide(){document.getElementById('luOv').className='';}
+
+function lingelUpload(opt){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST',opt.api,true);
+    xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable) luSet(Math.min(90,Math.round(e.loaded/e.total*90))); };
+    xhr.onload=()=>{ luSet(95);
+      try{ const d=JSON.parse(xhr.responseText); d.ok?resolve(d):reject(new Error(d.error||'rejected')); }
+      catch(err){ reject(new Error('bad response from server')); } };
+    xhr.onerror=()=>reject(new Error('network error'));
+    xhr.ontimeout=()=>reject(new Error('timed out'));
+    xhr.timeout=120000;
+    const body='action=upload&folder='+encodeURIComponent(opt.folder)
+      +'&name='+encodeURIComponent(opt.name)
+      +'&mime='+encodeURIComponent(opt.mime||'application/pdf')
+      +'&data='+encodeURIComponent(opt.base64);
+    xhr.send(body);
+  });
+}
+function luApi(){
+  let a=localStorage.getItem('lingel_api')||'';
+  if(!a){ const u=prompt('One-time setup:\nPaste the Lingel Apps Script /exec URL'); if(u){a=u.trim();localStorage.setItem('lingel_api',a);} }
+  return a;
+}
+function luStamp(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p2m(d)+'-'+p2d(d); }
+function p2m(d){return String(d.getMonth()+1).padStart(2,'0');}
+function p2d(d){return String(d.getDate()).padStart(2,'0');}
+
 </script>
