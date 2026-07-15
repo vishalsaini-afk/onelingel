@@ -477,30 +477,220 @@ function ensureLibs(){
   return Promise.all(libs.map(s=>ensureScript(s)));}
 async function buildPDF(){
   await ensureLibs();
-  const wrap=document.querySelector('.wrap');
-  const btns=document.querySelectorAll('.acts,.langbar,.pbar,.tst,.nopdf');
-  btns.forEach(b=>b.style.display='none');
-  wrap.style.background='#fff';wrap.style.color='#111';
-  wrap.querySelectorAll('.sec').forEach(s=>{s.style.background='#fff';s.style.borderColor='#ddd';});
-  wrap.querySelectorAll('input,textarea').forEach(el=>{el.style.background='#fff';el.style.color='#111';el.style.borderColor='#ddd';});
-  wrap.querySelectorAll('.slbl').forEach(s=>s.style.color='#333');
-  wrap.querySelectorAll('.lbl,.sopt span').forEach(s=>s.style.color='#555');
-  wrap.querySelectorAll('.hdr .co').forEach(s=>s.style.color='#111');
-  const canvas=await window.html2canvas(wrap,{scale:3,backgroundColor:'#ffffff',useCORS:true,logging:false});
-  // restore
-  btns.forEach(b=>b.style.display='');
-  wrap.style.background='';wrap.style.color='';
-  wrap.querySelectorAll('.sec,.slbl,.lbl,.sopt span,input,textarea,.hdr .co').forEach(s=>{s.style.background='';s.style.color='';s.style.borderColor='';});
-  const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF({unit:'pt',format:'a4',orientation:'portrait',compress:true});
-  const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
-  const imgW=pw,imgH=canvas.height*pw/canvas.width;
-  const data=canvas.toDataURL('image/jpeg',0.95);
-  let pos=0,left=imgH;
-  pdf.addImage(data,'JPEG',0,pos,imgW,imgH,undefined,'FAST');left-=ph;
-  while(left>0){pos-=ph;pdf.addPage();pdf.addImage(data,'JPEG',0,pos,imgW,imgH,undefined,'FAST');left-=ph;}
-  return pdf;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'portrait', compress:true });
+  const PW = doc.internal.pageSize.getWidth();
+  const PH = doc.internal.pageSize.getHeight();
+  const M  = 40;                       // margin
+  const CW = PW - M*2;                  // content width
+  let y = M;
+
+  /* ---- palette ---- */
+  const INK='#1a1a1a', SUB='#6b6b6b', LINE='#d8d8d8', HIVIS='#f5a623', DARK='#111111';
+  const OK='#1f9d55', BAD='#d64545', NA='#999999';
+
+  const gv = id => (document.getElementById(id)?.value || '').trim();
+  const rd = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || '';
+  const T  = (window.T && window.T.en) ? window.T.en : {ci:[],rl:[]};
+
+  /* ---- page-break guard ---- */
+  function need(h){ if(y+h > PH-M-24){ footer(); doc.addPage(); y=M; header(true); } }
+
+  function footer(){
+    const n = doc.internal.getNumberOfPages();
+    doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(SUB);
+    doc.text('Lingel Windows & Doors  \u00b7  Customer Handover', M, PH-22);
+    doc.text('Page '+n, PW-M, PH-22, {align:'right'});
+    doc.setDrawColor(LINE).setLineWidth(0.5).line(M, PH-32, PW-M, PH-32);
+  }
+
+  /* ---- header band ---- */
+  function header(cont){
+    doc.setFillColor(DARK).rect(0,0,PW,58,'F');
+    doc.setFillColor(HIVIS).rect(0,58,PW,3,'F');
+    doc.setFont('helvetica','bold').setFontSize(17).setTextColor('#ffffff');
+    doc.text('LINGEL', M, 32);
+    doc.setFont('helvetica','normal').setFontSize(8).setTextColor('#c9c9c9');
+    doc.text('WINDOWS & DOORS TECHNOLOGY', M, 45);
+    doc.setFont('helvetica','bold').setFontSize(12).setTextColor('#ffffff');
+    doc.text('CUSTOMER HANDOVER'+(cont?' (contd.)':''), PW-M, 30, {align:'right'});
+    doc.setFont('helvetica','normal').setFontSize(8).setTextColor(HIVIS);
+    doc.text('CHF-'+(document.getElementById('fdate')?.textContent||'').trim(), PW-M, 44, {align:'right'});
+    y = 78;
+  }
+
+  /* ---- section title ---- */
+  function sectionTitle(t){
+    need(30);
+    doc.setFillColor('#f2f2f2').rect(M, y, CW, 20, 'F');
+    doc.setFillColor(HIVIS).rect(M, y, 3, 20, 'F');
+    doc.setFont('helvetica','bold').setFontSize(9.5).setTextColor(INK);
+    doc.text(t.toUpperCase(), M+10, y+13.5);
+    y += 30;
+  }
+
+  /* ---- two-column field grid ---- */
+  function fields(pairs){
+    const rowH=17, colW=CW/2;
+    for(let i=0;i<pairs.length;i+=2){
+      need(rowH);
+      for(let c=0;c<2 && i+c<pairs.length;c++){
+        const [label,val]=pairs[i+c];
+        const x=M+c*colW;
+        doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(SUB);
+        doc.text(label.toUpperCase(), x, y+6);
+        doc.setFont('helvetica','bold').setFontSize(9.5).setTextColor(INK);
+        const txt = doc.splitTextToSize(val||'\u2014', colW-14);
+        doc.text(txt[0], x, y+15);
+      }
+      y+=rowH;
+    }
+    y+=6;
+  }
+
+  /* ================= build ================= */
+  header(false);
+
+  /* --- customer + product --- */
+  sectionTitle('Customer & Order Details');
+  fields([
+    ['Customer', gv('cname')],
+    ['Order / Offer No.', gv('ord')],
+    ['Site / Address', gv('caddr')],
+    ['Contact', gv('cph')],
+    ['Email', gv('ceml')],
+    ['Handover Date', gv('hdate')],
+    ['Product / Service', gv('prod')],
+    ['Quantity', gv('qty')],
+    ['Installation Date', gv('idate')],
+    ['Site Engineer', gv('tname')+(gv('tph')?'  ('+gv('tph')+')':'')],
+  ]);
+
+  /* --- checklist --- */
+  sectionTitle('Handover Checklist');
+  const rowH=18;
+  const numW=22, statW=54, remW=120, descW=CW-numW-statW-remW;
+  need(rowH);
+  doc.setFillColor('#fafafa').rect(M,y,CW,rowH,'F');
+  doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(SUB);
+  doc.text('#', M+8, y+12);
+  doc.text('CHECK ITEM', M+numW, y+12);
+  doc.text('STATUS', M+numW+descW, y+12);
+  doc.text('REMARKS', M+numW+descW+statW, y+12);
+  y+=rowH;
+  for(let i=0;i<T.ci.length;i++){
+    const ans=rd('cl'+(i+1));
+    const rem=(document.querySelectorAll('.iinp')[i]?.value||'').trim();
+    const lines=doc.splitTextToSize(T.ci[i], descW-6);
+    const remLines=rem?doc.splitTextToSize(rem, remW-6):[''];
+    const h=Math.max(rowH, lines.length*10+7, remLines.length*10+7);
+    need(h);
+    doc.setDrawColor(LINE).setLineWidth(0.4).line(M,y,M+CW,y);
+    doc.setFont('helvetica','normal').setFontSize(8).setTextColor(INK);
+    doc.text(String(i+1), M+8, y+12);
+    doc.text(lines, M+numW, y+11);
+    const col = ans==='Yes'?OK : ans==='No'?BAD : NA;
+    const lab = ans==='Yes'?'PASS' : ans==='No'?'FAIL' : (ans||'\u2014');
+    doc.setFont('helvetica','bold').setFontSize(8).setTextColor(col);
+    doc.text(lab, M+numW+descW, y+11);
+    if(rem){ doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(SUB);
+             doc.text(remLines, M+numW+descW+statW, y+11); }
+    y+=h;
+  }
+  doc.setDrawColor(LINE).line(M,y,M+CW,y); y+=10;
+  const cy=[...Array(T.ci.length)].filter((_,i)=>rd('cl'+(i+1))==='Yes').length;
+  const cn=[...Array(T.ci.length)].filter((_,i)=>rd('cl'+(i+1))==='No').length;
+  const ca=[...Array(T.ci.length)].filter((_,i)=>rd('cl'+(i+1))==='NA').length;
+  doc.setFont('helvetica','bold').setFontSize(8.5).setTextColor(INK);
+  doc.text('Passed: '+cy+'    Failed: '+cn+'    N/A: '+ca, M, y+2); y+=18;
+
+  /* --- snags --- */
+  if(typeof snags!=='undefined' && snags.length){
+    sectionTitle('Snag List ('+snags.length+')');
+    for(let i=0;i<snags.length;i++){
+      const sN=snags[i];
+      const desc=doc.splitTextToSize((sN.desc||'\u2014'),CW-160);
+      const blockH=Math.max(64, desc.length*11+30);
+      need(blockH);
+      doc.setDrawColor(LINE).setLineWidth(0.6).roundedRect(M,y,CW,blockH-8,3,3,'S');
+      doc.setFillColor(DARK).circle(M+16,y+16,8,'F');
+      doc.setFont('helvetica','bold').setFontSize(8).setTextColor('#ffffff');
+      doc.text(String(i+1),M+16,y+19,{align:'center'});
+      doc.setFont('helvetica','bold').setFontSize(9).setTextColor(INK);
+      doc.text((sN.pos?('Pos '+sN.pos+'  \u00b7  '):'')+(sN.loc||'No location'), M+32, y+14);
+      const pr=sN.priority||'Medium';
+      const pc=pr==='High'?BAD:pr==='Low'?OK:HIVIS;
+      doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(pc);
+      doc.text(pr.toUpperCase(), M+CW-14, y+14, {align:'right'});
+      doc.setFont('helvetica','normal').setFontSize(8.5).setTextColor(SUB);
+      doc.text(desc, M+32, y+28);
+      if(sN.photo){ try{ doc.addImage(sN.photo,'JPEG',M+CW-64,y+20,48,36); }catch(e){} }
+      y+=blockH;
+    }
+  }
+
+  /* --- balance material --- */
+  if(typeof balanceItems!=='undefined' && balanceItems.length){
+    sectionTitle('Balance Material ('+balanceItems.length+')');
+    for(let i=0;i<balanceItems.length;i++){
+      const b=balanceItems[i]; need(16);
+      doc.setFont('helvetica','normal').setFontSize(9).setTextColor(INK);
+      doc.text('\u2022  '+(b.desc||'\u2014'), M+6, y+8); y+=16;
+    }
+    y+=8;
+  }
+
+  /* --- keys + rating --- */
+  need(60);
+  sectionTitle('Keys & Customer Satisfaction');
+  fields([
+    ['Keys Handed Over', rd('keysHo')||'\u2014'],
+    ['No. of Keys', gv('keyqty')],
+    ['Key Remarks', gv('keyrem')],
+    ['Satisfaction', (typeof CR!=='undefined'&&CR>0)?((T.rl[CR]||'')+'  ('+CR+'/5)'):'Not rated'],
+  ]);
+  // star row
+  if(typeof CR!=='undefined' && CR>0){
+    need(20); let sx=M;
+    doc.setFontSize(13);
+    for(let i=1;i<=5;i++){ doc.setTextColor(i<=CR?HIVIS:LINE); doc.text('\u2605', sx, y+6); sx+=16; }
+    y+=22;
+  }
+
+  /* --- signatures --- */
+  need(130);
+  sectionTitle('Acknowledgement');
+  const sigW=(CW-20)/2, sigH=68, sigY=y;
+  [['Customer','sc',gv('cname')],['Site Engineer','st',gv('tname')]].forEach((sig,idx)=>{
+    const x=M+idx*(sigW+20);
+    doc.setDrawColor(LINE).setLineWidth(0.6).rect(x,sigY,sigW,sigH,'S');
+    try{
+      const cv=document.getElementById(sig[1]);
+      if(cv){ const d=cv.toDataURL('image/png'); doc.addImage(d,'PNG',x+6,sigY+6,sigW-12,sigH-24); }
+    }catch(e){}
+    doc.setDrawColor('#333').setLineWidth(0.5).line(x+10,sigY+sigH-16,x+sigW-10,sigY+sigH-16);
+    doc.setFont('helvetica','bold').setFontSize(8).setTextColor(INK);
+    doc.text(sig[0]+(sig[2]?'  \u2014  '+sig[2]:''), x+10, sigY+sigH-5);
+  });
+  y=sigY+sigH+16;
+
+  /* --- selfie --- */
+  if(typeof selfieComposed!=='undefined' && selfieComposed){
+    need(150);
+    sectionTitle('Site Photo');
+    try{
+      const props=doc.getImageProperties(selfieComposed);
+      const w=Math.min(CW, 260), h=w*props.height/props.width;
+      need(h+6);
+      doc.addImage(selfieComposed,'JPEG',M,y,w,h);
+      y+=h+10;
+    }catch(e){}
+  }
+
+  footer();
+  return doc;
 }
+
 function pdfName(){return 'Lingel_Handover_'+(document.getElementById('ord').value||'form').replace(/[^\w-]/g,'_')+'.pdf';}
 async function downloadPDF(){
   toast('Building PDF…');
@@ -521,30 +711,34 @@ async function shareReport(){
       toast('Downloaded — share manually via email/WhatsApp');}
   }catch(e){if(e.name!=='AbortError')toast('⚠ Share failed');}}
 
-/* Drive upload */
-let GDRIVE_CID='',GDRIVE_FID='';
+/* Drive upload - via Apps Script (no OAuth, no Client ID) */
 async function uploadDrive(){
-  if(!GDRIVE_CID){const id=prompt('One-time setup (1/2):\nPaste Google OAuth Client ID\n(ends in .apps.googleusercontent.com)');if(!id)return;GDRIVE_CID=id.trim();}
-  if(!GDRIVE_FID){const fid=prompt('One-time setup (2/2):\nPaste shared Google Drive folder ID');if(!fid)return;GDRIVE_FID=fid.trim();}
-  await ensureScript('https://accounts.google.com/gsi/client');
-  if(!window._dtc){window._dtc=google.accounts.oauth2.initTokenClient({client_id:GDRIVE_CID,scope:'https://www.googleapis.com/auth/drive.file',callback:async resp=>{if(resp&&resp.access_token){window._dtk=resp.access_token;await _doDriveUp();}else toast('⚠ Sign-in failed');}});}
-  if(window._dtk)await _doDriveUp();else window._dtc.requestAccessToken({prompt:''});
-}
-async function _doDriveUp(){
-  toast('☁ Uploading to Drive…');
+  let api = localStorage.getItem("lingel_api") || "";
+  if(!api){
+    const u = prompt("One-time setup:\nPaste the Lingel Apps Script /exec URL");
+    if(!u) return;
+    api = u.trim();
+    localStorage.setItem("lingel_api", api);
+  }
+  toast('\u2601 Uploading to Drive\u2026');
   try{
-    const pdf=await buildPDF();const blob=pdf.output('blob');
-    const ord=(document.getElementById('ord').value||'handover').replace(/[^\w-]/g,'_');
-    // find/create subfolder
-    const q=encodeURIComponent("mimeType='application/vnd.google-apps.folder' and trashed=false and name='"+ord+"' and '"+GDRIVE_FID+"' in parents");
-    let fr=await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id)',{headers:{Authorization:'Bearer '+window._dtk}});
-    let fd=await fr.json();let folderId=(fd.files&&fd.files[0])?fd.files[0].id:null;
-    if(!folderId){const r=await fetch('https://www.googleapis.com/drive/v3/files?fields=id',{method:'POST',headers:{Authorization:'Bearer '+window._dtk,'Content-Type':'application/json'},body:JSON.stringify({name:ord,mimeType:'application/vnd.google-apps.folder',parents:[GDRIVE_FID]})});folderId=(await r.json()).id;}
-    const meta={name:pdfName(),parents:[folderId]};const form=new FormData();form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));form.append('file',blob);
-    const up=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:'Bearer '+window._dtk},body:form});
-    const res=await up.json();
-    if(res&&res.id)toast('✓ Saved to Drive › '+ord);else toast('⚠ Upload failed');
-  }catch(e){console.error(e);toast('⚠ Drive error — '+(e.message||'try again'));}
+    const pdf  = await buildPDF();
+    const b64  = pdf.output('datauristring').split(',')[1];
+    const ord  = (document.getElementById('ord').value||'handover').replace(/[^\w-]/g,'_');
+    const r = await fetch(api, {method:'POST', body:new URLSearchParams({
+      action:'upload', folder:ord, name:pdfName(), mime:'application/pdf', data:b64
+    })});
+    const d = await r.json();
+    if(d.ok){
+      window._lastDriveUrl = d.url;
+      toast('\u2713 Saved to Drive \u203a ' + d.folder);
+    }else{
+      toast('\u26a0 Upload failed \u2014 ' + (d.error||'try again'));
+    }
+  }catch(e){
+    console.error(e);
+    toast('\u26a0 Drive error \u2014 ' + (e.message||'check connection'));
+  }
 }
 
 function doReset(){
