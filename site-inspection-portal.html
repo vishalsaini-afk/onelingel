@@ -1354,24 +1354,25 @@ function luHide(){ var c=document.getElementById('luChip'); if(c) c.className=''
 _luRetry=function(){ saveToDrive(); };
 
 function lingelUpload(opt){
-  return new Promise((resolve,reject)=>{
-    const xhr=new XMLHttpRequest();
-    xhr.open('POST',opt.api,true);
-    // NB: do NOT set Content-Type header -> keeps it a CORS "simple request"
-    // (no preflight OPTIONS, which Apps Script can't answer). Body is sent as a
-    // text/plain Blob; the query-string payload is still parsed by e.parameter.
-    xhr.upload.onprogress=e=>{ if(e.lengthComputable) luSet(Math.min(90,Math.round(e.loaded/e.total*90))); };
-    xhr.onload=()=>{ luSet(95);
-      try{ const d=JSON.parse(xhr.responseText); d.ok?resolve(d):reject(new Error(d.error||'rejected')); }
-      catch(err){ reject(new Error('bad response from server')); } };
-    xhr.onerror=()=>reject(new Error('network error'));
-    xhr.ontimeout=()=>reject(new Error('timed out'));
-    xhr.timeout=180000;
-    const body='action=upload&folder='+encodeURIComponent(opt.folder)
-      +'&name='+encodeURIComponent(opt.name)
-      +'&mime='+encodeURIComponent(opt.mime||'application/pdf')
-      +'&data='+encodeURIComponent(opt.base64);
-    xhr.send(new Blob([body],{type:'text/plain'}));
+  return new Promise(async (resolve,reject)=>{
+    try{
+      // Match the Sheet-logging pattern exactly: fetch + URLSearchParams.
+      // This fills e.parameter server-side and is a CORS "simple request"
+      // (no preflight, no custom headers) — the same call style that already
+      // works for Sheet logging, so it cannot hit the CORS error.
+      luSet(92); // building done, sending now
+      const body = new URLSearchParams({
+        action: 'upload',
+        folder: opt.folder,
+        name:   opt.name,
+        mime:   opt.mime || 'application/pdf',
+        data:   opt.base64
+      });
+      const r = await fetch(opt.api, { method:'POST', body });
+      luSet(97);
+      const d = await r.json();
+      if(d && d.ok) resolve(d); else reject(new Error((d&&d.error)||'rejected'));
+    }catch(err){ reject(new Error(err.message||'network error')); }
   });
 }
 function luApi(){
