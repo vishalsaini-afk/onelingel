@@ -1048,19 +1048,21 @@ function lingelUpload(opt){
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
     xhr.open('POST',opt.api,true);
-    xhr.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+    // NB: do NOT set Content-Type header -> keeps it a CORS "simple request"
+    // (no preflight OPTIONS, which Apps Script can't answer). Body is sent as a
+    // text/plain Blob; the query-string payload is still parsed by e.parameter.
     xhr.upload.onprogress=e=>{ if(e.lengthComputable) luSet(Math.min(90,Math.round(e.loaded/e.total*90))); };
     xhr.onload=()=>{ luSet(95);
       try{ const d=JSON.parse(xhr.responseText); d.ok?resolve(d):reject(new Error(d.error||'rejected')); }
       catch(err){ reject(new Error('bad response from server')); } };
     xhr.onerror=()=>reject(new Error('network error'));
     xhr.ontimeout=()=>reject(new Error('timed out'));
-    xhr.timeout=120000;
+    xhr.timeout=180000;
     const body='action=upload&folder='+encodeURIComponent(opt.folder)
       +'&name='+encodeURIComponent(opt.name)
       +'&mime='+encodeURIComponent(opt.mime||'application/pdf')
       +'&data='+encodeURIComponent(opt.base64);
-    xhr.send(body);
+    xhr.send(new Blob([body],{type:'text/plain'}));
   });
 }
 function luApi(){
