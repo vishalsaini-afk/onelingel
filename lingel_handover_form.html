@@ -785,7 +785,8 @@ async function ensurePdfjs(){
   throw new Error('PDF reader needs internet — try on your https link');}
 
 /* import quotation PDF into snag list */
-const _SNAG_RE=/^(\d{1,3}-.+?)\s+((?:[A-Za-z]\d?=[\d.,]+;)+)\s+(\d+)/;
+const _SNAG_ROW=/^\s*(\S[^=]*?)\s+((?:[A-Za-z]\d{0,2}\s*=\s*[\d.,]+\s*;\s*)+)(\d+)?\b/;const _SNAG_NOISE=/^(position\s+measure|quotation\s*-?\s*nr)/i;
+function _snagHeader(t){if(_SNAG_NOISE.test(t))return null;var m=t.match(_SNAG_ROW);if(!m)return null;var label=m[1].replace(/\s+/g," ").trim();if(!label||/^\d+([.,]\d+)?$/.test(label))return null;if(/^[A-Za-z]\d{0,2}$/.test(label))return null;return label;}
 document.getElementById('snagPdfInp').addEventListener('change',async ev=>{
   const f=ev.target.files[0];if(!f)return;ev.target.value='';
   toast('📄 Reading quotation…');
@@ -793,14 +794,14 @@ document.getElementById('snagPdfInp').addEventListener('change',async ev=>{
     await ensurePdfjs();
     const buf=await f.arrayBuffer();
     const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
-    let count=0;
+    let count=0;const _seen={};
     for(let pn=1;pn<=pdf.numPages;pn++){
       const page=await pdf.getPage(pn);const tc=await page.getTextContent();
       const _spans=[];tc.items.forEach(it=>{if(!it.str)return;_spans.push({x:it.transform[4],y:it.transform[5],str:it.str});});
       _spans.sort((a,b)=>b.y-a.y);
       const _bk=[];for(const sp of _spans){let placed=false;for(const b of _bk){if(Math.abs(sp.y-b.y)<5){b.items.push(sp);placed=true;break;}}if(!placed)_bk.push({y:sp.y,items:[sp]});}
       const lines=_bk.sort((a,b)=>b.y-a.y).map(b=>b.items.sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim());
-      for(const ln of lines){const m=_SNAG_RE.exec(ln);if(m){snags.push({id:Date.now()+count,pos:m[1],desc:'',loc:'',priority:'Medium',photo:''});count++;}}
+      for(const ln of lines){var _lb=_snagHeader(ln);if(_lb){if(_seen[_lb]){_seen[_lb]++;_lb=_lb+' ('+_seen[_lb]+')';}else _seen[_lb]=1;snags.push({id:Date.now()+count,pos:_lb,desc:'',loc:'',priority:'Medium',photo:''});count++;}}
       /* also grab offer no + client */
       if(pn===1){
         for(const ln of lines){
