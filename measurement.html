@@ -1096,58 +1096,42 @@ function collectMeasures(text){
   return Object.keys(found).map(k=>k+"="+found[k]+";").join("");
 }
 function hasSize(measure){const s=" "+measure.toUpperCase();return (/[ ;]B=/.test(s)&&/[ ;]H=/.test(s))||(/[ ;]L=/.test(s)&&/[ ;]A=/.test(s));}
-/* Build the list of positions on a page. Uses the "viewed from inside" end-marker as a hard
-   boundary so a position is never missed even when its header line is broken up by PDF extraction. */
-const RE_MEAS1=/[A-Za-z]\d?\s*=\s*\d/;                        // a single measure assignment, e.g. B=950 or L1 = 1.9
-const RE_QTYPRICE=/\b(\d{1,3})\s+\d[\d.]*,\d{2}\s+\d[\d.]*,\d{2}/; // qty followed by unit & total price (…,dd …,dd)
+/* Positions: every entry in the Position column is its own position — including "ADD"
+   rows that lack the NN-WNN naming. A position row = label + semicolon-separated measure
+   string (+ optional qty). Drawing dimension lines ("B = 2.531") never use ';' so can't match.
+   Blocks run from one header to the next (the PDF's own separator lines). Duplicate labels
+   are suffixed so they stay distinct. */
+const RE_POSROW=/^\s*(\S[^=]*?)\s+((?:[A-Za-z]\d{0,2}\s*=\s*[\d.,]+\s*;\s*)+)(\d+)?\b/;
+const RE_STOP=/^(we\s+hope\s+the\s+offer|page\s+\d+$|terms|payment|bank\b|gst\b)/i;
+const RE_NOISE=/^(position\s+measure|quotation\s*-?\s*nr)/i;
+function collectMeasures(text){var f={},any=false,re=/\b([A-Za-z]\d{0,2})\s*=\s*([\d][\d.,]*)/g,m;while((m=re.exec(text))!==null){var k=m[1].toUpperCase();if(!(k in f)){f[k]=m[2];any=true;}}return any?Object.keys(f).map(function(k){return k+"="+f[k]+";"}).join(""):"";}
 function detectPositions(lines){
-  const ends=[];lines.forEach((ln,i)=>{if(RE_ENDMARK.test(ln.text))ends.push(i);});
-  const strong=[];lines.forEach((ln,i)=>{const m=ln.text.match(RE_HDR);if(m)strong.push({i,y:ln.y,label:m[1].trim(),measure:m[2],qty:m[3]});});
-  // No end-markers on this page → fall back to header-only detection (backward compatible)
-  if(!ends.length){
-    return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));
+  const hdrs=[];
+  lines.forEach((ln,i)=>{
+    const t=ln.text;if(RE_NOISE.test(t))return;
+    const m=t.match(RE_POSROW);if(!m)return;
+    const label=m[1].replace(/\s+/g," ").trim();
+    if(!label||/^\d+([.,]\d+)?$/.test(label))return;   // bare numbers aren't labels
+    if(/^[A-Za-z]\d{0,2}$/.test(label))return;          // a lone measure key (B,H1,B2…)
+    hdrs.push({i,y:ln.y,label,measure:m[2].replace(/\s+/g,""),qty:m[3]||"1"});
+  });
+  const pos=[];
+  for(let k=0;k<hdrs.length;k++){
+    const h=hdrs[k];
+    let endI=(k+1<hdrs.length)?hdrs[k+1].i:lines.length;
+    for(let j=h.i+1;j<endI;j++){if(RE_STOP.test(lines[j].text)){endI=j;break;}}
+    pos.push({i:h.i,y:h.y,topY:h.y,label:h.label,measure:h.measure||collectMeasures(lines[h.i].text),qty:h.qty,
+      endI,endY:lines[endI-1]?lines[endI-1].y:h.y});
   }
-  // End-marker segmentation: one block per "viewed from inside" — a position is never missed
-  const pos=[];let start=0,posNo=0;
-  for(const endLine of ends){
-    const block=lines.slice(start,endLine+1);
-    const blockTxt=block.map(l=>l.text).join(" ");
-    // The header line is the position's table row = the FIRST line in the block that carries a
-    // measure assignment (label + B=/L=… + qty + price all share one row). Falls back to a loose
-    // "N-Name" line, else the block start.
-    let hdrRel=block.findIndex(l=>RE_MEAS1.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
-    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_HDR.test(l.text));
-    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_POSSTART.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
-    const measure=collectMeasures(blockTxt);
-    // Accept as a real position only if it has a header row or real dimensions (skips preamble/footers/T&C)
-    if((hdrRel>=0&&(RE_MEAS1.test(block[hdrRel].text)||RE_HDR.test(block[hdrRel].text)||RE_POSSTART.test(block[hdrRel].text)))||hasSize(measure)){
-      posNo++;
-      const hi=(hdrRel>=0)?(start+hdrRel):start;
-      const hline=lines[hi];const htext=hline?hline.text:"";
-      // label = everything on the header row before the first measure token
-      let label="";
-      const lm=htext.match(/^\s*(.*?)\s+[A-Za-z]\d?\s*=\s*\d/);
-      if(lm&&lm[1].trim())label=lm[1].trim();
-      if(!label){const pm=htext.match(RE_HDR);if(pm)label=pm[1].trim();}
-      if(!label){const pm=htext.match(RE_POSSTART);if(pm)label=(pm[1]+"-"+pm[2]).replace(/\s+/g," ").trim();}
-      if(!label)label=posNo+"-Position "+posNo;
-      // qty = the integer just before the two price columns (search whole block; prices look like 123456,78)
-      let qty="1";const qm=blockTxt.match(RE_QTYPRICE);if(qm)qty=qm[1];
-      const measFinal=measure||collectMeasures(htext);
-      pos.push({i:hi,y:(hline?hline.y:(block[0]&&block[0].y)),topY:(block[0]?block[0].y:(hline?hline.y:null)),label,measure:measFinal,qty,endI:endLine+1,endY:lines[endLine]?lines[endLine].y:null});
-    }
-    start=endLine+1;
-  }
-  // If nothing captured via markers but strong headers exist, use them
-  if(!pos.length&&strong.length)return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));
   return pos;
 }
+
 async function importQuotation(file){
   toast("📄 Reading quotation…");
   await ensurePdfjs();
   const buf=await file.arrayBuffer();
   const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
-  const newOps=[];let offerNo="",client="",site="",salesPerson="";
+  const newOps=[];const _seen={};let offerNo="",client="",site="",salesPerson="";
   const _allLines=[];
   for(let pn=1;pn<=pdf.numPages;pn++){
     const page=await pdf.getPage(pn);
@@ -1175,6 +1159,7 @@ async function importQuotation(file){
       await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;}catch(e){console.warn("Page render skipped:",e);canvas=null;}
     for(let k=0;k<pos.length;k++){
       const p=pos[k];
+      let _lbl=p.label;if(_seen[_lbl]){_seen[_lbl]++;_lbl=_lbl+' ('+_seen[_lbl]+')';}else _seen[_lbl]=1;
       const endI=(p.endI!=null)?p.endI:((k+1<pos.length)?pos[k+1].i:lines.length);
       const desc=lines.slice(p.i+1,endI).map(l=>l.text).join(" ");
       // measure tokens
@@ -1206,7 +1191,7 @@ async function importQuotation(file){
           const data=crop.toDataURL("image/jpeg",0.82);designId=uid();imgCache[designId]=data;await savePhoto(designId,data);}
       }catch(e){}}
       const gnote=[glass,(W!=null&&H!=null)?("Quoted "+fmt(W)+"×"+fmt(H)+" mm"):""].filter(Boolean).join(" · ");
-      newOps.push({id:uid(),ref:p.label,loc:"",type,w:["","",""],h:["","",""],d:["",""],qty:String(parseInt(p.qty,10)||1),
+      newOps.push({id:uid(),ref:_lbl,loc:"",type,w:["","",""],h:["","",""],d:["",""],qty:String(parseInt(p.qty,10)||1),
         note:"",sill:"",wall:"",mesh,lock:"—",dtrack,silicon:"—",gnote,spec:descClean||desc||"",ready:"",onrType:"",sketchId:"",sketchData:null,designId,photos:[]});
     }
   }
