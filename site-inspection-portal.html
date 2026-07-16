@@ -869,40 +869,34 @@ else if(typeof globalThis.pdfjsLib!=="undefined")window.pdfjsLib=globalThis.pdfj
   if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc=window._pdfWorkerUrl;
 })();
 async function ensurePdfjs(){}
-const RE_HDR=/^(\d{1,3}-.+?)\s+((?:[A-Za-z]\d?=[\d.,]+;)+)\s+(\d+)/;
 function _nn(v){if(v==null)return null;const n=parseFloat(String(v).replace(/\./g,"").replace(",","."));return isFinite(n)?n:null;}
-const RE_ENDMARK=/viewed\s*from\s*inside/i;
-const RE_MEASTOK=/\b([A-Za-z]\d?)\s*=\s*([\d][\d.,]*)/g;
-const RE_POSSTART=/^\s*(\d{1,3})\s*[-.)]\s*(\S.*)$/;
-const RE_MEAS1=/[A-Za-z]\d?\s*=\s*\d/;
-const RE_QTYPRICE=/\b(\d{1,3})\s+\d[\d.]*,\d{2}\s+\d[\d.]*,\d{2}/;
-function collectMeasures(text){const found={};let mm,any=false;RE_MEASTOK.lastIndex=0;while((mm=RE_MEASTOK.exec(text))!==null){const k=mm[1].toUpperCase();if(!(k in found)){found[k]=mm[2];any=true;}}if(!any)return "";return Object.keys(found).map(k=>k+"="+found[k]+";").join("");}
-function hasSize(measure){const s=" "+measure.toUpperCase();return (/[ ;]B=/.test(s)&&/[ ;]H=/.test(s))||(/[ ;]L=/.test(s)&&/[ ;]A=/.test(s));}
+/* Positions: every entry in the Position column is its own position — including "ADD"
+   rows that lack the NN-WNN naming. A position row = label + semicolon-separated measure
+   string (+ optional qty). Drawing dimension lines ("B = 2.531") never use ';' so can't match.
+   Blocks run from one header to the next (the PDF's own separator lines). Duplicate labels
+   are suffixed so they stay distinct. */
+const RE_POSROW=/^\s*(\S[^=]*?)\s+((?:[A-Za-z]\d{0,2}\s*=\s*[\d.,]+\s*;\s*)+)(\d+)?\b/;
+const RE_STOP=/^(we\s+hope\s+the\s+offer|page\s+\d+$|terms|payment|bank\b|gst\b)/i;
+const RE_NOISE=/^(position\s+measure|quotation\s*-?\s*nr)/i;
+function collectMeasures(text){var f={},any=false,re=/\b([A-Za-z]\d{0,2})\s*=\s*([\d][\d.,]*)/g,m;while((m=re.exec(text))!==null){var k=m[1].toUpperCase();if(!(k in f)){f[k]=m[2];any=true;}}return any?Object.keys(f).map(function(k){return k+"="+f[k]+";"}).join(""):"";}
 function detectPositions(lines){
-  const ends=[];lines.forEach((ln,i)=>{if(RE_ENDMARK.test(ln.text))ends.push(i);});
-  const strong=[];lines.forEach((ln,i)=>{const m=ln.text.match(RE_HDR);if(m)strong.push({i,y:ln.y,label:m[1].trim(),measure:m[2],qty:m[3]});});
-  if(!ends.length){return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));}
-  const pos=[];let start=0,posNo=0;
-  for(const endLine of ends){
-    const block=lines.slice(start,endLine+1);const blockTxt=block.map(l=>l.text).join(" ");
-    let hdrRel=block.findIndex(l=>RE_MEAS1.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
-    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_HDR.test(l.text));
-    if(hdrRel<0)hdrRel=block.findIndex(l=>RE_POSSTART.test(l.text)&&!/^\d{3,7}\/\d+/.test(l.text.trim()));
-    const measure=collectMeasures(blockTxt);
-    if((hdrRel>=0&&(RE_MEAS1.test(block[hdrRel].text)||RE_HDR.test(block[hdrRel].text)||RE_POSSTART.test(block[hdrRel].text)))||hasSize(measure)){
-      posNo++;
-      const hi=(hdrRel>=0)?(start+hdrRel):start;const hline=lines[hi];const htext=hline?hline.text:"";
-      let label="";const lm=htext.match(/^\s*(.*?)\s+[A-Za-z]\d?\s*=\s*\d/);
-      if(lm&&lm[1].trim())label=lm[1].trim();
-      if(!label){const pm=htext.match(RE_HDR);if(pm)label=pm[1].trim();}
-      if(!label){const pm=htext.match(RE_POSSTART);if(pm)label=(pm[1]+"-"+pm[2]).replace(/\s+/g," ").trim();}
-      if(!label)label=posNo+"-Position "+posNo;
-      let qty="1";const qm=blockTxt.match(RE_QTYPRICE);if(qm)qty=qm[1];
-      pos.push({i:hi,y:(hline?hline.y:(block[0]&&block[0].y)),topY:(block[0]?block[0].y:(hline?hline.y:null)),label,measure:measure||collectMeasures(htext),qty,endI:endLine+1,endY:lines[endLine]?lines[endLine].y:null});
-    }
-    start=endLine+1;
+  const hdrs=[];
+  lines.forEach((ln,i)=>{
+    const t=ln.text;if(RE_NOISE.test(t))return;
+    const m=t.match(RE_POSROW);if(!m)return;
+    const label=m[1].replace(/\s+/g," ").trim();
+    if(!label||/^\d+([.,]\d+)?$/.test(label))return;
+    if(/^[A-Za-z]\d{0,2}$/.test(label))return;
+    hdrs.push({i,y:ln.y,label,measure:m[2].replace(/\s+/g,""),qty:m[3]||"1"});
+  });
+  const pos=[];
+  for(let k=0;k<hdrs.length;k++){
+    const h=hdrs[k];
+    let endI=(k+1<hdrs.length)?hdrs[k+1].i:lines.length;
+    for(let j=h.i+1;j<endI;j++){if(RE_STOP.test(lines[j].text)){endI=j;break;}}
+    pos.push({i:h.i,y:h.y,topY:h.y,label:h.label,measure:h.measure||collectMeasures(lines[h.i].text),qty:h.qty,
+      endI,endY:lines[endI-1]?lines[endI-1].y:h.y});
   }
-  if(!pos.length&&strong.length)return strong.map((p,k)=>({...p,topY:p.y,endI:(k+1<strong.length)?strong[k+1].i:lines.length,endY:null}));
   return pos;
 }
 function _fn(n){return n==null?"":(Math.round(n*100)/100).toString();}
@@ -910,7 +904,7 @@ async function importQuotation(file){
   toast("📄 Reading quotation…"); await ensurePdfjs();
   const buf=await file.arrayBuffer();
   const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
-  const newPos=[]; let offerNo="",client="",site="",salesPerson="";
+  const newPos=[];const _seen={}; let offerNo="",client="",site="",salesPerson="";
   const _allLines=[];
   for(let pn=1;pn<=pdf.numPages;pn++){
     const page=await pdf.getPage(pn); const tc=await page.getTextContent(); const vp=page.getViewport({scale:2});
@@ -926,7 +920,8 @@ async function importQuotation(file){
     if(!pos.length)continue;
     let canvas=null; try{canvas=document.createElement("canvas");canvas.width=Math.min(vp.width,3000);canvas.height=Math.min(vp.height,4000);await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;}catch(e){console.warn("Page render skipped:",e);canvas=null;}
     for(let k=0;k<pos.length;k++){
-      const p=pos[k]; const endI=(p.endI!=null)?p.endI:((k+1<pos.length)?pos[k+1].i:lines.length); const desc=lines.slice(p.i+1,endI).map(l=>l.text).join(" ");
+      const p=pos[k];
+      let _lbl=p.label;if(_seen[_lbl]){_seen[_lbl]++;_lbl=_lbl+' ('+_seen[_lbl]+')';}else _seen[_lbl]=1; const endI=(p.endI!=null)?p.endI:((k+1<pos.length)?pos[k+1].i:lines.length); const desc=lines.slice(p.i+1,endI).map(l=>l.text).join(" ");
       const descClean=desc.replace(/\b[A-Za-z]\d?\s*=\s*[\d.,]+\s*;?/g," ").replace(/\s+/g," ").trim();
       const tk={}; p.measure.replace(/([A-Za-z]\d?)=([\d.,]+)/g,(m0,a,b)=>{tk[a]=_nn(b);return m0;});
       let W=null,H=null; if(tk.B!=null&&tk.H!=null){W=tk.B;H=tk.H;}else if(tk.L!=null&&tk.A!=null){W=tk.L;H=tk.A;}
@@ -942,7 +937,7 @@ async function importQuotation(file){
         const cw=right-left,chh=Math.max(20,Math.round(bottom-top));
         if(cw>10&&chh>20){const crop=document.createElement("canvas");crop.width=cw;crop.height=chh;crop.getContext("2d").drawImage(canvas,left,Math.round(top),cw,chh,0,0,cw,chh);const data=crop.toDataURL("image/jpeg",0.82);designId=uid();imgCache[designId]=data;await savePhoto(designId,data);}
       }catch(e){}}
-      newPos.push({id:uid(),ref:p.label,status:"onr",onrType:"",resp:"",obs:"",spec:descClean||desc||"",photos:designId?[designId]:[],audios:[]});
+      newPos.push({id:uid(),ref:_lbl,status:"onr",onrType:"",resp:"",obs:"",spec:descClean||desc||"",photos:designId?[designId]:[],audios:[]});
     }
   }
   if(!newPos.length){toast("⚠ No positions found in this PDF");return;}
