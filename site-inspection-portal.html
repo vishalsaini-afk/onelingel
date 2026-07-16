@@ -1237,8 +1237,22 @@ function issueRows(){
     }, meta));
 }
 
+function reviewedRoster(){
+  // every position currently in the sheet, with its base-order key + status.
+  // lets the server mark positions that are no longer an issue as Resolved.
+  const orderNo = ($("#o_no").value||"").trim();
+  return positions.map((p,i)=>({
+    orderNo, posNo:i+1,
+    open: SHEET_STATUSES.includes(p.status)      // true = still an issue/ONR
+  }));
+}
+
 async function sheetPost(rows){
-  const body = new URLSearchParams({action:"siteIssues", rows:JSON.stringify(rows)});
+  const body = new URLSearchParams({
+    action:"siteIssues",
+    rows:JSON.stringify(rows),
+    reviewed:JSON.stringify(reviewedRoster())
+  });
   const r = await fetch(SHEET_API, {method:"POST", body});   // simple request: no preflight
   const d = await r.json();
   if(!d.ok) throw new Error(d.error || "sheet rejected");
