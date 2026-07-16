@@ -921,14 +921,20 @@ function hoQueue(job){
 
 async function hoSend(job, quiet){
   await hoPost(Object.assign({action:"handover"}, job.summary));
-  if(job.snagRows.length){
-    const ts = new Date().toISOString(), s = job.summary;
-    const rows = job.snagRows.map(x => Object.assign({
-      ts, formNo:s.formNo, orderNo:s.orderNo, customer:s.customer, site:s.site
-    }, x));
-    await hoPost({action:"handoverSnags", rows:JSON.stringify(rows)});
-  }
-  if(!quiet) toast("\u2713 Handover logged to Sheet (" + job.snagRows.length + " snags)");
+  const s = job.summary, ts = new Date().toISOString();
+  const rows = (job.snagRows||[]).map(x => Object.assign({
+    ts, formNo:s.formNo, orderNo:s.orderNo, customer:s.customer, site:s.site
+  }, x));
+  // reviewed roster = the snags present this handover (by position). Any prior
+  // snag for this order NOT in the roster is treated as Resolved by the server.
+  const reviewed = (job.snagRows||[]).map(x=>({ orderNo:s.orderNo, posNo:x.posNo, open:true }));
+  // always send (even with zero snags) so a clean re-handover resolves old snags
+  await hoPost({
+    action:"handoverSnags",
+    rows:JSON.stringify(rows),
+    reviewed:JSON.stringify(reviewed)
+  });
+  if(!quiet) toast("\u2713 Handover logged to Sheet (" + rows.length + " snags)");
 }
 
 async function hoFlush(){
