@@ -63,6 +63,18 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 .phth{position:relative}
 .phth img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--rs);border:1px solid var(--line);display:block}
 .phrm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:12px;line-height:1}
+.snaglist{display:flex;flex-direction:column;gap:10px}
+.snag-item{position:relative;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--rs);padding:12px}
+.snag-rm{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--danger);font-size:14px;cursor:pointer;line-height:1}
+.snag-pos{font-family:'JetBrains Mono';font-size:10px;color:var(--hivis);background:rgba(226,241,77,.12);border:1px solid var(--line);padding:2px 8px;border-radius:12px}
+.snag-item input,.snag-item select{width:100%}
+.snag-row{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.snag-row input{flex:1;min-width:120px}
+.snag-row select{width:auto;min-width:96px;flex:none}
+.snag-photo{width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--line);flex:none}
+#posPicker{display:none;flex-wrap:wrap;gap:6px;margin:2px 0 12px}
+.poschip{font-family:'JetBrains Mono';font-size:11px;padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:var(--panel-2);color:var(--text);cursor:pointer}
+.poschip.on{background:var(--hivis);color:#111;border-color:var(--hivis);font-weight:700}
 .emP{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-top:12px;display:none}
 .emtxt{font-size:11px;background:var(--panel);border:1px solid var(--line);border-radius:var(--rs);padding:12px;margin:10px 0;font-family:'JetBrains Mono',monospace;width:100%;resize:vertical;line-height:1.6;color:var(--text)}
 .sfbadge{display:inline-flex;align-items:center;gap:5px;background:rgba(74,222,128,.12);color:var(--ok);font-family:'Archivo Narrow';font-size:12px;font-weight:700;padding:5px 12px;border-radius:var(--rs);margin-bottom:10px;text-transform:uppercase}
@@ -104,11 +116,22 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 
 <div class="sec">
   <div class="slbl" data-t="custDetails">Customer details</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+    <button class="btns" type="button" onclick="document.getElementById('quotePdfInp').click()">📄 Import quotation → auto-fill</button>
+    <input type="file" id="quotePdfInp" accept="application/pdf,.pdf" hidden onchange="if(this.files[0]){importQuotation(this.files[0],true);this.value='';}">
+    <span style="font-size:11px;color:var(--muted)">Auto-fills customer & order no., loads all positions for the snag list</span>
+  </div>
   <div class="gr">
     <div class="fd"><div class="lbl" data-t="orderNo">Order no.</div><input type="text" id="ord" placeholder="LW-2025-0041" oninput="prog()"></div>
     <div class="fd"><div class="lbl" data-t="handoverDate">Date of handover</div><input type="date" id="hdate" oninput="setFn();prog()"></div>
     <div class="fd s2"><div class="lbl" data-t="custName">Customer name</div><input type="text" id="cname" placeholder="Full name" oninput="prog()"></div>
-    <div class="fd s2"><div class="lbl" data-t="addrSite">Address / site</div><input type="text" id="caddr" placeholder="Installation site address"></div>
+    <div class="fd s2"><div class="lbl" data-t="addrSite">Address / site</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="caddr" placeholder="Installation site address" style="flex:1">
+        <button class="btns" type="button" onclick="pinLocation()" style="white-space:nowrap;padding:9px 12px">📍 Pin</button>
+      </div>
+      <div id="geoNote" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+    </div>
     <div class="fd"><div class="lbl" data-t="contactNo">Contact number</div><input type="tel" id="cph" placeholder="+91 XXXXX XXXXX"></div>
     <div class="fd"><div class="lbl" data-t="emailLbl">Email</div><input type="email" id="ceml" placeholder="customer@email.com"></div>
   </div>
@@ -139,11 +162,13 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <div class="sec">
   <div class="slbl">Snag List / Pending Items</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Record any defects, damages, or pending work items</div>
-  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-    <button class="btns" onclick="document.getElementById('snagPdfInp').click()">📄 Import from quotation</button>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="btns" onclick="document.getElementById('snagPdfInp').click()">📄 Import quotation</button>
     <input type="file" id="snagPdfInp" accept="application/pdf,.pdf" hidden>
+    <button class="btns" onclick="togglePicker()">▤ Tap positions (<span id="posCount">0</span>)</button>
     <button class="btns" onclick="addSnag()">+ Add manually</button>
   </div>
+  <div id="posPicker"></div>
   <div class="snaglist" id="snagList"></div>
 </div>
 
@@ -235,7 +260,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 
 const CL=[
   {orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:1},
-  {orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0}
+  {orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0}
 ];
 const T={
   en:{
@@ -266,8 +291,8 @@ const T={
       "Service / maintenance procedure explained","Pendency from installation team",
       "All windows / doors open and close smoothly","Locking mechanism tested and functional",
       "Weather sealing and gaskets intact",
-      "Hardware (handles, hinges, stays) all functional","Drainage channels clear","Site cleaned after installation"],
-    ch:["","","","","If yes — describe in remarks","","","","","",""]
+      "Hardware (handles, hinges, stays) all functional","All glass intact"],
+    ch:["","","","","If yes — describe in remarks","","","","",""]
   },
   hi:{
     formTitle:"ग्राहक हस्तांतरण फॉर्म",formNo:"फॉर्म संख्या",custDetails:"ग्राहक विवरण",
@@ -297,9 +322,8 @@ const T={
       "प्रदर्शन / प्रशिक्षण दिया गया","सेवा / रखरखाव प्रक्रिया समझाई गई",
       "स्थापना टीम से लंबित कार्य","सभी खिड़कियाँ / दरवाज़े सुचारू रूप से खुलते-बंद होते हैं",
       "लॉकिंग तंत्र परीक्षण किया गया और कार्यात्मक है","मौसम सीलिंग और गास्केट सही हैं",
-      "हार्डवेयर (हैंडल, टिका, स्टे) सभी कार्यात्मक हैं",
-      "जल निकासी चैनल साफ हैं","स्थापना के बाद साइट साफ की गई"],
-    ch:["","","","","यदि हाँ — टिप्पणी में विवरण दें","","","","","",""]
+      "हार्डवेयर (हैंडल, टिका, स्टे) सभी कार्यात्मक हैं","सभी शीशे सही सलामत हैं"],
+    ch:["","","","","यदि हाँ — टिप्पणी में विवरण दें","","","","",""]
   }
 };
 
@@ -570,6 +594,58 @@ async function buildPDF(){
     ['Site Engineer', gv('tname')+(gv('tph')?'  ('+gv('tph')+')':'')],
   ]);
 
+  /* --- snag list table (near top) --- */
+  if(typeof snags!=='undefined' && snags.length){
+    sectionTitle('Snag List / Pending Items ('+snags.length+')');
+    const nW=20, pW=76, lW=76, prW=54, dW=CW-nW-pW-lW-prW, hH=18;
+    need(hH);
+    doc.setFillColor(DARK).rect(M,y,CW,hH,'F');
+    doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor('#ffffff');
+    doc.text('#',M+7,y+12);
+    doc.text('POSITION',M+nW,y+12);
+    doc.text('ISSUE / DEFECT',M+nW+pW,y+12);
+    doc.text('LOCATION',M+nW+pW+dW,y+12);
+    doc.text('PRIORITY',M+nW+pW+dW+lW,y+12);
+    y+=hH;
+    for(let i=0;i<snags.length;i++){
+      const s=snags[i];
+      const pos=doc.splitTextToSize(String(s.pos||'\u2014'),pW-6);
+      const desc=doc.splitTextToSize(String(s.desc||'\u2014'),dW-6);
+      const loc=doc.splitTextToSize(String(s.loc||'\u2014'),lW-6);
+      const h=Math.max(16,pos.length*10+6,desc.length*10+6,loc.length*10+6);
+      need(h);
+      if(i%2){doc.setFillColor('#f7f7f7').rect(M,y,CW,h,'F');}
+      doc.setFont('helvetica','normal').setFontSize(8).setTextColor(INK);
+      doc.text(String(i+1),M+7,y+11);
+      doc.text(pos,M+nW,y+11);
+      doc.text(desc,M+nW+pW,y+11);
+      doc.setTextColor(SUB);doc.text(loc,M+nW+pW+dW,y+11);
+      const pr=s.priority||'Medium';const pc=(pr==='High'||pr==='Critical')?BAD:(pr==='Low'?OK:HIVIS);
+      doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(pc);
+      doc.text(pr.toUpperCase(),M+nW+pW+dW+lW,y+11);
+      doc.setDrawColor(LINE).setLineWidth(0.3).line(M,y+h,M+CW,y+h);
+      y+=h;
+    }
+    y+=10;
+    const wph=snags.map((s,i)=>({s,i})).filter(o=>o.s.photo);
+    if(wph.length){
+      need(14);doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(SUB);doc.text('SNAG PHOTOS',M,y+2);y+=8;
+      const tw=52,th=40,gap=8;let px=M;need(th+14);
+      for(const o of wph){
+        if(px+tw>M+CW){px=M;y+=th+14;need(th+14);}
+        try{doc.addImage(o.s.photo,'JPEG',px,y,tw,th);}catch(e){}
+        doc.setFont('helvetica','normal').setFontSize(7).setTextColor(INK);
+        doc.text('#'+(o.i+1),px,y+th+9);
+        px+=tw+gap;
+      }
+      y+=th+18;
+    }
+  } else {
+    sectionTitle('Snag List / Pending Items');
+    need(16);doc.setFont('helvetica','normal').setFontSize(9).setTextColor(OK);
+    doc.text('No snags or pending items recorded.',M,y+4);y+=20;
+  }
+
   /* --- checklist --- */
   sectionTitle('Handover Checklist');
   const rowH=18;
@@ -608,30 +684,8 @@ async function buildPDF(){
   doc.setFont('helvetica','bold').setFontSize(8.5).setTextColor(INK);
   doc.text('Passed: '+cy+'    Failed: '+cn+'    N/A: '+ca, M, y+2); y+=18;
 
-  /* --- snags --- */
-  if(typeof snags!=='undefined' && snags.length){
-    sectionTitle('Snag List ('+snags.length+')');
-    for(let i=0;i<snags.length;i++){
-      const sN=snags[i];
-      const desc=doc.splitTextToSize((sN.desc||'\u2014'),CW-160);
-      const blockH=Math.max(64, desc.length*11+30);
-      need(blockH);
-      doc.setDrawColor(LINE).setLineWidth(0.6).roundedRect(M,y,CW,blockH-8,3,3,'S');
-      doc.setFillColor(DARK).circle(M+16,y+16,8,'F');
-      doc.setFont('helvetica','bold').setFontSize(8).setTextColor('#ffffff');
-      doc.text(String(i+1),M+16,y+19,{align:'center'});
-      doc.setFont('helvetica','bold').setFontSize(9).setTextColor(INK);
-      doc.text((sN.pos?('Pos '+sN.pos+'  \u00b7  '):'')+(sN.loc||'No location'), M+32, y+14);
-      const pr=sN.priority||'Medium';
-      const pc=pr==='High'?BAD:pr==='Low'?OK:HIVIS;
-      doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(pc);
-      doc.text(pr.toUpperCase(), M+CW-14, y+14, {align:'right'});
-      doc.setFont('helvetica','normal').setFontSize(8.5).setTextColor(SUB);
-      doc.text(desc, M+32, y+28);
-      if(sN.photo){ try{ doc.addImage(sN.photo,'JPEG',M+CW-64,y+20,48,36); }catch(e){} }
-      y+=blockH;
-    }
-  }
+  /* --- snags now rendered as a table near the top --- */
+
 
   /* --- balance material --- */
   if(typeof balanceItems!=='undefined' && balanceItems.length){
@@ -731,15 +785,18 @@ async function uploadDrive(){
 }
 
 function doReset(){
+  if(!confirm('Reset the form and clear all entered data?\n(Any PDF/Drive/sheet already saved is not affected.)')) return;
   document.querySelectorAll('input:not([type=radio]),textarea').forEach(el=>el.value='');
   document.querySelectorAll('input[type=radio]').forEach(el=>el.checked=false);
-  CR=0;photos=[];snags=[];balanceItems=[];selfieComposed=null;selfieName='';selfieTs='';selfieOrd='';
+  CR=0;photos=[];snags=[];balanceItems=[];quotePositions=[];geoLoc=null;selfieComposed=null;selfieName='';selfieTs='';selfieOrd='';
   hi(0);document.getElementById('rlbl').textContent=T[lang].notRated;
   clrSig('sc');clrSig('st');
-  document.getElementById('fdate').textContent='—';
+  const _gn=document.getElementById('geoNote');if(_gn)_gn.textContent='';
+  document.getElementById('hdate').valueAsDate=new Date();setFn();
   document.getElementById('pfll').style.width='0%';
-  document.getElementById('phgr').innerHTML='';
-  document.getElementById('emP').style.display='none';
+  const _pg=document.getElementById('phgr');if(_pg)_pg.innerHTML='';
+  const _emp=document.getElementById('emP');if(_emp)_emp.style.display='none';
+  updatePosCount();renderPosPicker();
   renderSnags();renderBalance();renderSelfieBtn();toast('Form has been reset.');
 }
 
@@ -787,33 +844,106 @@ async function ensurePdfjs(){
 /* import quotation PDF into snag list */
 const _SNAG_ROW=/^\s*(\S[^=]*?)\s+((?:[A-Za-z]\d{0,2}\s*=\s*[\d.,]+\s*;\s*)+)(\d+)?\b/;const _SNAG_NOISE=/^(position\s+measure|quotation\s*-?\s*nr)/i;
 function _snagHeader(t){if(_SNAG_NOISE.test(t))return null;var m=t.match(_SNAG_ROW);if(!m)return null;var label=m[1].replace(/\s+/g," ").trim();if(!label||/^\d+([.,]\d+)?$/.test(label))return null;if(/^[A-Za-z]\d{0,2}$/.test(label))return null;return label;}
-document.getElementById('snagPdfInp').addEventListener('change',async ev=>{
+document.getElementById('snagPdfInp').addEventListener('change',ev=>{
   const f=ev.target.files[0];if(!f)return;ev.target.value='';
+  importQuotation(f,true);
+});
+
+/* ---- quotation positions picker (tap a position to log a snag against it) ---- */
+let quotePositions=[];
+function updatePosCount(){const el=document.getElementById('posCount');if(el)el.textContent=quotePositions.length;}
+function togglePicker(){const el=document.getElementById('posPicker');if(!el)return;const open=el.style.display==='flex';el.style.display=open?'none':'flex';if(!open)renderPosPicker();}
+function renderPosPicker(){
+  const el=document.getElementById('posPicker');if(!el)return;
+  if(!quotePositions.length){el.innerHTML='<div style="font-size:12px;color:var(--muted)">No positions loaded yet — import a quotation first.</div>';return;}
+  el.innerHTML=quotePositions.map((p,i)=>{const added=snags.some(s=>s.pos===p);return `<button type="button" class="poschip${added?' on':''}" onclick="togglePos(${i})">${added?'✓ ':''}${String(p).replace(/</g,'&lt;')}</button>`;}).join('');
+}
+function togglePos(i){
+  const p=quotePositions[i];const ex=snags.find(s=>s.pos===p);
+  if(ex){snags=snags.filter(s=>s!==ex);}else{snags.push({id:Date.now()+i,pos:p,desc:'',loc:'',priority:'Medium',photo:''});}
+  renderSnags();renderPosPicker();
+}
+async function importQuotation(file,fillCustomer){
   toast('📄 Reading quotation…');
   try{
     await ensurePdfjs();
-    const buf=await f.arrayBuffer();
+    const buf=await file.arrayBuffer();
     const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
-    let count=0;const _seen={};
+    const seen={};quotePositions.forEach(p=>{seen[p]=1;});let count=0;
     for(let pn=1;pn<=pdf.numPages;pn++){
       const page=await pdf.getPage(pn);const tc=await page.getTextContent();
-      const _spans=[];tc.items.forEach(it=>{if(!it.str)return;_spans.push({x:it.transform[4],y:it.transform[5],str:it.str});});
-      _spans.sort((a,b)=>b.y-a.y);
-      const _bk=[];for(const sp of _spans){let placed=false;for(const b of _bk){if(Math.abs(sp.y-b.y)<5){b.items.push(sp);placed=true;break;}}if(!placed)_bk.push({y:sp.y,items:[sp]});}
-      const lines=_bk.sort((a,b)=>b.y-a.y).map(b=>b.items.sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim());
-      for(const ln of lines){var _lb=_snagHeader(ln);if(_lb){if(_seen[_lb]){_seen[_lb]++;_lb=_lb+' ('+_seen[_lb]+')';}else _seen[_lb]=1;snags.push({id:Date.now()+count,pos:_lb,desc:'',loc:'',priority:'Medium',photo:''});count++;}}
-      /* also grab offer no + client */
-      if(pn===1){
+      const sp=[];tc.items.forEach(it=>{if(!it.str)return;sp.push({x:it.transform[4],y:it.transform[5],str:it.str});});
+      sp.sort((a,b)=>b.y-a.y);
+      const bk=[];for(const s of sp){let placed=false;for(const b of bk){if(Math.abs(s.y-b.y)<5){b.items.push(s);placed=true;break;}}if(!placed)bk.push({y:s.y,items:[s]});}
+      const lines=bk.sort((a,b)=>b.y-a.y).map(b=>b.items.sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim());
+      for(const ln of lines){let lb=_snagHeader(ln);if(lb){if(seen[lb]){seen[lb]++;lb=lb+' ('+seen[lb]+')';}else seen[lb]=1;if(!quotePositions.includes(lb)){quotePositions.push(lb);count++;}}}
+      if(pn===1&&fillCustomer){
+        const G=id=>document.getElementById(id);
+        const vp=page.getViewport({scale:1}), pageW=vp.width, pageH=vp.height;
         for(const ln of lines){
-          const nr=ln.match(/-?Nr\.?:?\s*([0-9]{3,7}\/[0-9]+)/i);if(nr&&!document.getElementById('ord').value)document.getElementById('ord').value=nr[1];
-          const cl=ln.match(/(Mr|Mrs|Ms|M\/s)\.?\s+\S.*/i);if(cl&&!document.getElementById('cname').value&&!/Sales|Manager|Sr\./i.test(ln))document.getElementById('cname').value=ln.trim();
+          // Order / Offer no. — handles "Offer Nr.", "Nr.", "Quotation No." etc. and spaces around the slash
+          if(!G('ord').value){
+            const nr=ln.match(/(?:offer\s*nr|offer\s*no|quotation\s*(?:nr|no)|order\s*no|angebot\s*nr|\bnr)\.?\s*[:.]?\s*([0-9]{3,7}\s*[\/\-]\s*[0-9]{1,4})/i);
+            if(nr) G('ord').value=nr[1].replace(/\s+/g,'');
+          }
+          if(!G('cph').value){const ph=ln.match(/(?:\+?91[- ]?)?[6-9]\d{9}/);if(ph)G('cph').value=ph[0];}
+          if(!G('ceml').value){const em=ln.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);if(em)G('ceml').value=em[0];}
+        }
+        // Customer name — try a salutation line first, else the top-most left-column line below the header
+        if(!G('cname').value){
+          for(const ln of lines){
+            const cl=ln.match(/\b(?:M\/s|Mr|Mrs|Ms|Smt|Shri|Sh)\.?\s+([A-Za-z].{1,60})/);
+            if(cl && !/sales|manager|sr\.|lingel|fensterbau|windows|doors/i.test(ln)){ const nm=cleanName(cl[0]); if(nm.length>=3){G('cname').value=nm;break;} }
+          }
+        }
+        if(!G('cname').value){
+          const bad=/offer|quotation|invoice|\bnr\b|\bno\b|date|gstin|g\.?s\.?t|\bpan\b|tel|phone|mob|email|e-?mail|address|subject|\bref\b|dear|attn|page|lingel|fensterbau|windows|doors|technolog|pvt|ltd|www|http|@/i;
+          const cands=bk.filter(b=>{
+            const minx=Math.min.apply(null,b.items.map(it=>it.x));
+            return minx < pageW*0.5 && b.y < pageH*0.9 && b.y > pageH*0.45;
+          }).sort((a,b)=>b.y-a.y);
+          for(const b of cands){
+            let txt=b.items.slice().sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim();
+            if(bad.test(txt)) continue;
+            const nm=cleanName(txt);
+            if(nm.length>=3 && /[A-Za-z]{3,}/.test(nm)){ G('cname').value=nm; break; }
+          }
         }
       }
     }
-    renderSnags();
-    toast(count?'✓ Imported '+count+' positions':'⚠ No positions found');
+    updatePosCount();renderPosPicker();prog();setFn();
+    const pk=document.getElementById('posPicker');if(pk&&quotePositions.length)pk.style.display='flex';
+    toast(quotePositions.length?('✓ '+quotePositions.length+' positions'+(fillCustomer?' · details filled':'')):'⚠ No positions found');
   }catch(e){console.error(e);toast('⚠ '+((e&&e.message)||"Couldn't read PDF"));}
-});
+}
+
+/* trims a captured name to just the person/company name (stops at the address) */
+function cleanName(s){
+  s=String(s||'').replace(/^(to|for|kind attn\.?|attn\.?|m\/s)[:,]?\s*/i,'').trim();
+  const out=[];
+  for(const tk of s.split(/\s+/)){ if(/\d/.test(tk)) break; out.push(tk); if(out.join(' ').length>50) break; }
+  return out.join(' ').replace(/[,\-–|]+$/,'').trim();
+}
+
+/* ---- Pin GPS location into the site address ---- */
+let geoLoc=null;
+function pinLocation(){
+  const note=document.getElementById('geoNote');
+  if(!navigator.geolocation){ if(note)note.textContent='⚠ Location not supported on this device'; toast('⚠ Location not supported'); return; }
+  if(note)note.textContent='📍 Getting location…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const la=pos.coords.latitude, lo=pos.coords.longitude;
+    geoLoc={lat:la,lng:lo};
+    const link='https://maps.google.com/?q='+la.toFixed(6)+','+lo.toFixed(6);
+    if(note)note.innerHTML='📍 Pinned: <a href="'+link+'" target="_blank" style="color:var(--hivis)">'+la.toFixed(5)+', '+lo.toFixed(5)+'</a> · tap to open in Maps';
+    const a=document.getElementById('caddr');
+    if(a && a.value.indexOf('maps.google')<0){ a.value=(a.value.trim()?a.value.trim()+'  ·  ':'')+'📍 '+link; }
+    toast('✓ Location pinned');
+  }, err=>{
+    if(note)note.textContent='⚠ '+((err&&err.message)||'Could not get location — allow location access');
+    toast('⚠ Location failed');
+  }, {enableHighAccuracy:true, timeout:10000, maximumAge:0});
+}
 
 /* ---- Balance Material at Site ---- */
 let balanceItems=[];
