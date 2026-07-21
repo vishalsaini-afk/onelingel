@@ -319,12 +319,13 @@ function compress(file){
 /* ---- storage: IndexedDB (offline, on-device, no server) ---- */
 const DBP=new Promise((res,rej)=>{
   let req;
-  try{ req=indexedDB.open("lingel_sitelog",2); }
+  try{ req=indexedDB.open("lingel_sitelog",3); }
   catch(e){ rej(e); return; }
   req.onupgradeneeded=e=>{const db=e.target.result;
     if(!db.objectStoreNames.contains("kv"))db.createObjectStore("kv");
     if(!db.objectStoreNames.contains("positions"))db.createObjectStore("positions",{keyPath:"id"});
-    if(!db.objectStoreNames.contains("photos"))db.createObjectStore("photos");db.createObjectStore("videos");
+    if(!db.objectStoreNames.contains("photos"))db.createObjectStore("photos");
+    if(!db.objectStoreNames.contains("videos"))db.createObjectStore("videos");
     if(!db.objectStoreNames.contains("audios"))db.createObjectStore("audios");};
   req.onsuccess=()=>res(req.result);
   req.onerror=()=>rej(req.error);
