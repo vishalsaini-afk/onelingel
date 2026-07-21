@@ -662,7 +662,11 @@ function reportPosCard(o,i){
   if(o.sketchId&&imgCache[o.sketchId])media.push(`<div class="pp-m"><div class="mh">Site sketch</div><img src="${imgCache[o.sketchId]}"></div>`);
   const ph=(o.photos||[]).filter(p=>imgCache[p]);
   ph.slice(0,8).forEach((p,k)=>media.push(`<div class="pp-m"><div class="mh">Site photo ${k+1}</div><img src="${imgCache[p]}"></div>`));
-  if(o.videoId)media.push(`<div class="pp-m"><div class="pp-novid">📹 <b>Video recorded</b><br><span style="font-size:10px;color:#aaa">Uploaded to Drive with this report</span></div></div>`);
+  if(o.videoId){
+    if(o.videoUrl)media.push(`<div class="pp-m"><div class="pp-novid" style="background:#0b2f22;color:#fff">▶ <b>Site video — tap this page to open</b><br><span style="font-size:9px;color:#8fd3b5;word-break:break-all">${esc(o.videoUrl)}</span></div></div>`);
+    else if(o.videoSkipped)media.push(`<div class="pp-m"><div class="pp-novid">📹 <b>Video recorded</b><br><span style="font-size:10px;color:#aaa">Too large to upload — kept on the phone</span></div></div>`);
+    else media.push(`<div class="pp-m"><div class="pp-novid">📹 <b>Video recorded</b><br><span style="font-size:10px;color:#aaa">Uploaded to Drive with this report</span></div></div>`);
+  }
   // if a single media item, let it span full width & go extra large
   const single=media.length===1;
   const mediaHTML=media.length?`<div class="pp-media${single?' single':''}">${media.map(m=>single?m.replace('class="pp-m"','class="pp-m wide"'):m).join("")}</div>`
@@ -704,11 +708,17 @@ async function makePDF(){
     const r=await renderPageImg(pdf,pages[p],scale);
     if(p>0)pdf.addPage();
     pdf.addImage(r.data,"JPEG",r.x,r.y,r.imgW,r.imgH,undefined,"FAST");
+    // position pages are pages[1..openings.length] in openings order; make the page open the video
+    if(p>=1 && p<=openings.length){ const ov=openings[p-1]; if(ov&&ov.videoUrl){ try{ pdf.link(r.x,r.y,r.imgW,r.imgH,{url:ov.videoUrl}); }catch(_){} } }
   }
   return pdf;}
-$("#pdfBtn").onclick=async()=>{if(!openings.length){toast("Add at least one opening first");return;}toast("📄 Building sheet…");
+$("#pdfBtn").onclick=async()=>{if(!openings.length){toast("Add at least one opening first");return;}
+  // Videos first (when online) so their Drive links can be printed against each position in the PDF below.
+  const _api=luApi(); const _hasVid=openings.some(o=>o.videoId);
+  if(_api && _hasVid && navigator.onLine){ try{ await uploadVideosAS(_api, ($("#m_no").value||"").trim()||"Misc"); }catch(e){ console.error("pre-upload videos failed",e); } }
+  toast("📄 Building sheet…");
   try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ Sheet PDF saved");}catch(e){console.error(e);toast("⚠ PDF needs internet to build");return;}
-  // one tap = download + log Sheet + upload PDF (and videos) to Drive
+  // one tap = download + log Sheet + upload PDF (videos already uploaded above; saveToDrive skips them)
   try{ await saveToDrive(); }catch(e){ logMeasurementToSheet(); }};
 /* ---- Google Drive (shared folder) ---- */
 function ensureGIS(){if(window.google&&google.accounts&&google.accounts.oauth2)return Promise.resolve();return ensureScript("https://accounts.google.com/gsi/client");}
@@ -741,23 +751,26 @@ const VIDEO_MAX_BYTES = 45*1024*1024;
 async function uploadVideosAS(api, folder){
   const vids=openings.filter(o=>o.videoId);
   if(!vids.length) return;
+  const pending=vids.filter(o=>!o.videoUrl);          // idempotent: skip clips already uploaded this session
+  if(!pending.length) return;
   let done=0, skipped=0;
-  luShow("Uploading videos","0 / "+vids.length);
-  for(const o of vids){
+  luShow("Uploading videos","0 / "+pending.length);
+  for(const o of pending){
     try{
       const blob=await new Promise((res,rej)=>{ const tx=db.transaction("videos","readonly");
         const rq=tx.objectStore("videos").get(o.videoId); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
       if(blob){
-        if(blob.size > VIDEO_MAX_BYTES){ skipped++; }
+        if(blob.size > VIDEO_MAX_BYTES){ skipped++; o.videoSkipped=true; }
         else{
           const b64v = await blobToB64(blob);
           const vn=(folder).replace(/[^\w-]+/g,"_")+"_"+((o.ref||("op"+(done+1))).replace(/[^\w-]+/g,"_"))+"_video.mp4";
-          await lingelUpload({ api, folder, name:vn, mime:(blob.type||"video/mp4"), base64:b64v });
+          const up = await lingelUpload({ api, folder, name:vn, mime:(blob.type||"video/mp4"), base64:b64v });
+          if(up && up.url) o.videoUrl = up.url;        // capture Drive link so the report can show it against this position
         }
       }
     }catch(e){ console.error("video upload failed",e); skipped++; }
-    done++; luSet(Math.round(done/vids.length*100));
-    const sub=document.getElementById("luSub"); if(sub) sub.textContent=done+" / "+vids.length;
+    done++; luSet(Math.round(done/pending.length*100));
+    const sub=document.getElementById("luSub"); if(sub) sub.textContent=done+" / "+pending.length;
   }
   if(skipped) luDone((done-skipped)+" uploaded · "+skipped+" too large (skipped)");
   else luDone(done+" video"+(done>1?"s":"")+" uploaded");
