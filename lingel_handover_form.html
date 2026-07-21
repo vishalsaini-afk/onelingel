@@ -795,14 +795,16 @@ async function uploadDrive(){
   const api = luApi(); if(!api) return;
   const offer = (document.getElementById('ord').value||'').trim();
   luShow('Uploading to Drive','Building report…');
+  let b64;
+  try{ const pdf = await buildPDF(); b64 = pdf.output('datauristring').split(',')[1]; }
+  catch(e){ luFail("couldn't build PDF"); return; }
+  const name = 'Handover_' + (offer||'form').replace(/[^\w-]+/g,'-') + '_' + luStamp() + '.pdf';
+  const pdfJob = { id:'pdf_'+((offer||'form').replace(/[^\w-]+/g,'_')), kind:'pdf', folder: offer||'Misc', name, mime:'application/pdf', base64: b64 };
   try{
-    const pdf  = await buildPDF();
-    const b64  = pdf.output('datauristring').split(',')[1];
-    const name = 'Handover_' + (offer||'form').replace(/[^\w-]+/g,'-') + '_' + luStamp() + '.pdf';
-    const d = await lingelUpload({ api, folder: offer||'Misc', name, base64: b64 });
+    const d = await queuedUpload(api, pdfJob, b64);
     window._lastDriveUrl = d.url;
-    luDone('Saved to '+d.folder);
-  }catch(e){ console.error(e); luFail(e.message||'check connection'); }
+    luDone('Saved to '+(d.folder||offer||'Misc'));
+  }catch(e){ console.error('pdf upload deferred',e); luFail('kept on phone · uploads when back online'); }
 }
 
 function doReset(){
@@ -1126,6 +1128,45 @@ async function logHandoverToSheet(){
     }
   }
 }
+
+/* ---- persistent Drive outbox (Handover): if the upload fails or the phone is
+   offline, the report is saved on the device and auto-sent when the connection
+   returns — survives closing the app. Handover has no other IndexedDB, so this
+   opens a tiny DB used only for the outbox. ---- */
+const HO_DBP = new Promise((res,rej)=>{ let req; try{ req=indexedDB.open("lingel_handover",1); }catch(e){ rej(e); return; }
+  req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains("outbox"))db.createObjectStore("outbox"); };
+  req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); });
+function hoIdb(mode,fn){ return HO_DBP.then(db=>new Promise((res,rej)=>{ const tx=db.transaction("outbox",mode); const os=tx.objectStore("outbox"); const rq=fn(os);
+  if(rq){rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);} else {tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);} })); }
+const obPut=(v,k)=>hoIdb("readwrite",os=>os.put(v,k));
+const obDel=(k)=>hoIdb("readwrite",os=>os.delete(k));
+const obAll=()=>hoIdb("readonly",os=>os.getAll());
+async function queuedUpload(api, job, base64){
+  try{ await obPut(Object.assign({}, job), job.id); }catch(e){}   // persist intent BEFORE trying
+  const d = await lingelUpload({ api, folder: job.folder, name: job.name, mime: job.mime, base64 });
+  try{ await obDel(job.id); }catch(e){}                            // sent → clear
+  return d;
+}
+let _flushingOutbox=false;
+async function flushOutbox(){
+  if(_flushingOutbox) return; _flushingOutbox=true;
+  try{
+    const api=luApi(); if(!api) return;
+    let jobs=[]; try{ jobs=(await obAll())||[]; }catch(e){ return; }
+    if(!jobs.length) return;
+    let sent=0;
+    for(const job of jobs){
+      try{
+        if(!job.base64){ await obDel(job.id); continue; }
+        await lingelUpload({ api, folder:job.folder, name:job.name, mime:job.mime||"application/pdf", base64:job.base64 });
+        await obDel(job.id); sent++;
+      }catch(e){ /* still offline / server unreachable — keep for the next reconnect */ }
+    }
+    if(sent) toast("\u2713 "+sent+" pending upload"+(sent>1?"s":"")+" synced to Drive");
+  } finally { _flushingOutbox=false; }
+}
+window.addEventListener("online", flushOutbox);
+flushOutbox();   // catch anything left from a previous session
 
 /* the report buttons use inline onclick, so wrap the functions themselves */
 ["downloadPDF","shareReport","uploadDrive"].forEach(fn => {
