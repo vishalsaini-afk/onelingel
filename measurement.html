@@ -301,11 +301,12 @@ function compress(file){return new Promise((res,rej)=>{const r=new FileReader();
   img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
 
 /* IndexedDB */
-const DBP=new Promise((res,rej)=>{let req;try{req=indexedDB.open("lingel_measure",1);}catch(e){rej(e);return;}
+const DBP=new Promise((res,rej)=>{let req;try{req=indexedDB.open("lingel_measure",2);}catch(e){rej(e);return;}
   req.onupgradeneeded=e=>{const db=e.target.result;
     if(!db.objectStoreNames.contains("kv"))db.createObjectStore("kv");
     if(!db.objectStoreNames.contains("openings"))db.createObjectStore("openings",{keyPath:"id"});
-    if(!db.objectStoreNames.contains("photos"))db.createObjectStore("photos");db.createObjectStore("videos");};
+    if(!db.objectStoreNames.contains("photos"))db.createObjectStore("photos");
+    if(!db.objectStoreNames.contains("videos"))db.createObjectStore("videos");};
   req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});
 function idbReq(store,mode,fn){return DBP.then(db=>new Promise((res,rej)=>{const tx=db.transaction(store,mode);const os=tx.objectStore(store);const rq=fn(os);
   if(rq){rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);}else{tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);}}));}
