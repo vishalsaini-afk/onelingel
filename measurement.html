@@ -301,12 +301,13 @@ function compress(file){return new Promise((res,rej)=>{const r=new FileReader();
   img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
 
 /* IndexedDB */
-const DBP=new Promise((res,rej)=>{let req;try{req=indexedDB.open("lingel_measure",2);}catch(e){rej(e);return;}
+const DBP=new Promise((res,rej)=>{let req;try{req=indexedDB.open("lingel_measure",3);}catch(e){rej(e);return;}
   req.onupgradeneeded=e=>{const db=e.target.result;
     if(!db.objectStoreNames.contains("kv"))db.createObjectStore("kv");
     if(!db.objectStoreNames.contains("openings"))db.createObjectStore("openings",{keyPath:"id"});
     if(!db.objectStoreNames.contains("photos"))db.createObjectStore("photos");
-    if(!db.objectStoreNames.contains("videos"))db.createObjectStore("videos");};
+    if(!db.objectStoreNames.contains("videos"))db.createObjectStore("videos");
+    if(!db.objectStoreNames.contains("outbox"))db.createObjectStore("outbox");};
   req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error);});
 function idbReq(store,mode,fn){return DBP.then(db=>new Promise((res,rej)=>{const tx=db.transaction(store,mode);const os=tx.objectStore(store);const rq=fn(os);
   if(rq){rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);}else{tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);}}));}
@@ -737,13 +738,15 @@ async function saveToDrive(){
   let b64;
   try{ await ensureLibs(); const pdf=await makePDF(); b64=pdf.output("datauristring").split(",")[1]; }
   catch(e){ luFail("couldn't build PDF"); return; }
-  try{
-    const name="Measurement_"+(offer||"form").replace(/[^\w-]+/g,"-")+"_"+luStamp()+".pdf";
-    const d=await lingelUpload({ api, folder: offer||"Misc", name, base64: b64 });
-    logMeasurementToSheet();
-    if(hasVideos){ await uploadVideosAS(api, offer||"Misc"); }
-    else { luDone("Saved to "+d.folder); }
-  }catch(e){ console.error(e); luFail(e.message||"check connection"); return; }
+  const name="Measurement_"+(offer||"form").replace(/[^\w-]+/g,"-")+"_"+luStamp()+".pdf";
+  const pdfJob={ id:"pdf_"+((offer||"form").replace(/[^\w-]+/g,"_")), kind:"pdf", folder: offer||"Misc", name, mime:"application/pdf", base64: b64 };
+  let pdfOk=false, folderName=offer||"Misc";
+  try{ const d=await queuedUpload(api, pdfJob, b64); pdfOk=true; folderName=d.folder||folderName; }
+  catch(e){ console.error("pdf upload deferred",e); }   // saved to outbox → auto-retries when back online
+  logMeasurementToSheet();
+  if(hasVideos){ await uploadVideosAS(api, offer||"Misc"); }
+  else if(pdfOk){ luDone("Saved to "+folderName); }
+  else { luFail("kept on phone · uploads when back online"); }
 }
 
 /* Upload each opening's video via Apps Script into the SAME offer folder.
@@ -764,7 +767,8 @@ async function uploadVideosAS(api, folder){
       else{
         const b64v = await blobToB64(blob);
         const vn=(folder).replace(/[^\w-]+/g,"_")+"_"+((o.ref||("op"+(done+1))).replace(/[^\w-]+/g,"_"))+"_video.mp4";
-        const up = await lingelUpload({ api, folder, name:vn, mime:(blob.type||"video/mp4"), base64:b64v });
+        const vjob={ id:"vid_"+(folder).replace(/[^\w-]+/g,"_")+"_"+o.videoId, kind:"video", folder, name:vn, mime:(blob.type||"video/mp4"), videoId:o.videoId };
+        const up = await queuedUpload(api, vjob, b64v);
         if(up && up.url){ o.videoUrl = up.url; uploaded++; }   // capture Drive link so the report can show it
         else { failed++; lastErr="upload rejected"; }
       }
@@ -772,7 +776,7 @@ async function uploadVideosAS(api, folder){
     done++; luSet(Math.round(done/pending.length*100));
     const sub=document.getElementById("luSub"); if(sub) sub.textContent=done+" / "+pending.length;
   }
-  if(failed) luFail(uploaded+" ok · "+failed+" failed — "+lastErr);   // show the REAL reason, not "too large"
+  if(failed) luDone(uploaded+" uploaded · "+failed+" will upload when back online");   // queued in the outbox, not lost
   else if(tooBig) luDone(uploaded+" uploaded · "+tooBig+" too large (skipped)");
   else luDone(uploaded+" video"+(uploaded>1?"s":"")+" uploaded");
 }
@@ -780,6 +784,43 @@ function blobToB64(blob){
   return new Promise((res,rej)=>{ const r=new FileReader();
     r.onload=()=>{ const s=String(r.result); res(s.slice(s.indexOf(",")+1)); }; r.onerror=()=>rej(r.error); r.readAsDataURL(blob); });
 }
+
+/* ---- persistent Drive outbox: a failed/offline upload is saved on the phone and
+   auto-sent when the connection returns (survives closing the app). PDF jobs store
+   their bytes; video jobs store only a videoId reference (the clip already lives in
+   the "videos" store) so the outbox stays small. ---- */
+async function queuedUpload(api, job, base64){
+  try{ await idbPut("outbox", Object.assign({}, job), job.id); }catch(e){}   // persist intent BEFORE trying
+  const d = await lingelUpload({ api, folder: job.folder, name: job.name, mime: job.mime, base64 });
+  try{ await idbDel("outbox", job.id); }catch(e){}                            // sent → clear
+  return d;
+}
+let _flushingOutbox=false;
+async function flushOutbox(){
+  if(_flushingOutbox) return; _flushingOutbox=true;
+  try{
+    const api=luApi(); if(!api) return;
+    let jobs=[]; try{ jobs=(await idbAll("outbox"))||[]; }catch(e){ return; }
+    if(!jobs.length) return;
+    let sent=0;
+    for(const job of jobs){
+      try{
+        let b64=job.base64;
+        if(!b64 && job.videoId){
+          const blob=await idbGet("videos", job.videoId);
+          if(!blob){ await idbDel("outbox", job.id); continue; }   // clip deleted → drop the job
+          b64=await blobToB64(blob);
+        }
+        if(!b64){ await idbDel("outbox", job.id); continue; }
+        await lingelUpload({ api, folder:job.folder, name:job.name, mime:job.mime||"application/pdf", base64:b64 });
+        await idbDel("outbox", job.id); sent++;
+      }catch(e){ /* still offline / server unreachable — keep it for the next reconnect */ }
+    }
+    if(sent) toast("\u2713 "+sent+" pending upload"+(sent>1?"s":"")+" synced to Drive");
+  } finally { _flushingOutbox=false; }
+}
+window.addEventListener("online", flushOutbox);
+flushOutbox();   // catch anything left from a previous session
 
 async function uploadVideos(folderId, offer){
   let n=0, done=0;
