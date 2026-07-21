@@ -705,12 +705,13 @@ function reportData(){
     <div class="sumwrap">
       <div class="sumhead issues">⚠ Issues &amp; ONR — ${issueList.length} position${issueList.length>1?"s":""}</div>
       <table class="sumtbl">
-        <thead><tr><th style="width:42px">No.</th><th>Description</th><th style="width:104px">Status</th><th style="width:96px">Responsible</th><th>Observation</th></tr></thead>
+        <thead><tr><th style="width:42px">No.</th><th>Description</th><th style="width:96px">Status</th><th style="width:84px">Responsible</th><th>Observation</th><th style="width:58px">Video</th></tr></thead>
         <tbody>${issueList.map(p=>{
           const stl=(STATUS[p.status]||{label:"—"}).label;
           const party=(p.status==="issue"&&p.resp&&RESP[p.resp])?RESP[p.resp].label:"—";
           const obs=p.obs?esc(p.obs).slice(0,150):"—";
-          return `<tr style="background:${RED.bg}"><td class="c"><b>${posNo.get(p.id)}</b></td><td>${esc(p.ref)||"(no description)"}</td><td>${stl}</td><td>${party}</td><td>${obs}</td></tr>`;
+          const vid=p.videoUrl?`<b style="color:#0b7a4b">▶ Video</b>`:(p.videoId?"📹":"—");
+          return `<tr style="background:${RED.bg}"><td class="c"><b>${posNo.get(p.id)}</b></td><td>${esc(p.ref)||"(no description)"}</td><td>${stl}</td><td>${party}</td><td>${obs}</td><td class="c">${vid}</td></tr>`;
         }).join("")}</tbody>
       </table>
     </div>`:"";
@@ -754,11 +755,15 @@ function reportData(){
       </div>
       ${p.obs?`<div class="robs">${esc(p.obs)}</div>`:""}
       ${p.spec?`<div style="margin:8px 0;padding:8px 10px;background:#f8f7f3;border-radius:6px;border:1px solid #e8e5dc"><span style="font-size:9.5px;color:#999;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:4px">Quotation spec</span>${specTableHTML(p.spec)}</div>`:""}
-      ${p.videoId?`<div style="background:#111;border-radius:6px;padding:10px 14px;text-align:center;color:#fff;font-size:12px;margin-top:8px">📹 <b>Video recorded</b></div>`:""}
+      ${p.videoId?(p.videoUrl
+        ?`<div style="background:#0b2f22;border-radius:6px;padding:10px 14px;text-align:center;color:#fff;font-size:12px;margin-top:8px">▶ <b>Site video — tap this page to open</b><br><span style="font-size:9px;color:#8fd3b5;word-break:break-all">${esc(p.videoUrl)}</span></div>`
+        :(p.videoSkipped
+          ?`<div style="background:#111;border-radius:6px;padding:10px 14px;text-align:center;color:#fff;font-size:12px;margin-top:8px">📹 <b>Video recorded</b> · too large to upload — kept on the phone</div>`
+          :`<div style="background:#111;border-radius:6px;padding:10px 14px;text-align:center;color:#fff;font-size:12px;margin-top:8px">📹 <b>Video recorded</b></div>`)):""}
       ${photos?`<div class="rphotos ${pcls}">${photos}</div>`:""}
     </div>`;
   });
-  return {title,metaRows,issuesTable,statusSummary,cards:cards.join(""),cardList:cards};
+  return {title,metaRows,issuesTable,statusSummary,cards:cards.join(""),cardList:cards,ordered};
 }
 const REPORT_STYLE=`
   *{box-sizing:border-box}
@@ -1004,11 +1009,14 @@ async function makePDF(){
   // Scale 2 already exceeds the source photos (1100px), so scale 3 only wasted memory.
   // Big reports step down further to stay inside phone memory.
   const scale = pages.length>60 ? 1.6 : (pages.length>25 ? 1.8 : 2);
+  // pages[0] is the cover; when there are cards, pages[1..] map 1:1 to d.ordered (same order)
+  const cardOffset = d.cardList.length ? 1 : 0;
   for(let p=0;p<pages.length;p++){
     if(pages.length>6 && p%5===0) toast(`📄 Building sheet… page ${p+1} of ${pages.length}`);
     const r=await renderPageImg(pdf,pages[p],scale);
     if(p>0)pdf.addPage();
     pdf.addImage(r.data,"JPEG",r.x,0,r.imgW,r.imgH,undefined,"FAST");
+    if(cardOffset && p>=1){ const pos=d.ordered[p-1]; if(pos&&pos.videoUrl){ try{ pdf.link(r.x,0,r.imgW,r.imgH,{url:pos.videoUrl}); }catch(_){} } }
     await new Promise(res=>setTimeout(res,0)); // yield: keeps the tab alive and lets GC run
   }
   return pdf;
@@ -1021,11 +1029,14 @@ function fallbackReport(){
 }
 $("#pdfBtn").onclick=async()=>{
   if(!positions.length){toast("Add at least one position first");return;}
+  // Videos first (when online) so their Drive links land in the report + issue table below.
+  const _api=luApi(); const _vids=positions.filter(p=>p.videoId);
+  if(_api && _vids.length && navigator.onLine){ try{ await uploadVideosAS(_api, ($("#o_no").value||"").trim()||"Misc", _vids); }catch(e){ console.error("pre-upload videos failed",e); } }
   toast("📄 Building PDF…");
   let ok=false;
   try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ PDF saved");ok=true;}
   catch(e){console.error(e);toast("⚠ PDF needs internet — opening printable report");fallbackReport();return;}
-  // one tap = download + log Sheet + upload PDF (and videos) to Drive
+  // one tap = download + log Sheet + upload PDF (videos already uploaded above; saveToDrive skips them)
   if(ok){ try{ await saveToDrive(); }catch(e){ logIssuesToSheet(); } }
 };
 $("#shareBtn").onclick=async()=>{
@@ -1070,23 +1081,26 @@ async function saveToDrive(){
    Apps Script caps a request near ~50MB, so oversize clips are skipped with a note. */
 const VIDEO_MAX_BYTES = 45*1024*1024;
 async function uploadVideosAS(api, folder, vids){
+  const pending=(vids||[]).filter(p=>!p.videoUrl);        // idempotent: skip clips already uploaded this session
+  if(!pending.length) return;
   let done=0, skipped=0;
-  luShow("Uploading videos","0 / "+vids.length);
-  for(const p of vids){
+  luShow("Uploading videos","0 / "+pending.length);
+  for(const p of pending){
     try{
       const blob = await new Promise((res,rej)=>{ const tx=db.transaction("videos","readonly");
         const rq=tx.objectStore("videos").get(p.videoId); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
       if(blob){
-        if(blob.size > VIDEO_MAX_BYTES){ skipped++; }
+        if(blob.size > VIDEO_MAX_BYTES){ skipped++; p.videoSkipped=true; }
         else{
           const b64 = await blobToB64(blob);
           const vn = (folder).replace(/[^\w-]+/g,"_")+"_"+((p.ref||("pos"+(done+1))).replace(/[^\w-]+/g,"_"))+"_video.mp4";
-          await lingelUpload({ api, folder, name:vn, mime:(blob.type||"video/mp4"), base64:b64 });
+          const up = await lingelUpload({ api, folder, name:vn, mime:(blob.type||"video/mp4"), base64:b64 });
+          if(up && up.url) p.videoUrl = up.url;           // capture Drive link for the report + issue table
         }
       }
     }catch(e){ console.error("video upload failed",e); skipped++; }
-    done++; luSet(Math.round(done/vids.length*100));
-    const sub=document.getElementById("luSub"); if(sub) sub.textContent=done+" / "+vids.length;
+    done++; luSet(Math.round(done/pending.length*100));
+    const sub=document.getElementById("luSub"); if(sub) sub.textContent=done+" / "+pending.length;
   }
   if(skipped) luDone((done-skipped)+" uploaded · "+skipped+" too large (skipped)");
   else luDone(done+" video"+(done>1?"s":"")+" uploaded");
@@ -1256,7 +1270,8 @@ function issueRows(){
       status: (STATUS[p.status]||{}).label || p.status,
       resp:   (p.status==="issue" && p.resp && RESP[p.resp]) ? RESP[p.resp].label : "",
       obs:    (p.obs||"").trim(),
-      photos: (p.photos||[]).length
+      photos: (p.photos||[]).length,
+      video:  p.videoUrl || ""
     }, meta));
 }
 
