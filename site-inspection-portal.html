@@ -298,6 +298,7 @@ const LOGO="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTE
 let positions=[];           // [{id, ref, status, obs, photos:[photoId]}]
 const imgCache={};          // photoId -> dataURL (kept in memory for rendering)
 const audioCache={};        // audioId -> dataURL
+const vidCache={};          // videoId -> object URL (kept in memory for the thumbnail)
 
 let tT; function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2200);}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -372,6 +373,8 @@ async function loadAll(){
     try{const v=await idbGet("photos",ph);if(v)imgCache[ph]=v;}catch(e){}}}
   for(const p of positions){for(const a of (p.audios||[])){
     try{const v=await idbGet("audios",a);if(v)audioCache[a]=v;}catch(e){}}}
+  for(const p of positions){if(p.videoId){
+    try{const v=await idbGet("videos",p.videoId);if(v)vidCache[p.videoId]=URL.createObjectURL(v);}catch(e){}}}
   if(!$("#o_date").value)$("#o_date").value=new Date().toISOString().slice(0,10);
   render();
 }
