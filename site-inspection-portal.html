@@ -232,7 +232,6 @@
     <button class="btn btn-ghost" id="backupBtn">⬇ Backup</button>
     <label class="btn btn-ghost" for="restoreFile" style="cursor:pointer">⬆ Restore<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
     <button class="btn btn-ghost" id="clearAll">↺ Reset</button>
-    <button class="btn btn-ghost" id="driveBtn">☁ Drive</button>
     <button class="btn btn-ghost" id="shareBtn">↗ Share</button>
     <button class="btn btn-primary" id="pdfBtn">⤓ PDF</button>
   </div>
@@ -1023,8 +1022,11 @@ function fallbackReport(){
 $("#pdfBtn").onclick=async()=>{
   if(!positions.length){toast("Add at least one position first");return;}
   toast("📄 Building PDF…");
-  try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ PDF saved");logIssuesToSheet();}
-  catch(e){console.error(e);toast("⚠ PDF needs internet — opening printable report");fallbackReport();}
+  let ok=false;
+  try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ PDF saved");ok=true;}
+  catch(e){console.error(e);toast("⚠ PDF needs internet — opening printable report");fallbackReport();return;}
+  // one tap = download + log Sheet + upload PDF (and videos) to Drive
+  if(ok){ try{ await saveToDrive(); }catch(e){ logIssuesToSheet(); } }
 };
 $("#shareBtn").onclick=async()=>{
   if(!positions.length){toast("Add at least one position first");return;}
@@ -1050,6 +1052,7 @@ $("#shareBtn").onclick=async()=>{
 async function saveToDrive(){
   const offer = ($("#o_no").value||"").trim();
   const api = luApi(); if(!api) return;
+  const vids = positions.filter(p=>p.videoId);
   luShow("Uploading to Drive","Building PDF…");
   let b64;
   try{ await ensureLibs(); const pdf = await makePDF(); b64 = pdf.output("datauristring").split(",")[1]; }
@@ -1057,16 +1060,41 @@ async function saveToDrive(){
   try{
     const name = "SiteInspection_" + (offer||"form").replace(/[^\w-]+/g,"-") + "_" + luStamp() + ".pdf";
     const d = await lingelUpload({ api, folder: offer||"Misc", name, base64: b64 });
-    luDone("Saved to "+d.folder);
     logIssuesToSheet();
+    if(vids.length){ await uploadVideosAS(api, offer||"Misc", vids); }
+    else { luDone("Saved to "+d.folder); }
   }catch(e){ console.error(e); luFail(e.message||"check connection"); }
 }
-$("#driveBtn").onclick=async()=>{
-  if(!positions.length){toast("Add at least one position first");return;}
-  if(!($("#o_no").value||"").trim()){toast("Enter the Order / Offer No. first");return;}
-  saveToDrive();
-};
 
+/* Upload each position's video via Apps Script into the SAME offer folder.
+   Apps Script caps a request near ~50MB, so oversize clips are skipped with a note. */
+const VIDEO_MAX_BYTES = 45*1024*1024;
+async function uploadVideosAS(api, folder, vids){
+  let done=0, skipped=0;
+  luShow("Uploading videos","0 / "+vids.length);
+  for(const p of vids){
+    try{
+      const blob = await new Promise((res,rej)=>{ const tx=db.transaction("videos","readonly");
+        const rq=tx.objectStore("videos").get(p.videoId); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
+      if(blob){
+        if(blob.size > VIDEO_MAX_BYTES){ skipped++; }
+        else{
+          const b64 = await blobToB64(blob);
+          const vn = (folder).replace(/[^\w-]+/g,"_")+"_"+((p.ref||("pos"+(done+1))).replace(/[^\w-]+/g,"_"))+"_video.mp4";
+          await lingelUpload({ api, folder, name:vn, mime:(blob.type||"video/mp4"), base64:b64 });
+        }
+      }
+    }catch(e){ console.error("video upload failed",e); skipped++; }
+    done++; luSet(Math.round(done/vids.length*100));
+    const sub=document.getElementById("luSub"); if(sub) sub.textContent=done+" / "+vids.length;
+  }
+  if(skipped) luDone((done-skipped)+" uploaded · "+skipped+" too large (skipped)");
+  else luDone(done+" video"+(done>1?"s":"")+" uploaded");
+}
+function blobToB64(blob){
+  return new Promise((res,rej)=>{ const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); });
+}
 /* ---- reset ---- */
 $("#clearAll").onclick=async()=>{
   if(!confirm("Clear the whole order, all positions and photos? This cannot be undone."))return;
