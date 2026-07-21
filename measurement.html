@@ -128,6 +128,7 @@
   .langtog .lt{border:none;background:#fff;color:#6b7280;font-family:'Archivo Narrow';font-weight:700;font-size:11px;padding:7px 10px;cursor:pointer}
   .langtog .lt+.lt{border-left:1px solid var(--paper-line)}
   .langtog .lt.on{background:#222732;color:#fff}
+  #translateAll.on{background:#222732;color:#fff;border-color:#222732}
   .annot-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center}
   .annot-overlay canvas{max-width:96vw;max-height:78vh;border-radius:8px;touch-action:none;background:#111}
   .annot-bar{display:flex;gap:10px;margin-top:12px}
@@ -203,13 +204,12 @@
     <button data-u="mm" class="on">mm</button><button data-u="in">inch</button>
   </div>
   <span class="langtog" id="topLang"><button type="button" class="lt on" data-l="en-IN">EN</button><button type="button" class="lt" data-l="hi-IN">हिं</button></span>
-  <button class="btn btn-ghost" id="translateAll">🌐 Hindi→EN</button>
+  <button class="btn btn-ghost" id="translateAll" title="Speak Hindi, get English text live">🌐 →EN</button>
   <button class="btn btn-ghost" id="importBtn">📄 Import quotation(s)</button>
   <input type="file" id="importFile" accept="application/pdf,.pdf" multiple hidden>
   <button class="btn btn-ghost" id="backupBtn">⬇ Backup</button>
   <label class="btn btn-ghost" for="restoreFile" style="cursor:pointer">⬆ Restore<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
   <button class="btn btn-ghost" id="clearAll">↺ Reset</button>
-  <button class="btn btn-ghost" id="driveBtn">☁ Drive</button>
   <button class="btn btn-ghost" id="shareBtn">↗ Share</button>
   <button class="btn btn-primary" id="pdfBtn">⤓ Sheet PDF</button>
 </div></div>
@@ -514,8 +514,7 @@ $("#addOp").onclick=async()=>{const o={id:uid(),ref:"",loc:"",type:"Casement",w:
 if($("#posSearch"))$("#posSearch").addEventListener("input",applyPosSearch);
 if($("#posSearchClear"))$("#posSearchClear").onclick=()=>{$("#posSearch").value="";applyPosSearch();$("#posSearch").focus();};
 document.querySelectorAll("#unitTog button").forEach(b=>{b.onclick=()=>{unit=b.dataset.u;saveMeta();syncUnit();};});
-document.querySelectorAll("#topLang .lt").forEach(b=>{b.onclick=()=>{recogLang=b.dataset.l;if(recogActive){try{recog&&recog.stop();}catch(e){}}reflectDict();};});
-if($("#translateAll"))$("#translateAll").onclick=translateAll;
+document.querySelectorAll("#topLang .lt").forEach(b=>{b.onclick=()=>{recogLang=b.dataset.l;if(recogLang.indexOf("hi")!==0)translateOn=false;if(recogActive){try{recog&&recog.stop();}catch(e){}}reflectDict();};});
 function updateNavBtn(){const b=$("#navBtn");if(!b)return;const has=!!(geo.lat&&geo.lng);b.classList.toggle("on",has);b.textContent=has?"🧭 Navigate (GPS)":"🧭 Navigate";}
 if($("#geoBtn"))$("#geoBtn").onclick=()=>{if(!navigator.geolocation){toast("Location not supported here");return;}toast("📍 Getting location…");
   navigator.geolocation.getCurrentPosition(p=>{geo.lat=+p.coords.latitude.toFixed(6);geo.lng=+p.coords.longitude.toFixed(6);saveMeta();updateNavBtn();toast("✓ Site GPS pinned");},
@@ -708,7 +707,9 @@ async function makePDF(){
   }
   return pdf;}
 $("#pdfBtn").onclick=async()=>{if(!openings.length){toast("Add at least one opening first");return;}toast("📄 Building sheet…");
-  try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ Sheet PDF saved");}catch(e){console.error(e);toast("⚠ PDF needs internet to build");}};
+  try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ Sheet PDF saved");}catch(e){console.error(e);toast("⚠ PDF needs internet to build");return;}
+  // one tap = download + log Sheet + upload PDF (and videos) to Drive
+  try{ await saveToDrive(); }catch(e){ logMeasurementToSheet(); }};
 /* ---- Google Drive (shared folder) ---- */
 function ensureGIS(){if(window.google&&google.accounts&&google.accounts.oauth2)return Promise.resolve();return ensureScript("https://accounts.google.com/gsi/client");}
 let _tokenClient=null,_driveToken=null,_pendingDrive=null;
@@ -725,23 +726,45 @@ async function saveToDrive(){
   let b64;
   try{ await ensureLibs(); const pdf=await makePDF(); b64=pdf.output("datauristring").split(",")[1]; }
   catch(e){ luFail("couldn't build PDF"); return; }
-  let folderId=null;
   try{
     const name="Measurement_"+(offer||"form").replace(/[^\w-]+/g,"-")+"_"+luStamp()+".pdf";
     const d=await lingelUpload({ api, folder: offer||"Misc", name, base64: b64 });
-    folderId=d.folderId||null;
-    if(hasVideos){ luDone("PDF saved — videos next"); }
+    logMeasurementToSheet();
+    if(hasVideos){ await uploadVideosAS(api, offer||"Misc"); }
     else { luDone("Saved to "+d.folder); }
   }catch(e){ console.error(e); luFail(e.message||"check connection"); return; }
+}
 
-  /* videos still use OAuth (kept intentionally); land in the SAME folder via folderId */
-  if(hasVideos && folderId){
+/* Upload each opening's video via Apps Script into the SAME offer folder.
+   Apps Script caps a request near ~50MB, so oversize clips are skipped with a note. */
+const VIDEO_MAX_BYTES = 45*1024*1024;
+async function uploadVideosAS(api, folder){
+  const vids=openings.filter(o=>o.videoId);
+  if(!vids.length) return;
+  let done=0, skipped=0;
+  luShow("Uploading videos","0 / "+vids.length);
+  for(const o of vids){
     try{
-      await ensureGIS(); initDrive();
-      const doVid = async ()=>{ await uploadVideos(folderId, offer); };
-      if(_driveToken) doVid(); else { _pendingDrive=doVid; _tokenClient.requestAccessToken({prompt:""}); }
-    }catch(e){ toast("⚠ Videos need Google sign-in — tap Drive again"); }
+      const blob=await new Promise((res,rej)=>{ const tx=db.transaction("videos","readonly");
+        const rq=tx.objectStore("videos").get(o.videoId); rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
+      if(blob){
+        if(blob.size > VIDEO_MAX_BYTES){ skipped++; }
+        else{
+          const b64v = await blobToB64(blob);
+          const vn=(folder).replace(/[^\w-]+/g,"_")+"_"+((o.ref||("op"+(done+1))).replace(/[^\w-]+/g,"_"))+"_video.mp4";
+          await lingelUpload({ api, folder, name:vn, mime:(blob.type||"video/mp4"), base64:b64v });
+        }
+      }
+    }catch(e){ console.error("video upload failed",e); skipped++; }
+    done++; luSet(Math.round(done/vids.length*100));
+    const sub=document.getElementById("luSub"); if(sub) sub.textContent=done+" / "+vids.length;
   }
+  if(skipped) luDone((done-skipped)+" uploaded · "+skipped+" too large (skipped)");
+  else luDone(done+" video"+(done>1?"s":"")+" uploaded");
+}
+function blobToB64(blob){
+  return new Promise((res,rej)=>{ const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(",")[1]); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); });
 }
 
 async function uploadVideos(folderId, offer){
@@ -769,12 +792,6 @@ async function uploadVideos(folderId, offer){
   }
   luDone(done+" video"+(done>1?"s":"")+" uploaded");
 }
-$("#driveBtn").onclick=async()=>{
-  if(!openings.length){toast("Add at least one opening first");return;}
-  if(!($("#m_no").value||"").trim()){toast("Enter the Offer No. first");return;}
-  saveToDrive();
-};
-
 $("#shareBtn").onclick=async()=>{if(!openings.length){toast("Add at least one opening first");return;}toast("📄 Preparing sheet…");
   let blob;try{await ensureLibs();const pdf=await makePDF();blob=pdf.output("blob");}catch(e){toast("⚠ Couldn't build PDF — check connection");return;}
   const file=new File([blob],pdfName(),{type:"application/pdf"});
@@ -839,17 +856,29 @@ function setupSketches(){
   document.querySelectorAll('[data-sketchedit]').forEach(b=>{b.onclick=()=>{const o=getOp(b.dataset.sketchedit);if(o)openSketchEditor(o);};});
   document.querySelectorAll('[data-sketchclear]').forEach(b=>{b.onclick=async()=>{const o=getOp(b.dataset.sketchclear);if(!o)return;if(!confirm("Clear this sketch?"))return;if(o.sketchId){delete imgCache[o.sketchId];try{await idbDel("photos",o.sketchId);}catch(e){}o.sketchId="";}o.sketchData=null;await saveOp(o);render();};});}
 
-/* ---- dictation (EN / हिं) + Hindi→English translation ---- */
+/* ---- dictation (EN / हिं) + live Hindi→English translation ---- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let recog=null,recogActive=false,recogOid=null,recogLang="en-IN",recogBase="";
+let recog=null,recogActive=false,recogOid=null,recogLang="en-IN",recogBase="",translateOn=false;
 function reflectDict(){
   document.querySelectorAll('[data-dictate]').forEach(b=>{const on=recogActive&&b.dataset.dictate===recogOid;b.classList.toggle("rec",on);b.textContent=on?"⏹ Stop":"🎤 Dictate";});
-  document.querySelectorAll('#topLang .lt').forEach(b=>b.classList.toggle("on",b.dataset.l===recogLang));}
+  document.querySelectorAll('#topLang .lt').forEach(b=>b.classList.toggle("on",b.dataset.l===recogLang));
+  const tb=document.getElementById("translateAll");if(tb)tb.classList.toggle("on",translateOn);}
 function noteTA(oid){return document.querySelector('textarea[data-f="note"][data-id="'+oid+'"]');}
 function launchRecog(){
   recog=new SR();recog.lang=recogLang;recog.continuous=false;recog.interimResults=true;recog.maxAlternatives=1;
-  recog.onresult=e=>{let fin="",interim="";for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)fin+=r[0].transcript;else interim+=r[0].transcript;}
-    const ta=noteTA(recogOid);if(ta)ta.value=(recogBase?recogBase+" ":"")+(fin||interim);};
+  recog.onresult=async e=>{let fin="",interim="";for(let i=0;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)fin+=r[0].transcript;else interim+=r[0].transcript;}
+    const ta=noteTA(recogOid);if(!ta)return;
+    // live translation: when ON and dictating Hindi, convert each finalized chunk to English
+    if(fin&&translateOn&&(recogLang||"").indexOf("hi")===0){
+      const en=await hiToEn(fin.trim());
+      recogBase=(recogBase?recogBase+" ":"")+((en||fin).trim());
+      ta.value=recogBase;const o=getOp(recogOid);if(o){o.note=recogBase;saveOp(o);}
+    } else if(fin){
+      recogBase=(recogBase?recogBase+" ":"")+fin.trim();
+      ta.value=recogBase;const o=getOp(recogOid);if(o){o.note=recogBase;saveOp(o);}
+    } else {
+      ta.value=(recogBase?recogBase+" ":"")+interim;
+    }};
   recog.onerror=ev=>{if(ev.error==="not-allowed"||ev.error==="service-not-allowed"){recogActive=false;reflectDict();toast("⚠ Mic permission blocked");}};
   recog.onend=()=>{const o=getOp(recogOid);if(o){const ta=noteTA(recogOid);if(ta){o.note=ta.value;recogBase=o.note;saveOp(o);}}
     if(recogActive){try{launchRecog();}catch(e){recogActive=false;reflectDict();}}};
@@ -857,7 +886,8 @@ function launchRecog(){
 function startDict(oid){
   if(!SR){toast("Voice typing needs Chrome + an https link");return;}
   if(recogActive){const same=(recogOid===oid);stopDict();if(same)return;}
-  const o=getOp(oid);if(!o)return;recogOid=oid;recogActive=true;recogBase=(o.note||"");reflectDict();launchRecog();toast("🎤 Listening… tap Stop when done");}
+  const o=getOp(oid);if(!o)return;recogOid=oid;recogActive=true;recogBase=(o.note||"");reflectDict();launchRecog();
+  toast(translateOn?"🎤 Bolein (Hindi) → English text":"🎤 Listening… tap Stop when done");}
 function stopDict(){recogActive=false;if(recog){try{recog.onend=null;recog.onresult=null;recog.stop();}catch(e){}}
   const o=getOp(recogOid);if(o){const ta=noteTA(recogOid);if(ta){o.note=ta.value;saveOp(o);}}reflectDict();}
 async function hiToEn(text){
@@ -866,14 +896,12 @@ async function hiToEn(text){
   try{const r=await fetch("https://api.mymemory.translated.net/get?langpair=hi|en&q="+encodeURIComponent(text));
     if(r.ok){const j=await r.json();if(j&&j.responseData&&j.responseData.translatedText)return j.responseData.translatedText;}}catch(e){}
   return null;}
-async function translateAll(){
-  const todo=openings.filter(o=>(o.note||"").trim());
-  if(!todo.length){toast("No notes to translate");return;}
-  toast("🌐 Translating "+todo.length+" note"+(todo.length>1?"s":"")+"…");
-  let ok=0;
-  for(const o of todo){const text=o.note.trim();const out=await hiToEn(text);
-    if(out){o.note=out;await saveOp(o);ok++;}}
-  render();toast(ok?"✓ Translated "+ok+" note"+(ok>1?"s":"")+" to English":"⚠ Translation needs internet");}
+document.getElementById("translateAll").onclick=()=>{
+  translateOn=!translateOn;
+  if(translateOn){recogLang="hi-IN";}          // live translate implies dictating in Hindi
+  reflectDict();
+  toast(translateOn?"🌐 Live: speak Hindi → English text (needs internet)":"Live translation off");
+};
 
 /* ---- photo annotation (freehand draw on site photos) ---- */
 let _annotOid=null,_annotPhId=null,_annotPen="#ff2222";
@@ -910,16 +938,18 @@ function openAnnot(oid,phId){
 const SVGNS="http://www.w3.org/2000/svg";
 function openSketchEditor(o){
   const COLORS=["#111111","#d6342c","#1f7a3d","#2166c9","#e0a800"];
-  let color=COLORS[0], sel=-1, drag=null, mode="select", penPts=null;
+  let color=COLORS[0], sel=-1, drag=null, mode="select", penPts=null, polyPts=null, polyHover=null;
   let shapes=(o.sketchData&&Array.isArray(o.sketchData.shapes))?JSON.parse(JSON.stringify(o.sketchData.shapes)):[];
   const ov=document.createElement("div");ov.className="vs-overlay";
   ov.innerHTML=`
     <div class="vs-top">
       <span class="vs-title">✎ Sketch — ${esc(o.ref||"opening")}</span>
       <button type="button" class="vs-tool" data-t="pen">✏️ Freehand</button>
+      <button type="button" class="vs-tool" data-t="poly">📐 Line shape</button>
       <button type="button" class="vs-tool" data-t="rect">▭ Rectangle</button>
       <button type="button" class="vs-tool" data-t="line">╱ Line</button>
       <button type="button" class="vs-tool" data-t="text">🅣 Text</button>
+      <button type="button" class="vs-tool save" data-t="finish" id="vsFinish" style="display:none">✓ Finish shape</button>
       <span class="vs-colorbar">${COLORS.map((c,i)=>`<button type="button" data-col="${c}" class="${i===0?'on':''}" style="background:${c}"></button>`).join("")}</span>
       <button type="button" class="vs-tool del" data-t="delete">🗑 Delete</button>
       <button type="button" class="vs-tool cancel" data-t="cancel">✕ Cancel</button>
@@ -946,7 +976,7 @@ function openSketchEditor(o){
         // fat invisible hit line first (easy to tap), then the visible line on top
         svg.appendChild(mkEl("line",{x1:s.pts[0][0],y1:s.pts[0][1],x2:s.pts[1][0],y2:s.pts[1][1],stroke:"transparent","stroke-width":"22","stroke-linecap":"round",class:"vs-hit","pointer-events":"stroke","data-i":i}));
         svg.appendChild(mkEl("line",{x1:s.pts[0][0],y1:s.pts[0][1],x2:s.pts[1][0],y2:s.pts[1][1],stroke:(s.color||"#111"),"stroke-width":"2.6","stroke-linecap":"round",class:"vs-shape"+selCls,"pointer-events":"none"}));
-      } else if(s.type==="path"){
+      } else if(s.type==="path"||s.type==="poly"){
         const d=s.pts.map(p=>p[0]+","+p[1]).join(" ");
         svg.appendChild(mkEl("polyline",{points:d,fill:"none",stroke:"transparent","stroke-width":"22","stroke-linejoin":"round","stroke-linecap":"round",class:"vs-hit","pointer-events":"stroke","data-i":i}));
         svg.appendChild(mkEl("polyline",{points:d,fill:"none",stroke:(s.color||"#111"),"stroke-width":"2.6","stroke-linejoin":"round","stroke-linecap":"round",class:"vs-shape"+selCls,"pointer-events":"none"}));
@@ -956,9 +986,15 @@ function openSketchEditor(o){
     });
     // live freehand stroke in progress
     if(penPts&&penPts.length>1){svg.appendChild(mkEl("polyline",{points:penPts.map(p=>p[0]+","+p[1]).join(" "),fill:"none",stroke:color,"stroke-width":"2.6","stroke-linejoin":"round","stroke-linecap":"round","pointer-events":"none"}));}
-    // corner/endpoint handles for the selected rect/line/text (not freehand paths)
+    // live polyline (line-shape) in progress: committed segments + rubber-band to the cursor + dots on each vertex
+    if(polyPts&&polyPts.length){
+      const live=polyHover?polyPts.concat([polyHover]):polyPts;
+      if(live.length>1)svg.appendChild(mkEl("polyline",{points:live.map(p=>p[0]+","+p[1]).join(" "),fill:"none",stroke:color,"stroke-width":"2.6","stroke-linejoin":"round","stroke-linecap":"round","stroke-dasharray":polyHover?"1 0":"","pointer-events":"none"}));
+      polyPts.forEach(p=>svg.appendChild(mkEl("circle",{cx:p[0],cy:p[1],r:6,fill:color,stroke:"#fff","stroke-width":1.5,"pointer-events":"none"})));
+    }
+    // corner/endpoint handles for the selected rect/line/text/poly (not freehand paths)
     if(sel>=0&&shapes[sel]){const s=shapes[sel];
-      if(s.type==="rect"||s.type==="line"||s.type==="text"){
+      if(s.type==="rect"||s.type==="line"||s.type==="text"||s.type==="poly"){
         const hp=s.type==="text"?[[s.x,s.y]]:s.pts;
         hp.forEach((p,hi)=>svg.appendChild(mkEl("circle",{cx:p[0],cy:p[1],r:11,class:"vs-handle","data-hi":hi})));
       }
@@ -971,9 +1007,19 @@ function openSketchEditor(o){
     else if(type==="text"){const t=prompt("Enter text:","");if(t===null)return;shapes.push({type:"text",x:cx,y:cy,text:t||"Text",color});}
     sel=shapes.length-1;draw();
   }
-  function setMode(m){mode=m;ov.querySelectorAll('.vs-tool[data-t="pen"]').forEach(b=>b.classList.toggle("on",m==="draw"));
-    hint.textContent=(m==="draw")?"Freehand: drag to draw. Tap ✏️ again to stop and select/move strokes.":"Add a shape, then drag it to move · drag a yellow corner to reshape · tap a shape to select · double-tap text to edit";}
+  function setMode(m){mode=m;
+    ov.querySelectorAll('.vs-tool[data-t="pen"]').forEach(b=>b.classList.toggle("on",m==="draw"));
+    ov.querySelectorAll('.vs-tool[data-t="poly"]').forEach(b=>b.classList.toggle("on",m==="poly"));
+    const fin=ov.querySelector("#vsFinish");if(fin)fin.style.display=(m==="poly")?"":"none";
+    hint.textContent=(m==="draw")?"Freehand: drag to draw. Tap ✏️ again to stop.":
+      (m==="poly")?"Line shape: tap to drop each corner — it bends at any angle. Tap ✓ Finish (or double-tap) to end. Drag any dot afterwards to reshape.":
+      "Add a shape, then drag it to move · drag a yellow corner to reshape · tap a shape to select · double-tap text to edit";}
+  function finishPoly(){
+    if(polyPts&&polyPts.length>=2){shapes.push({type:"poly",pts:polyPts.slice(),color});sel=shapes.length-1;}
+    polyPts=null;polyHover=null;setMode("select");draw();
+  }
   svg.addEventListener("pointerdown",e=>{const tgt=e.target,xy=toXY(e);
+    if(mode==="poly"){ if(!polyPts)polyPts=[]; polyPts.push([xy.x,xy.y]); polyHover=[xy.x,xy.y]; draw(); e.preventDefault(); return; }
     if(mode==="draw"){penPts=[[xy.x,xy.y]];sel=-1;e.preventDefault();return;}
     if(tgt.classList.contains("vs-handle")){drag={mode:"handle",hi:+tgt.dataset.hi};e.preventDefault();return;}
     if(tgt.dataset&&tgt.dataset.i!==undefined){sel=+tgt.dataset.i;const s=shapes[sel];
@@ -982,28 +1028,34 @@ function openSketchEditor(o){
     sel=-1;draw();
   });
   svg.addEventListener("pointermove",e=>{const xy=toXY(e);
+    if(mode==="poly"&&polyPts&&polyPts.length){polyHover=[xy.x,xy.y];draw();e.preventDefault();return;}
     if(penPts){penPts.push([xy.x,xy.y]);draw();e.preventDefault();return;}
     if(!drag)return;const s=shapes[sel];if(!s){drag=null;return;}
     if(drag.mode==="handle"){if(s.type==="text"){s.x=xy.x;s.y=xy.y;}else{s.pts[drag.hi]=[xy.x,xy.y];}}
     else{if(s.type==="text"){s.x=xy.x-drag.offs[0][0];s.y=xy.y-drag.offs[0][1];}else{s.pts=s.pts.map((p,k)=>[xy.x-drag.offs[k][0],xy.y-drag.offs[k][1]]);}}
     draw();e.preventDefault();});
   const end=()=>{
+    if(mode==="poly")return;          // poly uses discrete taps, not drag-release
     if(penPts){if(penPts.length>2)shapes.push({type:"path",pts:penPts,color});penPts=null;draw();return;}
     drag=null;};
   svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);svg.addEventListener("pointerleave",end);
-  svg.addEventListener("dblclick",e=>{if(e.target.classList.contains("vs-txt")){const i=+e.target.dataset.i;const t=prompt("Edit text:",shapes[i].text||"");if(t!==null){shapes[i].text=t;draw();}}});
+  svg.addEventListener("dblclick",e=>{
+    if(mode==="poly"){ if(polyPts&&polyPts.length){polyPts.pop();} finishPoly(); return; }  // drop the duplicate point the dbl-tap added, then finish
+    if(e.target.classList.contains("vs-txt")){const i=+e.target.dataset.i;const t=prompt("Edit text:",shapes[i].text||"");if(t!==null){shapes[i].text=t;draw();}}});
   ov.querySelectorAll("[data-col]").forEach(b=>{b.onclick=()=>{color=b.dataset.col;ov.querySelectorAll("[data-col]").forEach(x=>x.classList.toggle("on",x===b));if(sel>=0&&shapes[sel]){shapes[sel].color=color;draw();}};});
   ov.querySelectorAll(".vs-tool[data-t]").forEach(b=>{b.onclick=()=>{const t=b.dataset.t;
-    if(t==="pen"){setMode(mode==="draw"?"select":"draw");}
+    if(t==="pen"){polyPts=null;polyHover=null;setMode(mode==="draw"?"select":"draw");}
+    else if(t==="poly"){ if(mode==="poly"){finishPoly();} else {sel=-1;polyPts=[];polyHover=null;setMode("poly");draw();} }
+    else if(t==="finish"){finishPoly();}
     else if(t==="rect"){setMode("select");addShape("rect");}
     else if(t==="line"){setMode("select");addShape("line");}
     else if(t==="text"){setMode("select");addShape("text");}
     else if(t==="delete"){if(sel>=0){shapes.splice(sel,1);sel=-1;draw();}else toast("Tap a shape first");}
     else if(t==="cancel"){ov.remove();}
-    else if(t==="save"){saveSketch();}
+    else if(t==="save"){if(mode==="poly")finishPoly();saveSketch();}
   };});
   function saveSketch(){
-    sel=-1;penPts=null;draw();
+    sel=-1;penPts=null;polyPts=null;polyHover=null;draw();
     if(!shapes.length){if(o.sketchId){delete imgCache[o.sketchId];try{idbDel("photos",o.sketchId);}catch(e){}o.sketchId="";}o.sketchData=null;saveOp(o);ov.remove();render();toast("Sketch cleared");return;}
     const clone=svg.cloneNode(true);clone.setAttribute("xmlns",SVGNS);clone.setAttribute("width",W);clone.setAttribute("height",H);
     // strip interaction-only elements (fat hit targets, handles) from the exported image
@@ -1246,6 +1298,31 @@ function luEnsure(){
     +'<div id="luChipTrack"><div id="luChipFill"></div></div>';
   document.body.appendChild(c);
 }
+/* ---- Google Sheet logging (action=measurement, tab: Measurement) ---- */
+function measurementPayload(){
+  let units=0; openings.forEach(o=>{units+=(parseInt(o.qty,10)||0);});
+  const g=id=>((document.getElementById(id)||{}).value||"").trim();
+  return {
+    action:"measurement",
+    offerNo:g("m_no"), customer:g("m_client"), contact:g("m_phone"),
+    site:g("m_site"), moveIn:g("m_movein"), salesperson:g("m_sales"),
+    color:g("m_color"), profile:g("m_profile"), measuredBy:g("m_by"),
+    date:g("m_date"), openings:String(openings.length), units:String(units),
+    videos:String(openings.filter(o=>o.videoId).length), unit:unitLabel()
+  };
+}
+function msQueue(job){ try{const q=JSON.parse(localStorage.getItem("ms_queue")||"[]");q.push(job);localStorage.setItem("ms_queue",JSON.stringify(q));}catch(e){} }
+async function msSend(job){ const api=localStorage.getItem("lingel_api")||""; if(!api) throw new Error("no api");
+  const r=await fetch(api,{method:"POST",body:new URLSearchParams(job)}); const d=await r.json().catch(()=>({ok:true})); if(d&&d.ok===false) throw new Error(d.error||"rejected"); return true; }
+async function msFlush(){ let q; try{q=JSON.parse(localStorage.getItem("ms_queue")||"[]");}catch(e){return;} if(!q.length)return;
+  const left=[]; for(const j of q){ try{await msSend(j);}catch(e){left.push(j);} } localStorage.setItem("ms_queue",JSON.stringify(left)); }
+async function logMeasurementToSheet(){
+  if(!openings.length) return;
+  const job=measurementPayload();
+  try{ await msSend(job); }catch(e){ msQueue(job); }
+}
+window.addEventListener("online", msFlush); msFlush();
+
 var _luRetry=null;
 function luShow(title,sub){
   luEnsure();
