@@ -194,6 +194,14 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
     </div>
     <div class="fd"><div class="lbl" data-t="keyCount">No. of keys handed over</div><input type="number" id="keyqty" min="0" placeholder="e.g. 12" oninput="prog()"></div>
     <div class="fd s2"><div class="lbl" data-t="keyRemarks">Key remarks (type / set details)</div><input type="text" id="keyrem" placeholder="e.g. 4 window keys + 2 door keys, 1 spare set with client"></div>
+    <div class="fd">
+      <div class="lbl" data-t="meshLbl">Mesh (mosquito net)</div>
+      <div class="sgrp">
+        <label class="sopt"><input type="radio" name="meshHo" value="Installed" onchange="prog();meshNoteToggle()"><span data-t="meshInstalled">Installed</span></label>
+        <label class="sopt"><input type="radio" name="meshHo" value="Hold" onchange="prog();meshNoteToggle()"><span data-t="meshHold">Hold</span></label>
+      </div>
+      <div id="meshNote" data-t="meshNote" style="display:none;margin-top:8px;padding:9px 11px;border:1px solid #d9a441;border-left:4px solid #d9a441;background:rgba(217,164,65,.10);border-radius:8px;font-size:12.5px;line-height:1.45;color:#8a6d1f">Mesh on hold — installation may take 2–3 weeks after the customer's go-ahead.</div>
+    </div>
   </div>
 </div>
 
@@ -246,7 +254,6 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 <div class="acts">
   <button class="btnp" onclick="downloadPDF()">⤓ Download PDF</button>
   <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
-  <button class="btns" onclick="uploadDrive()">☁ Drive</button>
   <button class="btns" onclick="doWA()">WhatsApp text</button>
   <button class="btns" onclick="doReset()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">Reset</button>
 </div>
@@ -271,6 +278,8 @@ const T={
     quantity:"Quantity (units)",installDate:"Delivery / installation date",
     checklist:"Handover checklist",
     keyTitle:"Key Handover",keysGiven:"Keys handed over to customer",keyCount:"No. of keys handed over",
+    meshLbl:"Mesh (mosquito net)",meshInstalled:"Installed",meshHold:"Hold",
+    meshNote:"Mesh on hold — installation may take 2–3 weeks after the customer's go-ahead.",
     keyRemarks:"Key remarks (type / set details)",yesL:"Yes",noL:"No",naL:"NA",
     itemAct:"Item / Activity",statusH:"Status",remarksH:"Remarks",
     photoDocs:"Photo documentation",photoHint:"Capture each installed window / door",
@@ -302,6 +311,8 @@ const T={
     quantity:"मात्रा (इकाइयाँ)",installDate:"डिलीवरी / स्थापना तारीख",
     checklist:"हस्तांतरण जाँच सूची",
     keyTitle:"चाबी हस्तांतरण",keysGiven:"ग्राहक को चाबियाँ सौंपी गईं",keyCount:"सौंपी गई चाबियों की संख्या",
+    meshLbl:"जाली (मच्छरदानी)",meshInstalled:"लगाई गई",meshHold:"होल्ड",
+    meshNote:"जाली होल्ड पर — ग्राहक की सहमति के बाद इंस्टॉलेशन में 2–3 सप्ताह लग सकते हैं।",
     keyRemarks:"चाबी टिप्पणी (प्रकार / सेट विवरण)",yesL:"हाँ",noL:"नहीं",naL:"लागू नहीं",
     itemAct:"मद / गतिविधि",statusH:"स्थिति",remarksH:"टिप्पणी",
     photoDocs:"फोटो दस्तावेज़ीकरण",photoHint:"प्रत्येक स्थापित खिड़की / दरवाज़े की फोटो लें",
@@ -366,6 +377,12 @@ function buildStars(){
 function hi(n){document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<n));}
 function setFn(){const v=document.getElementById('hdate').value;if(!v)return;const p=v.split('-');document.getElementById('fdate').textContent=p[0].slice(2)+p[1]+p[2];}
 function prog(){const f=['ord','hdate','cname','prod'].filter(id=>document.getElementById(id)?.value?.trim()).length;const r=Math.min(document.querySelectorAll('input[type=radio]:checked').length,6);document.getElementById('pfll').style.width=Math.round((f+r)/10*100)+'%';}
+
+function meshNoteToggle(){
+  const hold=document.querySelector('input[name="meshHo"]:checked')?.value==='Hold';
+  const n=document.getElementById('meshNote');
+  if(n) n.style.display=hold?'block':'none';
+}
 
 function setupSig(id){
   const cv=document.getElementById(id);if(!cv)return;
@@ -468,6 +485,8 @@ items+'\n\n'+
 '-----------------------------\n'+
 'Keys handed over: '+(document.querySelector('input[name="keysHo"]:checked')?.value||'—')+'\n'+
 'No. of keys    : '+g('keyqty')+'\n'+
+'Mesh           : '+(document.querySelector('input[name="meshHo"]:checked')?.value||'\u2014')+'\n'+
+((document.querySelector('input[name="meshHo"]:checked')?.value==='Hold')?('  \u21b3 '+T[lang].meshNote+'\n'):'')+
 'Key remarks    : '+g('keyrem')+'\n\n'+
 'SNAG LIST / PENDING ITEMS\n'+
 '-----------------------------\n'+
@@ -703,6 +722,8 @@ async function buildPDF(){
   sectionTitle('Keys & Customer Satisfaction');
   fields([
     ['Keys Handed Over', rd('keysHo')||'\u2014'],
+    ['Mesh', rd('meshHo')||'\u2014'],
+    ...((rd('meshHo')==='Hold')?[['Mesh Note', T[lang].meshNote]]:[]),
     ['No. of Keys', gv('keyqty')],
     ['Key Remarks', gv('keyrem')],
     ['Satisfaction', (typeof CR!=='undefined'&&CR>0)?((T.rl[CR]||'')+'  ('+CR+'/5)'):'Not rated'],
@@ -1020,6 +1041,7 @@ function handoverPayload(){
     keysGiven:  rd("keysHo"),
     keyCount:   v("keyqty"),
     keyRemarks: v("keyrem"),
+    mesh:       rd("meshHo"),
     stars:       CR || "",
     ratingLabel: (CR>0 && T.en.rl[CR]) ? T.en.rl[CR] : "Not rated"
   };
@@ -1112,6 +1134,8 @@ async function logHandoverToSheet(){
   window[fn] = async function(){
     const out = await o.apply(this, arguments);
     logHandoverToSheet();
+    // one tap on Download PDF also pushes the report to Drive (uploadDrive already does its own)
+    if(fn === "downloadPDF"){ try{ await uploadDrive(); }catch(e){} }
     return out;
   };
 });
