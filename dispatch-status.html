@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
+<title>Lingel — Dispatch Status</title>
+<meta name="theme-color" content="#13161b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lingel">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#e2f14d}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:2px solid var(--line);flex-shrink:0}
+.topbar .home{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+.topbar .home:hover,.topbar .home:active{color:var(--hivis);border-color:var(--hivis)}
+.topbar .ttl{font-family:Archivo;font-weight:900;font-size:16px;letter-spacing:.04em;text-transform:uppercase;color:var(--hivis);line-height:1.1}
+.topbar .ttl small{display:block;font-family:'JetBrains Mono';font-weight:400;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.topbar .open{margin-left:auto;text-decoration:none;color:#111;background:var(--hivis);border-radius:8px;padding:8px 12px;font-family:'Archivo Narrow';font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.frame-wrap{flex:1;position:relative;min-height:0;background:var(--panel)}
+.frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono';font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);pointer-events:none}
+@media(max-width:480px){.topbar .ttl{font-size:14px}.topbar .home,.topbar .open{padding:7px 10px;font-size:11px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="home" href="index.html">← Home</a>
+  <div class="ttl">Dispatch Status<small>Production &amp; Dispatch Dashboard</small></div>
+  <a class="open" href="https://datastudio.google.com/embed/reporting/d3563ccf-bfcc-45b3-9a53-c047004cf58f/page/Df13F" target="_blank" rel="noopener">Open ↗</a>
+</div>
+<div class="frame-wrap">
+  <div class="loading">Loading dashboard…</div>
+  <iframe
+    src="https://datastudio.google.com/embed/reporting/d3563ccf-bfcc-45b3-9a53-c047004cf58f/page/Df13F"
+    frameborder="0"
+    style="border:0"
+    allowfullscreen
+    sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+</div>
+<script>
+/* installable app + offline: register the service worker (shared with the suite) */
+if('serviceWorker' in navigator){
+  addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
