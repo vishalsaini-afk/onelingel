@@ -1373,6 +1373,13 @@ async function logMeasurementToSheet(){
   if(!openings.length) return;
   const job=measurementPayload();
   try{ await msSend(job); }catch(e){ msQueue(job); }
+  if(typeof logDailyReport==="function") logDailyReport({
+    visitType:"Measurement",
+    offerNo:job.offerNo, customer:job.customer, contact:job.contact,
+    address:job.site, salesperson:job.salesperson, offerDate:job.date,
+    positions:openings.length, supervisorFallback:job.measuredBy,
+    remarks:"Measurement sheet \u00b7 "+job.units+" unit(s)"
+  });
 }
 window.addEventListener("online", msFlush); msFlush();
 
@@ -1440,4 +1447,58 @@ function luStamp(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
 function p2m(d){return String(d.getMonth()+1).padStart(2,'0');}
 function p2d(d){return String(d.getDate()).padStart(2,'0');}
 
+</script>
+
+<script>
+/* ============================================================
+   Daily Report auto-log (shared across Measurement / SiteLog / Handover)
+   Fires ONE row into the DailyReport sheet each time a report PDF is made,
+   tagged with the supervisor from the hub login and this app's visit type.
+   Reuses the hub's Apps Script endpoint (localStorage 'lingel_api').
+   Backend: action=dailyReport -> handleDailyReport (tab "DailyReport").
+   ============================================================ */
+(function(){
+  var DRQ="dr_queue", lastSig="";
+  function api(){ try{return localStorage.getItem("lingel_api")||"";}catch(e){return "";} }
+  function supervisor(){ try{var s=JSON.parse(localStorage.getItem("lingel_supervisor")||"null");return (s&&s.name)?s.name:"";}catch(e){return "";} }
+  function q(){ try{return JSON.parse(localStorage.getItem(DRQ)||"[]");}catch(e){return [];} }
+  function saveQ(a){ try{localStorage.setItem(DRQ,JSON.stringify(a));}catch(e){} }
+  async function send(row){
+    var a=api(); if(!a) throw new Error("no api");
+    var r=await fetch(a,{method:"POST",body:new URLSearchParams(Object.assign({action:"dailyReport"},row))});
+    var d=await r.json().catch(function(){return {ok:true};});
+    if(d&&d.ok===false) throw new Error(d.error||"rejected");
+    return true;
+  }
+  async function flush(){
+    if(!api()) return;
+    var items=q(); if(!items.length) return;
+    var left=[];
+    for(var i=0;i<items.length;i++){ try{ await send(items[i]); }catch(e){ left.push(items[i]); } }
+    saveQ(left);
+  }
+  // PUBLIC — call once after a report PDF is generated
+  window.logDailyReport=async function(data){
+    data=data||{};
+    var row={
+      visitType:     data.visitType||"",
+      visitDate:     data.visitDate||new Date().toISOString().slice(0,10),
+      offerNo:       data.offerNo||"",
+      offerDate:     data.offerDate||"",
+      customer:      data.customer||"",
+      address:       data.address||"",
+      salesperson:   data.salesperson||"",
+      contact:       data.contact||"",
+      positions:     (data.positions!=null?String(data.positions):""),
+      supervisor:    supervisor() || data.supervisorFallback || "",
+      remarks:       data.remarks||"",
+      quotationFile: data.quotationFile||""
+    };
+    var sig=row.visitType+"|"+row.offerNo+"|"+row.customer+"|"+row.visitDate;
+    if(sig===lastSig) return;          // PDF + Drive/Share in one tap = one row
+    try{ await send(row); lastSig=sig; }
+    catch(e){ var Q=q(); Q.push(row); saveQ(Q); lastSig=sig; }   // offline -> queue + retry
+  };
+  window.addEventListener("online",flush); flush();
+})();
 </script>
