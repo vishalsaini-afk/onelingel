@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
+<title>Lingel — Drive Files</title>
+<meta name="theme-color" content="#13161b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lingel">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#e2f14d}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:2px solid var(--line);flex-shrink:0}
+.topbar a,.topbar button{font-family:'Archivo Narrow';font-weight:700;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.home{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--muted);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px;background:transparent}
+.home:hover,.home:active{color:var(--hivis);border-color:var(--hivis)}
+.ttl{font-family:Archivo;font-weight:900;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--hivis);line-height:1.1;min-width:0}
+.ttl small{display:block;font-family:'JetBrains Mono';font-weight:400;font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spacer{margin-left:auto}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:none;background:var(--panel-2);color:var(--muted);padding:8px 12px;font-size:12px}
+.seg button.on{background:var(--hivis);color:#111}
+.btn{border:1px solid var(--hivis);background:var(--hivis);color:#111;border-radius:8px;padding:8px 12px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.frame-wrap{flex:1;position:relative;min-height:0;background:#fff}
+.frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono';font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a8a8a;pointer-events:none;background:#fff}
+.note{flex-shrink:0;background:var(--panel);border-top:1px solid var(--line);color:var(--muted);font-size:11px;font-family:'JetBrains Mono';letter-spacing:.04em;padding:8px 14px;text-align:center}
+@media(max-width:520px){.ttl small{display:none}.home,.btn,.seg button{padding:8px 9px;font-size:11px}.topbar{gap:7px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="home" href="index.html">← Home</a>
+  <div class="ttl">Drive Files<small>Uploaded reports by order</small></div>
+  <div class="seg spacer">
+    <button id="gridBtn" class="on" onclick="setView('grid')">Grid</button>
+    <button id="listBtn" onclick="setView('list')">List</button>
+  </div>
+  <a class="btn" id="openBtn" target="_blank" rel="noopener">Open ↗</a>
+</div>
+
+<div class="frame-wrap">
+  <div class="loading" id="loading">Loading files…</div>
+  <iframe id="frame" title="Lingel Drive files"></iframe>
+</div>
+
+<div class="note" id="note">Read-only view of the shared reports folder</div>
+
+<script>
+/* The shared Drive folder that all field-app uploads land in
+   (same ID as DRIVE_FOLDER_ID in the Apps Script). */
+var FOLDER_ID = "1jlBQl_CeFinA5G1jCkMvjnqBp6ZKopdo";
+
+var frame = document.getElementById('frame');
+var loading = document.getElementById('loading');
+document.getElementById('openBtn').href = "https://drive.google.com/drive/folders/" + FOLDER_ID;
+
+function setView(mode){
+  document.getElementById('gridBtn').classList.toggle('on', mode==='grid');
+  document.getElementById('listBtn').classList.toggle('on', mode==='list');
+  loading.style.display = 'flex';
+  frame.src = "https://drive.google.com/embeddedfolderview?id=" + FOLDER_ID + "#" + mode;
+}
+frame.addEventListener('load', function(){ loading.style.display = 'none'; });
+
+setView('grid');
+
+/* installable app + offline: register the service worker (shared with the suite) */
+if('serviceWorker' in navigator){
+  addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
+}
+</script>
+</body>
+</html>
