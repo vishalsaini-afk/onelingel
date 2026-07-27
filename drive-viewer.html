@@ -26,11 +26,23 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{border:none;background:var(--panel-2);color:var(--muted);padding:8px 12px;font-size:12px}
 .seg button.on{background:var(--hivis);color:#111}
-.btn{border:1px solid var(--hivis);background:var(--hivis);color:#111;border-radius:8px;padding:8px 12px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.btn{border:1px solid var(--hivis);background:var(--hivis);color:#111;border-radius:8px;padding:8px 12px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-family:'Archivo Narrow';font-weight:700;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.searchbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-shrink:0;flex-wrap:wrap}
+.searchbar .inp{flex:1;min-width:150px;position:relative;display:flex;align-items:center}
+.searchbar input{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:15px;background:var(--panel-2);color:var(--text);font-family:'Spline Sans',sans-serif}
+.searchbar input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+.searchbar .ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.searchbar .ghost:hover{color:var(--hivis);border-color:var(--hivis)}
+.chips{display:flex;gap:8px;padding:0 14px 10px;overflow-x:auto;flex-shrink:0;-webkit-overflow-scrolling:touch}
+.chips:empty{display:none}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:999px;padding:7px 14px;font-size:13px;font-family:'JetBrains Mono';cursor:pointer;flex-shrink:0}
+.chip.on{background:var(--hivis);color:#111;border-color:var(--hivis)}
+.chip:hover{border-color:var(--hivis)}
+.msg{padding:0 14px 10px;font-size:12px;color:var(--muted);font-family:'JetBrains Mono';flex-shrink:0}
+.msg:empty{display:none}
 .frame-wrap{flex:1;position:relative;min-height:0;background:#fff}
 .frame-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono';font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a8a8a;pointer-events:none;background:#fff}
-.note{flex-shrink:0;background:var(--panel);border-top:1px solid var(--line);color:var(--muted);font-size:11px;font-family:'JetBrains Mono';letter-spacing:.04em;padding:8px 14px;text-align:center}
 @media(max-width:520px){.ttl small{display:none}.home,.btn,.seg button{padding:8px 9px;font-size:11px}.topbar{gap:7px}}
 </style>
 </head>
@@ -45,31 +57,102 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <a class="btn" id="openBtn" target="_blank" rel="noopener">Open ↗</a>
 </div>
 
+<div class="searchbar">
+  <div class="inp">
+    <input id="q" type="search" inputmode="search" placeholder="Search by order no. (e.g. 75057)" autocomplete="off">
+  </div>
+  <button class="btn" id="searchBtn" onclick="doSearch()">Search</button>
+  <button class="btn ghost" id="allBtn" onclick="showAll()">Show all</button>
+</div>
+<div class="chips" id="chips"></div>
+<div class="msg" id="msg"></div>
+
 <div class="frame-wrap">
   <div class="loading" id="loading">Loading files…</div>
   <iframe id="frame" title="Lingel Drive files"></iframe>
 </div>
-
-<div class="note" id="note">Read-only view of the shared reports folder</div>
 
 <script>
 /* The shared Drive folder that all field-app uploads land in
    (same ID as DRIVE_FOLDER_ID in the Apps Script). */
 var FOLDER_ID = "1jlBQl_CeFinA5G1jCkMvjnqBp6ZKopdo";
 
-var frame = document.getElementById('frame');
+var frame   = document.getElementById('frame');
 var loading = document.getElementById('loading');
+var chips   = document.getElementById('chips');
+var msg     = document.getElementById('msg');
+var qEl     = document.getElementById('q');
+var mode    = 'grid';
+var currentId = FOLDER_ID;
+
 document.getElementById('openBtn').href = "https://drive.google.com/drive/folders/" + FOLDER_ID;
 
-function setView(mode){
-  document.getElementById('gridBtn').classList.toggle('on', mode==='grid');
-  document.getElementById('listBtn').classList.toggle('on', mode==='list');
+function api(){ try{ return localStorage.getItem('lingel_api')||''; }catch(e){ return ''; } }
+
+function loadFolder(id){
+  currentId = id;
   loading.style.display = 'flex';
-  frame.src = "https://drive.google.com/embeddedfolderview?id=" + FOLDER_ID + "#" + mode;
+  frame.src = "https://drive.google.com/embeddedfolderview?id=" + id + "#" + mode;
 }
 frame.addEventListener('load', function(){ loading.style.display = 'none'; });
 
-setView('grid');
+function setView(m){
+  mode = m;
+  document.getElementById('gridBtn').classList.toggle('on', m==='grid');
+  document.getElementById('listBtn').classList.toggle('on', m==='list');
+  loadFolder(currentId);
+}
+
+function showAll(){
+  chips.innerHTML = ''; msg.textContent = ''; qEl.value = '';
+  loadFolder(FOLDER_ID);
+}
+
+function renderChips(matches){
+  chips.innerHTML = '';
+  matches.forEach(function(m){
+    var b = document.createElement('button');
+    b.className = 'chip'; b.textContent = m.name;
+    b.onclick = function(){
+      Array.prototype.forEach.call(chips.children, function(c){ c.classList.remove('on'); });
+      b.classList.add('on');
+      loadFolder(m.id);
+    };
+    chips.appendChild(b);
+  });
+}
+
+async function doSearch(){
+  var q = qEl.value.trim();
+  var a = api();
+  msg.textContent = '';
+  if(!a){ msg.textContent = 'Open this from the hub after signing in, so search can reach your files.'; return; }
+  if(!q){ showAll(); return; }
+  msg.textContent = 'Searching…';
+  try{
+    var r = await fetch(a, { method:'POST', body:new URLSearchParams({ action:'findFolder', q:q }) });
+    var d = await r.json();
+    if(!d.ok) throw new Error(d.error||'search failed');
+    if(!d.matches || !d.matches.length){
+      chips.innerHTML = '';
+      msg.textContent = 'No order folder matches "'+q+'".';
+      return;
+    }
+    renderChips(d.matches);
+    if(d.matches.length === 1){
+      chips.firstChild.classList.add('on');
+      loadFolder(d.matches[0].id);
+      msg.textContent = '';
+    }else{
+      msg.textContent = d.matches.length + ' orders match — tap one.';
+    }
+  }catch(e){
+    msg.textContent = 'Search error: ' + (e.message||'check connection');
+  }
+}
+qEl.addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
+
+loadFolder(FOLDER_ID);
 
 /* installable app + offline: register the service worker (shared with the suite) */
 if('serviceWorker' in navigator){
