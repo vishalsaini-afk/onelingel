@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
+<title>Lingel — Contractor Availability</title>
+<meta name="theme-color" content="#13161b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#ffce1f;--green:#22c55e;--red:#ef4444}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 40px;min-height:100vh;display:flex;flex-direction:column}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.home{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+.home:active{background:var(--panel-2)}
+.who{margin-left:auto;font-size:12px;color:var(--muted);text-align:right;line-height:1.3}
+.who b{color:var(--hivis);font-family:'Archivo Narrow';text-transform:uppercase;letter-spacing:.03em;display:block}
+
+/* header */
+.hdr{padding-bottom:14px;border-bottom:2px solid var(--line);margin-bottom:16px}
+.hdr .t{font-family:Archivo;font-weight:900;font-size:22px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);line-height:1.05}
+.hdr .s{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+/* stat strip */
+.stats{display:flex;gap:10px;margin-bottom:14px}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:center}
+.stat.g{border-left:4px solid var(--green)}
+.stat.r{border-left:4px solid var(--red)}
+.stat .n{font-family:Archivo;font-weight:900;font-size:26px;line-height:1}
+.stat.g .n{color:var(--green)}.stat.r .n{color:var(--red)}
+.stat .l{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+/* toolbar */
+.tools{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.search{flex:1;position:relative}
+.search input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 13px 11px 36px;font-size:15px;background:var(--panel-2);color:var(--text);font-family:'Spline Sans',sans-serif}
+.search input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+.search .mag{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px}
+.rf{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;width:44px;height:44px;font-size:18px;cursor:pointer;flex-shrink:0}
+.rf:active{background:var(--panel-2)}
+.rf.spin{animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* sync line */
+.sync{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;min-height:16px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.dot.ok{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
+.dot.err{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.dot.busy{background:var(--hivis);box-shadow:0 0 0 3px rgba(255,206,31,.18)}
+
+/* legend */
+.legend{display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend .lg{background:var(--green)}.legend .lr{background:var(--red)}
+
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
+.card{position:relative;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:13px;padding:15px 14px 13px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .08s,background .15s,border-color .15s;min-height:92px;display:flex;flex-direction:column;justify-content:space-between}
+.card:active{transform:scale(.97)}
+.card.avail{border-left-color:var(--green);background:linear-gradient(180deg,rgba(34,197,94,.14),rgba(34,197,94,.05))}
+.card .nm{font-family:Archivo;font-weight:700;font-size:15.5px;line-height:1.2;color:var(--text);word-break:break-word}
+.card .role{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+.card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:6px}
+.pill{font-family:'JetBrains Mono';font-weight:700;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:rgba(239,68,68,.14);color:#fda4a4;border:1px solid rgba(239,68,68,.3)}
+.card.avail .pill{background:rgba(34,197,94,.18);color:#86efac;border-color:rgba(34,197,94,.4)}
+.card .by{font-size:9.5px;color:var(--muted);font-family:'JetBrains Mono';text-align:right;line-height:1.25;max-width:70px;overflow:hidden}
+.card.pend{opacity:.6}
+.card.pend::after{content:"";position:absolute;top:8px;right:8px;width:11px;height:11px;border:2px solid var(--hivis);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+
+/* states */
+.msg{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;line-height:1.6}
+.msg.err{color:#fda4a4}
+.msg button{margin-top:14px;background:var(--hivis);color:#111;border:none;border-radius:8px;padding:10px 22px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:13px;min-height:92px;animation:pulse 1.3s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
+
+.foot-note{text-align:center;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:26px;opacity:.65;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <a class="home" href="index.html">← Hub</a>
+    <div class="who" id="who"></div>
+  </div>
+
+  <div class="hdr">
+    <div class="t">Contractor Availability</div>
+    <div class="s">Tap a name to toggle · Green = available · Live across all devices</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat g"><div class="n" id="cAvail">–</div><div class="l">Available</div></div>
+    <div class="stat r"><div class="n" id="cBooked">–</div><div class="l">Booked</div></div>
+    <div class="stat"><div class="n" id="cTotal" style="color:var(--text)">–</div><div class="l">Total</div></div>
+  </div>
+
+  <div class="tools">
+    <div class="search"><span class="mag">🔍</span><input id="q" placeholder="Search contractor…" autocomplete="off"></div>
+    <button class="rf" id="refresh" title="Refresh">⟳</button>
+  </div>
+
+  <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Loading…</span></div>
+
+  <div class="legend">
+    <span><i class="lg"></i> Available</span>
+    <span><i class="lr"></i> Booked</span>
+  </div>
+
+  <div id="grid" class="grid"></div>
+
+  <div class="foot-note">Lingel Field Operations · Contractor board updates live from the Contractors sheet</div>
+</div>
+
+<script>
+/* ---------- config ---------- */
+const API = (function(){
+  try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){}
+  return "https://script.google.com/macros/s/AKfycbzqK9n53U0YCVb7IGAboFF2iZOr8g80ZL0MV1k-xUq3T_0Uwzl4se9E5szfxsRT_-aQ/exec";
+})();
+const POLL_MS = 8000;          // auto-refresh interval
+const CACHE_KEY = 'lingel_contractors_cache';
+
+/* supervisor from hub login */
+const SUP = (function(){
+  try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; }
+})();
+document.getElementById('who').innerHTML = SUP ? '<span>Signed in as</span><b>'+esc(SUP)+'</b>' : '<b style="color:var(--muted)">Not signed in</b>';
+
+/* ---------- state ---------- */
+let rows = [];                 // [{name, role, status, by, at}]
+const pending = new Map();     // name -> desired status (in-flight taps, protected from poll overwrite)
+let filter = '';
+let pollTimer = null;
+let firstLoad = true;
+
+/* ---------- helpers ---------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function setDot(kind, txt){
+  const d=document.getElementById('dot'); d.className='dot'+(kind?(' '+kind):'');
+  if(txt!==undefined) document.getElementById('syncTxt').textContent=txt;
+}
+function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
+function loadCache(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){ return null; } }
+
+/* ---------- rendering ---------- */
+function counts(){
+  let a=0,b=0;
+  rows.forEach(r=>{ const st=pending.has(r.name)?pending.get(r.name):r.status; (st==='available'?a++:b++); });
+  document.getElementById('cAvail').textContent=a;
+  document.getElementById('cBooked').textContent=b;
+  document.getElementById('cTotal').textContent=rows.length;
+}
+function render(){
+  const g=document.getElementById('grid');
+  counts();
+  const list = rows.filter(r=> !filter || r.name.toLowerCase().includes(filter) || (r.role||'').toLowerCase().includes(filter));
+  if(!rows.length){
+    g.innerHTML='<div class="msg">No contractors found in the sheet.<br><span style="font-size:12px">Add names to the <b>Contractors</b> tab, then refresh.</span></div>';
+    return;
+  }
+  if(!list.length){ g.innerHTML='<div class="msg">No contractor matches “'+esc(filter)+'”.</div>'; return; }
+  g.innerHTML = list.map(r=>{
+    const st = pending.has(r.name)?pending.get(r.name):r.status;
+    const avail = st==='available';
+    const pend = pending.has(r.name)?' pend':'';
+    const by = r.by ? '<div class="by">'+esc(r.by)+'</div>' : '';
+    const role = r.role ? '<div class="role">'+esc(r.role)+'</div>' : '';
+    return '<div class="card'+(avail?' avail':'')+pend+'" data-name="'+esc(r.name)+'">'
+         +   '<div><div class="nm">'+esc(r.name)+'</div>'+role+'</div>'
+         +   '<div class="foot"><span class="pill">'+(avail?'Available':'Booked')+'</span>'+by+'</div>'
+         + '</div>';
+  }).join('');
+}
+
+/* ---------- data ---------- */
+async function fetchContractors(){
+  const r = await fetch(API+'?action=contractors&t='+Date.now());
+  const data = await r.json();
+  if(!data || data.ok===false) throw new Error((data&&data.error)||'Server error');
+  // normalise
+  return (data.contractors||[]).map(c=>({
+    name:String(c.name||'').trim(),
+    role:String(c.role||'').trim(),
+    status:(String(c.status||'').toLowerCase()==='booked')?'booked':'available',
+    by:String(c.by||'').trim(),
+    at:c.at||''
+  })).filter(c=>c.name);
+}
+
+async function load(silent){
+  if(!silent) setDot('busy','Syncing…');
+  document.getElementById('refresh').classList.add('spin');
+  try{
+    const fresh = await fetchContractors();
+    // keep in-flight local taps on top of server truth
+    rows = fresh.map(r=>{
+      if(pending.has(r.name)) return r;      // status shown via pending map in render
+      return r;
+    });
+    saveCache();
+    render();
+    setDot('ok','Live · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+    firstLoad=false;
+  }catch(e){
+    if(firstLoad){
+      const cached=loadCache();
+      if(cached && cached.length){ rows=cached; render(); setDot('err','Offline · showing last known state'); }
+      else{ document.getElementById('grid').innerHTML='<div class="msg err">Couldn’t reach the sheet.<br><span style="font-size:12px">Check your connection.</span><br><button onclick="load()">Retry</button></div>'; setDot('err','Connection failed'); }
+    }else{
+      setDot('err','Offline · will retry');
+    }
+  }finally{
+    document.getElementById('refresh').classList.remove('spin');
+  }
+}
+
+/* ---------- toggle ---------- */
+async function toggle(name){
+  const row = rows.find(r=>r.name===name); if(!row) return;
+  const current = pending.has(name)?pending.get(name):row.status;
+  const next = current==='available' ? 'booked' : 'available';
+  pending.set(name, next);
+  render();
+  setDot('busy','Saving…');
+  try{
+    const body = new URLSearchParams({action:'setContractor', name, status:next, by:SUP});
+    const r = await fetch(API,{method:'POST', body});
+    const data = await r.json();
+    if(!data || data.ok===false) throw new Error((data&&data.error)||'Save failed');
+    // commit locally
+    row.status = next; row.by = SUP; row.at = new Date().toISOString();
+    pending.delete(name);
+    render();
+    setDot('ok','Saved '+esc(name)+' → '+(next==='available'?'Available':'Booked'));
+    saveCache();
+  }catch(e){
+    pending.delete(name);   // revert to server truth
+    render();
+    setDot('err','Couldn’t save '+esc(name)+' — tap again');
+  }
+}
+
+/* ---------- events ---------- */
+document.getElementById('grid').addEventListener('click', e=>{
+  const card = e.target.closest('.card'); if(!card) return;
+  const name = card.getAttribute('data-name');
+  if(pending.has(name)) return;   // ignore taps while its save is in flight
+  toggle(name);
+});
+document.getElementById('q').addEventListener('input', e=>{ filter=e.target.value.trim().toLowerCase(); render(); });
+document.getElementById('refresh').addEventListener('click', ()=>load());
+
+/* pause polling when tab hidden, refresh on return */
+function startPoll(){ stopPoll(); pollTimer=setInterval(()=>{ if(!document.hidden && pending.size===0) load(true); }, POLL_MS); }
+function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopPoll(); else { load(true); startPoll(); } });
+window.addEventListener('online', ()=>load(true));
+
+/* ---------- boot ---------- */
+document.getElementById('grid').innerHTML = Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
+load();
+startPoll();
+
+/* offline shell (matches suite) */
+if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+</body>
+</html>
