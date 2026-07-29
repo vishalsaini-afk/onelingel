@@ -124,7 +124,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
    This app talks to your INVOICE Apps Script (the one that owns the
    Contractors tab). Paste that deployment's /exec URL below — it is the
    SAME url as SHEET_WEBAPP_URL inside contractor-invoice.html. */
-const INVOICE_EXEC = "PASTE_YOUR_INVOICE_APPS_SCRIPT_EXEC_URL_HERE";
+const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbwC8ZPk7oaU2wNdHabrbWfc2DufOUvj10dyefQMUdQ8ivaWMYrcWrA59iudooV9yLym0Q/exec";
 const API = (function(){
   if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC;
   try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){}
