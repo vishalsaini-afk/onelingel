@@ -120,10 +120,15 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 </div>
 
 <script>
-/* ---------- config ---------- */
+/* ---------- config ----------
+   This app talks to your INVOICE Apps Script (the one that owns the
+   Contractors tab). Paste that deployment's /exec URL below — it is the
+   SAME url as SHEET_WEBAPP_URL inside contractor-invoice.html. */
+const INVOICE_EXEC = "PASTE_YOUR_INVOICE_APPS_SCRIPT_EXEC_URL_HERE";
 const API = (function(){
+  if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC;
   try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){}
-  return "https://script.google.com/macros/s/AKfycbzqK9n53U0YCVb7IGAboFF2iZOr8g80ZL0MV1k-xUq3T_0Uwzl4se9E5szfxsRT_-aQ/exec";
+  return INVOICE_EXEC;
 })();
 const POLL_MS = 8000;          // auto-refresh interval
 const CACHE_KEY = 'lingel_contractors_cache';
