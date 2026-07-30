@@ -12,30 +12,26 @@
 :root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#ffce1f;--green:#22c55e;--red:#ef4444}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
-.wrap{max-width:720px;margin:0 auto;padding:16px 14px 40px;min-height:100vh;display:flex;flex-direction:column}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 40px;min-height:100vh;display:flex;flex-direction:column}
 
-/* top bar */
 .top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .home{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
 .home:active{background:var(--panel-2)}
 .who{margin-left:auto;font-size:12px;color:var(--muted);text-align:right;line-height:1.3}
 .who b{color:var(--hivis);font-family:'Archivo Narrow';text-transform:uppercase;letter-spacing:.03em;display:block}
 
-/* header */
 .hdr{padding-bottom:14px;border-bottom:2px solid var(--line);margin-bottom:16px}
 .hdr .t{font-family:Archivo;font-weight:900;font-size:22px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);line-height:1.05}
 .hdr .s{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:6px}
 
-/* stat strip */
 .stats{display:flex;gap:10px;margin-bottom:14px}
-.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:center}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center}
 .stat.g{border-left:4px solid var(--green)}
 .stat.r{border-left:4px solid var(--red)}
-.stat .n{font-family:Archivo;font-weight:900;font-size:26px;line-height:1}
+.stat .n{font-family:Archivo;font-weight:900;font-size:24px;line-height:1}
 .stat.g .n{color:var(--green)}.stat.r .n{color:var(--red)}
-.stat .l{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.stat .l{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
 
-/* toolbar */
 .tools{display:flex;gap:8px;align-items:center;margin-bottom:12px}
 .search{flex:1;position:relative}
 .search input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 13px 11px 36px;font-size:15px;background:var(--panel-2);color:var(--text);font-family:'Spline Sans',sans-serif}
@@ -46,41 +42,70 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .rf.spin{animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
-/* sync line */
 .sync{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;min-height:16px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
 .dot.ok{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
 .dot.err{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
 .dot.busy{background:var(--hivis);box-shadow:0 0 0 3px rgba(255,206,31,.18)}
 
-/* legend */
-.legend{display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--muted)}
-.legend span{display:inline-flex;align-items:center;gap:7px}
-.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
-.legend .lg{background:var(--green)}.legend .lr{background:var(--red)}
+/* grid + card */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .08s,border-color .15s,background .15s}
+.card:active{transform:scale(.985)}
+.card:hover{border-color:#3a4150}
+.chead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.card .nm{font-family:Archivo;font-weight:700;font-size:16px;line-height:1.15;color:var(--text);word-break:break-word;flex:1;min-width:0}
+.card .role{font-size:11px;color:var(--muted);width:100%;margin-top:1px;line-height:1.3}
+.tcount{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.tlist{margin-top:11px;display:flex;flex-direction:column;gap:7px}
+.trow{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-left:3px solid var(--green);background:var(--panel-2);border-radius:9px;padding:7px 9px;min-height:38px}
+.trow.booked{border-left-color:var(--red)}
+.trow.busy{opacity:.5}
+.trow .tb{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);flex-shrink:0;width:44px}
+.trow .ti{font-size:12px;color:var(--text);line-height:1.35;min-width:0;overflow:hidden}
+.trow .ti b{font-family:'Archivo Narrow';font-weight:700;font-size:13px}
+.trow.booked .ti b{color:#fda4a4}
+.trow .ti .pj{color:var(--muted)}
+.trow .ti .who{color:var(--hivis)}
+.trow .freeT{color:#86efac;font-family:'Archivo Narrow';font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.04em}
+.cta{margin-top:11px;text-align:right;font-family:'JetBrains Mono';font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 
-/* grid */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
-.card{position:relative;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:13px;padding:15px 14px 13px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .08s,background .15s,border-color .15s;min-height:92px;display:flex;flex-direction:column;justify-content:space-between}
-.card:active{transform:scale(.97)}
-.card.avail{border-left-color:var(--green);background:linear-gradient(180deg,rgba(34,197,94,.14),rgba(34,197,94,.05))}
-.card .nm{font-family:Archivo;font-weight:700;font-size:15.5px;line-height:1.2;color:var(--text);word-break:break-word}
-.card .role{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
-.card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:6px}
-.pill{font-family:'JetBrains Mono';font-weight:700;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:rgba(239,68,68,.14);color:#fda4a4;border:1px solid rgba(239,68,68,.3)}
-.card.avail .pill{background:rgba(34,197,94,.18);color:#86efac;border-color:rgba(34,197,94,.4)}
-.card .by{font-size:9.5px;color:var(--muted);font-family:'JetBrains Mono';text-align:right;line-height:1.25;max-width:70px;overflow:hidden}
-.card.pend{opacity:.6}
-.card.pend::after{content:"";position:absolute;top:8px;right:8px;width:11px;height:11px;border:2px solid var(--hivis);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
-
-/* states */
-.msg{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;line-height:1.6}
+.msg{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;line-height:1.6}
 .msg.err{color:#fda4a4}
 .msg button{margin-top:14px;background:var(--hivis);color:#111;border:none;border-radius:8px;padding:10px 22px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
-.skel{background:var(--panel);border:1px solid var(--line);border-radius:13px;min-height:92px;animation:pulse 1.3s ease-in-out infinite}
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-height:150px;animation:pulse 1.3s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
-
 .foot-note{text-align:center;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:26px;opacity:.65;line-height:1.7}
+
+/* modal (manage panel) */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}
+.modal[hidden]{display:none}
+.mbox{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--hivis);border-radius:16px;padding:20px 18px;max-width:400px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 12px 48px rgba(0,0,0,.5)}
+.mttl{font-family:Archivo;font-weight:900;font-size:18px;text-transform:uppercase;letter-spacing:.03em;color:var(--text);line-height:1.15}
+.msub{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:4px 0 16px}
+
+.tblk{border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:13px 13px 14px;margin-bottom:12px;position:relative}
+.tblk.booked{border-left-color:var(--red)}
+.tblk.busy{opacity:.55;pointer-events:none}
+.tblk.busy::after{content:"";position:absolute;top:12px;right:12px;width:13px;height:13px;border:2px solid var(--hivis);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+.tbh{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.tbt{font-family:Archivo;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:.03em}
+.tst{font-family:'JetBrains Mono';font-weight:700;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
+.tst.free{background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.4)}
+.tst.booked{background:rgba(239,68,68,.14);color:#fda4a4;border:1px solid rgba(239,68,68,.3)}
+.binfo{font-size:13px;line-height:1.9;margin-bottom:12px}
+.binfo .k{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:inline-block;min-width:78px}
+.binfo b{color:var(--hivis);font-family:'Archivo Narrow'}
+.fd{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.fd label{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
+.fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+.berr{color:#fda4a4;font-size:12px;min-height:14px;margin:-3px 0 8px}
+.mbtn{width:100%;border:none;border-radius:9px;padding:12px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.mbtn.go{background:var(--hivis);color:#111}
+.mbtn.danger{background:var(--red);color:#fff}
+.mbtn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.mfoot{margin-top:6px}
 </style>
 </head>
 <body>
@@ -93,13 +118,13 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div class="hdr">
     <div class="t">Contractor Availability</div>
-    <div class="s">Tap a name to toggle · Green = available · Live across all devices</div>
+    <div class="s">Tap a contractor to manage their teams · book against an offer or release</div>
   </div>
 
   <div class="stats">
-    <div class="stat g"><div class="n" id="cAvail">–</div><div class="l">Available</div></div>
-    <div class="stat r"><div class="n" id="cBooked">–</div><div class="l">Booked</div></div>
-    <div class="stat"><div class="n" id="cTotal" style="color:var(--text)">–</div><div class="l">Total</div></div>
+    <div class="stat g"><div class="n" id="cFree">–</div><div class="l">Teams Free</div></div>
+    <div class="stat r"><div class="n" id="cBooked">–</div><div class="l">Booked · Active</div></div>
+    <div class="stat"><div class="n" id="cTotal" style="color:var(--text)">–</div><div class="l">Contractors</div></div>
   </div>
 
   <div class="tools">
@@ -109,172 +134,230 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Loading…</span></div>
 
-  <div class="legend">
-    <span><i class="lg"></i> Available</span>
-    <span><i class="lr"></i> Booked</span>
-  </div>
-
   <div id="grid" class="grid"></div>
 
-  <div class="foot-note">Lingel Field Operations · Contractor board updates live from the Contractors sheet</div>
+  <div class="foot-note">Lingel Field Operations · Live status in Contractors · full history in Bookings</div>
+</div>
+
+<!-- manage panel -->
+<div class="modal" id="modal" hidden>
+  <div class="mbox" id="mbox">
+    <div class="mttl" id="mTtl"></div>
+    <div class="msub" id="mSub"></div>
+    <div id="mBody"></div>
+    <div class="mfoot"><button class="mbtn ghost" id="mClose">Close</button></div>
+  </div>
 </div>
 
 <script>
 /* ---------- config ----------
-   This app talks to your INVOICE Apps Script (the one that owns the
-   Contractors tab). Paste that deployment's /exec URL below — it is the
-   SAME url as SHEET_WEBAPP_URL inside contractor-invoice.html. */
+   Points at your INVOICE Apps Script (owns the Contractors + Bookings tabs).
+   Same URL as SHEET_WEBAPP_URL inside contractor-invoice.html. */
 const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbwC8ZPk7oaU2wNdHabrbWfc2DufOUvj10dyefQMUdQ8ivaWMYrcWrA59iudooV9yLym0Q/exec";
 const API = (function(){
   if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC;
   try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){}
   return INVOICE_EXEC;
 })();
-const POLL_MS = 8000;          // auto-refresh interval
-const CACHE_KEY = 'lingel_contractors_cache';
+const POLL_MS = 8000;
+const CACHE_KEY = 'lingel_contractors_cache_v2';
 
-/* supervisor from hub login */
 const SUP = (function(){
   try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; }
 })();
-document.getElementById('who').innerHTML = SUP ? '<span>Signed in as</span><b>'+esc(SUP)+'</b>' : '<b style="color:var(--muted)">Not signed in</b>';
-
-/* ---------- state ---------- */
-let rows = [];                 // [{name, role, status, by, at}]
-const pending = new Map();     // name -> desired status (in-flight taps, protected from poll overwrite)
-let filter = '';
-let pollTimer = null;
-let firstLoad = true;
 
 /* ---------- helpers ---------- */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+document.getElementById('who').innerHTML = SUP ? '<span>Signed in as</span><b>'+esc(SUP)+'</b>' : '<b style="color:var(--muted)">Not signed in</b>';
 function setDot(kind, txt){
   const d=document.getElementById('dot'); d.className='dot'+(kind?(' '+kind):'');
   if(txt!==undefined) document.getElementById('syncTxt').textContent=txt;
 }
+function fmtDate(v){ if(!v) return ''; try{ const d=new Date(v); if(isNaN(d)) return String(v); return d.toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(v); } }
+function normTeam(t){ t=t||{}; return {
+  status:(String(t.status||'').toLowerCase()==='booked')?'booked':'available',
+  offer:String(t.offer||'').trim(), project:String(t.project||'').trim(),
+  by:String(t.by||'').trim(), at:t.at||'' }; }
+function normRow(c){ return {
+  name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(),
+  team1:normTeam(c.team1), team2:normTeam(c.team2) }; }
 function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
-function loadCache(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); }catch(e){ return null; } }
+function loadCache(){ try{ var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); return Array.isArray(c)?c.map(normRow):null; }catch(e){ return null; } }
 
-/* ---------- rendering ---------- */
+/* ---------- state ---------- */
+let rows = [];
+const pending = new Map();       // "name|team" -> optimistic team object
+const confirmSet = new Set();    // "name|team" awaiting release confirm
+let filter = '';
+let pollTimer = null;
+let firstLoad = true;
+let currentManage = null;
+
+const TEAMS = ['1','2'];
+function teamOf(r, t){ return t==='1' ? r.team1 : r.team2; }
+function dispTeam(r, t){ const k=r.name+'|'+t; return pending.has(k) ? pending.get(k) : teamOf(r,t); }
+
+/* ---------- grid rendering ---------- */
 function counts(){
-  let a=0,b=0;
-  rows.forEach(r=>{ const st=pending.has(r.name)?pending.get(r.name):r.status; (st==='available'?a++:b++); });
-  document.getElementById('cAvail').textContent=a;
-  document.getElementById('cBooked').textContent=b;
-  document.getElementById('cTotal').textContent=rows.length;
+  let free=0, booked=0;
+  rows.forEach(r=>{ TEAMS.forEach(t=>{ (dispTeam(r,t).status==='booked') ? booked++ : free++; }); });
+  document.getElementById('cFree').textContent = free;
+  document.getElementById('cBooked').textContent = booked;
+  document.getElementById('cTotal').textContent = rows.length;
+}
+function cardTeamLine(r, t){
+  const tm=dispTeam(r,t), booked=tm.status==='booked', busy=pending.has(r.name+'|'+t);
+  const info = booked
+    ? '<b>#'+esc(tm.offer||'—')+'</b>'+(tm.project?' <span class="pj">'+esc(tm.project)+'</span>':'')+(tm.by?'<span class="who"> · '+esc(tm.by)+'</span>':'')
+    : '<span class="freeT">Available</span>';
+  return '<div class="trow '+(booked?'booked':'free')+(busy?' busy':'')+'">'
+       +   '<span class="tb">Team '+t+'</span><div class="ti">'+info+'</div>'
+       + '</div>';
 }
 function render(){
   const g=document.getElementById('grid');
   counts();
   const list = rows.filter(r=> !filter || r.name.toLowerCase().includes(filter) || (r.role||'').toLowerCase().includes(filter));
-  if(!rows.length){
-    g.innerHTML='<div class="msg">No contractors found in the sheet.<br><span style="font-size:12px">Add names to the <b>Contractors</b> tab, then refresh.</span></div>';
-    return;
-  }
+  if(!rows.length){ g.innerHTML='<div class="msg">No contractors found in the sheet.<br><span style="font-size:12px">Add names to the <b>Contractors</b> tab, then refresh.</span></div>'; return; }
   if(!list.length){ g.innerHTML='<div class="msg">No contractor matches “'+esc(filter)+'”.</div>'; return; }
   g.innerHTML = list.map(r=>{
-    const st = pending.has(r.name)?pending.get(r.name):r.status;
-    const avail = st==='available';
-    const pend = pending.has(r.name)?' pend':'';
-    const by = r.by ? '<div class="by">'+esc(r.by)+'</div>' : '';
-    const role = r.role ? '<div class="role">'+esc(r.role)+'</div>' : '';
-    return '<div class="card'+(avail?' avail':'')+pend+'" data-name="'+esc(r.name)+'">'
-         +   '<div><div class="nm">'+esc(r.name)+'</div>'+role+'</div>'
-         +   '<div class="foot"><span class="pill">'+(avail?'Available':'Booked')+'</span>'+by+'</div>'
-         + '</div>';
+    const bookedN = TEAMS.filter(t=>dispTeam(r,t).status==='booked').length;
+    const summary = bookedN===0 ? TEAMS.length+' teams · all free' : TEAMS.length+' teams · '+bookedN+' booked';
+    return '<div class="card" data-name="'+esc(r.name)+'">'
+      + '<div class="chead"><div class="nm">'+esc(r.name)+'</div><div class="tcount">'+summary+'</div>'
+      + (r.role?'<div class="role">'+esc(r.role)+'</div>':'') + '</div>'
+      + '<div class="tlist">'+TEAMS.map(t=>cardTeamLine(r,t)).join('')+'</div>'
+      + '<div class="cta">Tap to manage →</div>'
+      + '</div>';
   }).join('');
 }
+
+/* ---------- manage panel ---------- */
+function teamBlock(r, t){
+  const tm=dispTeam(r,t), booked=tm.status==='booked', key=r.name+'|'+t, busy=pending.has(key);
+  const head='<div class="tbh"><span class="tbt">Team '+t+'</span><span class="tst '+(booked?'booked':'free')+'">'+(booked?'Booked':'Available')+'</span></div>';
+  if(booked){
+    const confirming=confirmSet.has(key);
+    return '<div class="tblk booked'+(busy?' busy':'')+'">'+head
+      + '<div class="binfo">'
+      +   '<div><span class="k">Offer No.</span> <b>#'+esc(tm.offer||'—')+'</b></div>'
+      +   (tm.project?'<div><span class="k">Project</span> '+esc(tm.project)+'</div>':'')
+      +   (tm.by?'<div><span class="k">Booked by</span> '+esc(tm.by)+'</div>':'')
+      +   (tm.at?'<div><span class="k">Booked on</span> '+esc(fmtDate(tm.at))+'</div>':'')
+      + '</div>'
+      + '<button class="mbtn danger" data-act="release" data-name="'+esc(r.name)+'" data-team="'+t+'"'+(busy?' disabled':'')+'>'+(confirming?'Tap again to confirm':'Release Team '+t)+'</button>'
+      + '</div>';
+  }
+  return '<div class="tblk free'+(busy?' busy':'')+'">'+head
+    + '<div class="fd"><label>Offer No.</label><input id="mOffer'+t+'" autocomplete="off" placeholder="e.g. 75057/14"'+(busy?' disabled':'')+'></div>'
+    + '<div class="fd"><label>Project / Site (optional)</label><input id="mProject'+t+'" autocomplete="off" placeholder="e.g. Kautilya Marg"'+(busy?' disabled':'')+'></div>'
+    + '<div class="berr" id="berr'+t+'"></div>'
+    + '<button class="mbtn go" data-act="book" data-name="'+esc(r.name)+'" data-team="'+t+'"'+(busy?' disabled':'')+'>Book Team '+t+' →</button>'
+    + '</div>';
+}
+function renderManage(){
+  if(currentManage===null) return;
+  const r=rows.find(x=>x.name===currentManage);
+  if(!r){ closeModal(); return; }
+  document.getElementById('mTtl').textContent=r.name;
+  const bookedN=TEAMS.filter(t=>dispTeam(r,t).status==='booked').length;
+  document.getElementById('mSub').textContent=TEAMS.length+' teams · '+bookedN+' booked'+(r.role?(' · '+r.role):'');
+  document.getElementById('mBody').innerHTML=TEAMS.map(t=>teamBlock(r,t)).join('');
+}
+function refreshViews(){ render(); if(!document.getElementById('modal').hidden) renderManage(); }
 
 /* ---------- data ---------- */
 async function fetchContractors(){
   const r = await fetch(API+'?action=contractors&t='+Date.now());
   const data = await r.json();
   if(!data || data.ok===false) throw new Error((data&&data.error)||'Server error');
-  // normalise
-  return (data.contractors||[]).map(c=>({
-    name:String(c.name||'').trim(),
-    role:String(c.role||'').trim(),
-    status:(String(c.status||'').toLowerCase()==='booked')?'booked':'available',
-    by:String(c.by||'').trim(),
-    at:c.at||''
-  })).filter(c=>c.name);
+  return (data.contractors||[]).map(normRow).filter(c=>c.name);
 }
-
 async function load(silent){
   if(!silent) setDot('busy','Syncing…');
   document.getElementById('refresh').classList.add('spin');
   try{
-    const fresh = await fetchContractors();
-    // keep in-flight local taps on top of server truth
-    rows = fresh.map(r=>{
-      if(pending.has(r.name)) return r;      // status shown via pending map in render
-      return r;
-    });
-    saveCache();
-    render();
+    rows = await fetchContractors();
+    saveCache(); refreshViews();
     setDot('ok','Live · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
     firstLoad=false;
   }catch(e){
     if(firstLoad){
       const cached=loadCache();
-      if(cached && cached.length){ rows=cached; render(); setDot('err','Offline · showing last known state'); }
+      if(cached && cached.length){ rows=cached; refreshViews(); setDot('err','Offline · showing last known state'); }
       else{ document.getElementById('grid').innerHTML='<div class="msg err">Couldn’t reach the sheet.<br><span style="font-size:12px">Check your connection.</span><br><button onclick="load()">Retry</button></div>'; setDot('err','Connection failed'); }
-    }else{
-      setDot('err','Offline · will retry');
-    }
-  }finally{
-    document.getElementById('refresh').classList.remove('spin');
-  }
+    }else setDot('err','Offline · will retry');
+  }finally{ document.getElementById('refresh').classList.remove('spin'); }
 }
 
-/* ---------- toggle ---------- */
-async function toggle(name){
-  const row = rows.find(r=>r.name===name); if(!row) return;
-  const current = pending.has(name)?pending.get(name):row.status;
-  const next = current==='available' ? 'booked' : 'available';
-  pending.set(name, next);
-  render();
-  setDot('busy','Saving…');
-  try{
-    const body = new URLSearchParams({action:'setContractor', name, status:next, by:SUP});
-    const r = await fetch(API,{method:'POST', body});
-    const data = await r.json();
-    if(!data || data.ok===false) throw new Error((data&&data.error)||'Save failed');
-    // commit locally
-    row.status = next; row.by = SUP; row.at = new Date().toISOString();
-    pending.delete(name);
-    render();
-    setDot('ok','Saved '+esc(name)+' → '+(next==='available'?'Available':'Booked'));
-    saveCache();
-  }catch(e){
-    pending.delete(name);   // revert to server truth
-    render();
-    setDot('err','Couldn’t save '+esc(name)+' — tap again');
-  }
+/* ---------- book / release ---------- */
+async function post(params){
+  const r = await fetch(API,{method:'POST', body:new URLSearchParams(params)});
+  const data = await r.json();
+  if(!data || data.ok===false) throw new Error((data&&data.error)||'Save failed');
+  return data;
 }
+async function book(name, team, offer, project){
+  const key=name+'|'+team;
+  pending.set(key,{status:'booked',offer,project,by:SUP}); refreshViews(); setDot('busy','Booking…');
+  try{
+    await post({action:'book', name, team, offer, project, by:SUP});
+    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; tm.at=new Date().toISOString(); }
+    pending.delete(key); confirmSet.delete(key); refreshViews(); saveCache();
+    setDot('ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
+  }catch(e){ pending.delete(key); refreshViews(); setDot('err',(e.message||'Booking failed')+' — try again'); }
+}
+async function release(name, team){
+  const key=name+'|'+team;
+  pending.set(key,{status:'available',offer:'',project:'',by:SUP}); refreshViews(); setDot('busy','Releasing…');
+  try{
+    await post({action:'release', name, team, by:SUP});
+    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='available'; tm.offer=''; tm.project=''; tm.by=SUP; tm.at=new Date().toISOString(); }
+    pending.delete(key); confirmSet.delete(key); refreshViews(); saveCache();
+    setDot('ok','Released '+esc(name)+' Team '+team);
+  }catch(e){ pending.delete(key); refreshViews(); setDot('err',(e.message||'Release failed')+' — try again'); }
+}
+
+/* ---------- modal wiring ---------- */
+const modal=document.getElementById('modal');
+function openManage(name){ currentManage=name; confirmSet.clear(); modal.hidden=false; renderManage(); }
+function closeModal(){ modal.hidden=true; currentManage=null; confirmSet.clear(); }
+document.getElementById('mClose').addEventListener('click', closeModal);
+modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
+document.getElementById('mBody').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-act]'); if(!b) return;
+  const name=b.getAttribute('data-name'), team=b.getAttribute('data-team'), act=b.getAttribute('data-act');
+  if(pending.has(name+'|'+team)) return;
+  if(act==='book'){
+    const offer=(document.getElementById('mOffer'+team).value||'').trim();
+    const project=(document.getElementById('mProject'+team).value||'').trim();
+    if(!offer){ document.getElementById('berr'+team).textContent='Offer No. is required to book.'; return; }
+    book(name, team, offer, project);
+  }else if(act==='release'){
+    const key=name+'|'+team;
+    if(confirmSet.has(key)){ confirmSet.delete(key); release(name, team); }
+    else { confirmSet.add(key); renderManage(); }
+  }
+});
 
 /* ---------- events ---------- */
 document.getElementById('grid').addEventListener('click', e=>{
-  const card = e.target.closest('.card'); if(!card) return;
-  const name = card.getAttribute('data-name');
-  if(pending.has(name)) return;   // ignore taps while its save is in flight
-  toggle(name);
+  const c=e.target.closest('.card'); if(!c) return;
+  openManage(c.getAttribute('data-name'));
 });
 document.getElementById('q').addEventListener('input', e=>{ filter=e.target.value.trim().toLowerCase(); render(); });
 document.getElementById('refresh').addEventListener('click', ()=>load());
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !modal.hidden) closeModal(); });
 
-/* pause polling when tab hidden, refresh on return */
-function startPoll(){ stopPoll(); pollTimer=setInterval(()=>{ if(!document.hidden && pending.size===0) load(true); }, POLL_MS); }
+/* ---------- poll ---------- */
+function startPoll(){ stopPoll(); pollTimer=setInterval(()=>{ if(!document.hidden && pending.size===0 && modal.hidden) load(true); }, POLL_MS); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopPoll(); else { load(true); startPoll(); } });
 window.addEventListener('online', ()=>load(true));
 
 /* ---------- boot ---------- */
 document.getElementById('grid').innerHTML = Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
-load();
-startPoll();
-
-/* offline shell (matches suite) */
+load(); startPoll();
 if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
 </body>
