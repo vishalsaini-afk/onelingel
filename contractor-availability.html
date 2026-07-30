@@ -48,64 +48,55 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .dot.err{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
 .dot.busy{background:var(--hivis);box-shadow:0 0 0 3px rgba(255,206,31,.18)}
 
-/* grid + card */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 12px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .08s,border-color .15s,background .15s}
-.card:active{transform:scale(.985)}
-.card:hover{border-color:#3a4150}
-.chead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.card .nm{font-family:Archivo;font-weight:700;font-size:16px;line-height:1.15;color:var(--text);word-break:break-word;flex:1;min-width:0}
-.card .role{font-size:11px;color:var(--muted);width:100%;margin-top:1px;line-height:1.3}
-.tcount{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-.tlist{margin-top:11px;display:flex;flex-direction:column;gap:7px}
-.trow{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-left:3px solid var(--green);background:var(--panel-2);border-radius:9px;padding:7px 9px;min-height:38px}
-.trow.booked{border-left-color:var(--red)}
-.trow.busy{opacity:.5}
-.trow .tb{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);flex-shrink:0;width:44px}
-.trow .ti{font-size:12px;color:var(--text);line-height:1.35;min-width:0;overflow:hidden}
-.trow .ti b{font-family:'Archivo Narrow';font-weight:700;font-size:13px}
-.trow.booked .ti b{color:#fda4a4}
-.trow .ti .pj{color:var(--muted)}
-.trow .ti .who{color:var(--hivis)}
-.trow .freeT{color:#86efac;font-family:'Archivo Narrow';font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.04em}
-.cta{margin-top:11px;text-align:right;font-family:'JetBrains Mono';font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.legend{display:flex;gap:16px;margin-bottom:12px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend .lg{background:var(--green)}.legend .lr{background:var(--red)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 13px}
+.card .nm{font-family:Archivo;font-weight:700;font-size:16px;line-height:1.15;color:var(--text);word-break:break-word}
+.card .role{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+.teams{display:flex;gap:9px;margin-top:12px}
+.team{flex:1;border:1px solid var(--line);border-left:4px solid var(--red);background:var(--panel-2);border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;position:relative;-webkit-tap-highlight-color:transparent;transition:transform .08s,background .15s,border-color .15s}
+.team:active{transform:scale(.96)}
+.team.avail{border-left-color:var(--green);background:linear-gradient(180deg,rgba(34,197,94,.13),rgba(34,197,94,.04))}
+.team .tl{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.team .ts{font-family:Archivo;font-weight:700;font-size:13px;margin-top:3px}
+.team.avail .ts{color:#86efac}
+.team:not(.avail) .ts{color:#fda4a4}
+.team .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team.busy{opacity:.5;pointer-events:none}
+.team.busy::after{content:"";position:absolute;top:7px;right:7px;width:10px;height:10px;border:2px solid var(--hivis);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
 
 .msg{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;line-height:1.6}
 .msg.err{color:#fda4a4}
 .msg button{margin-top:14px;background:var(--hivis);color:#111;border:none;border-radius:8px;padding:10px 22px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
-.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-height:150px;animation:pulse 1.3s ease-in-out infinite}
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-height:118px;animation:pulse 1.3s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
+
 .foot-note{text-align:center;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:26px;opacity:.65;line-height:1.7}
 
-/* modal (manage panel) */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal[hidden]{display:none}
-.mbox{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--hivis);border-radius:16px;padding:20px 18px;max-width:400px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 12px 48px rgba(0,0,0,.5)}
-.mttl{font-family:Archivo;font-weight:900;font-size:18px;text-transform:uppercase;letter-spacing:.03em;color:var(--text);line-height:1.15}
-.msub{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:4px 0 16px}
-
-.tblk{border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:13px 13px 14px;margin-bottom:12px;position:relative}
-.tblk.booked{border-left-color:var(--red)}
-.tblk.busy{opacity:.55;pointer-events:none}
-.tblk.busy::after{content:"";position:absolute;top:12px;right:12px;width:13px;height:13px;border:2px solid var(--hivis);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
-.tbh{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
-.tbt{font-family:Archivo;font-weight:900;font-size:14px;text-transform:uppercase;letter-spacing:.03em}
-.tst{font-family:'JetBrains Mono';font-weight:700;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px}
-.tst.free{background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.4)}
-.tst.booked{background:rgba(239,68,68,.14);color:#fda4a4;border:1px solid rgba(239,68,68,.3)}
-.binfo{font-size:13px;line-height:1.9;margin-bottom:12px}
-.binfo .k{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:inline-block;min-width:78px}
-.binfo b{color:var(--hivis);font-family:'Archivo Narrow'}
-.fd{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.mbox{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--hivis);border-radius:16px;padding:22px 20px;max-width:380px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,.5)}
+.mbox.rel{border-top-color:var(--red)}
+.mttl{font-family:Archivo;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.03em;color:var(--text);line-height:1.2;margin-bottom:4px}
+.msub{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.fd{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .fd label{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
-.berr{color:#fda4a4;font-size:12px;min-height:14px;margin:-3px 0 8px}
-.mbtn{width:100%;border:none;border-radius:9px;padding:12px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.relinfo{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.7}
+.relinfo b{color:var(--hivis);font-family:'Archivo Narrow'}
+.relinfo .k{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.mErr{color:#fda4a4;font-size:12px;min-height:15px;margin:-4px 0 10px}
+.mbtns{display:flex;gap:9px;margin-top:4px}
+.mbtn{flex:1;border:none;border-radius:9px;padding:12px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.mbtn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .mbtn.go{background:var(--hivis);color:#111}
 .mbtn.danger{background:var(--red);color:#fff}
-.mbtn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
-.mfoot{margin-top:6px}
 </style>
 </head>
 <body>
@@ -118,7 +109,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div class="hdr">
     <div class="t">Contractor Availability</div>
-    <div class="s">Tap a contractor to manage their teams · book against an offer or release</div>
+    <div class="s">Each contractor has 2 teams · tap a team to book (offer no.) or release</div>
   </div>
 
   <div class="stats">
@@ -134,18 +125,27 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Loading…</span></div>
 
+  <div class="legend">
+    <span><i class="lg"></i> Team free</span>
+    <span><i class="lr"></i> Booked (offer shown)</span>
+  </div>
+
   <div id="grid" class="grid"></div>
 
   <div class="foot-note">Lingel Field Operations · Live status in Contractors · full history in Bookings</div>
 </div>
 
-<!-- manage panel -->
+<!-- modal -->
 <div class="modal" id="modal" hidden>
   <div class="mbox" id="mbox">
     <div class="mttl" id="mTtl"></div>
     <div class="msub" id="mSub"></div>
     <div id="mBody"></div>
-    <div class="mfoot"><button class="mbtn ghost" id="mClose">Close</button></div>
+    <div class="mErr" id="mErr"></div>
+    <div class="mbtns">
+      <button class="mbtn ghost" id="mCancel">Cancel</button>
+      <button class="mbtn go" id="mGo">OK</button>
+    </div>
   </div>
 </div>
 
@@ -173,7 +173,6 @@ function setDot(kind, txt){
   const d=document.getElementById('dot'); d.className='dot'+(kind?(' '+kind):'');
   if(txt!==undefined) document.getElementById('syncTxt').textContent=txt;
 }
-function fmtDate(v){ if(!v) return ''; try{ const d=new Date(v); if(isNaN(d)) return String(v); return d.toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return String(v); } }
 function normTeam(t){ t=t||{}; return {
   status:(String(t.status||'').toLowerCase()==='booked')?'booked':'available',
   offer:String(t.offer||'').trim(), project:String(t.project||'').trim(),
@@ -186,33 +185,34 @@ function loadCache(){ try{ var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'nu
 
 /* ---------- state ---------- */
 let rows = [];
-const pending = new Map();       // "name|team" -> optimistic team object
-const confirmSet = new Set();    // "name|team" awaiting release confirm
+const pending = new Map();     // "name|team" -> optimistic team object
 let filter = '';
 let pollTimer = null;
 let firstLoad = true;
-let currentManage = null;
 
-const TEAMS = ['1','2'];
 function teamOf(r, t){ return t==='1' ? r.team1 : r.team2; }
 function dispTeam(r, t){ const k=r.name+'|'+t; return pending.has(k) ? pending.get(k) : teamOf(r,t); }
 
-/* ---------- grid rendering ---------- */
+/* ---------- rendering ---------- */
 function counts(){
   let free=0, booked=0;
-  rows.forEach(r=>{ TEAMS.forEach(t=>{ (dispTeam(r,t).status==='booked') ? booked++ : free++; }); });
+  rows.forEach(r=>{ ['1','2'].forEach(t=>{ (dispTeam(r,t).status==='booked') ? booked++ : free++; }); });
   document.getElementById('cFree').textContent = free;
   document.getElementById('cBooked').textContent = booked;
   document.getElementById('cTotal').textContent = rows.length;
 }
-function cardTeamLine(r, t){
-  const tm=dispTeam(r,t), booked=tm.status==='booked', busy=pending.has(r.name+'|'+t);
-  const info = booked
-    ? '<b>#'+esc(tm.offer||'—')+'</b>'+(tm.project?' <span class="pj">'+esc(tm.project)+'</span>':'')+(tm.by?'<span class="who"> · '+esc(tm.by)+'</span>':'')
-    : '<span class="freeT">Available</span>';
-  return '<div class="trow '+(booked?'booked':'free')+(busy?' busy':'')+'">'
-       +   '<span class="tb">Team '+t+'</span><div class="ti">'+info+'</div>'
-       + '</div>';
+function teamChip(r, t){
+  const tm = dispTeam(r,t);
+  const avail = tm.status!=='booked';
+  const busy = pending.has(r.name+'|'+t) ? ' busy' : '';
+  const sub = (!avail && tm.offer)
+      ? '<div class="to">#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')+'</div>'
+      : (!avail ? '<div class="to">booked</div>' : '<div class="to">tap to book</div>');
+  return '<button class="team'+(avail?' avail':'')+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'">'
+       +   '<div class="tl">Team '+t+'</div>'
+       +   '<div class="ts">'+(avail?'Available':'Booked')+'</div>'
+       +   sub
+       + '</button>';
 }
 function render(){
   const g=document.getElementById('grid');
@@ -220,51 +220,14 @@ function render(){
   const list = rows.filter(r=> !filter || r.name.toLowerCase().includes(filter) || (r.role||'').toLowerCase().includes(filter));
   if(!rows.length){ g.innerHTML='<div class="msg">No contractors found in the sheet.<br><span style="font-size:12px">Add names to the <b>Contractors</b> tab, then refresh.</span></div>'; return; }
   if(!list.length){ g.innerHTML='<div class="msg">No contractor matches “'+esc(filter)+'”.</div>'; return; }
-  g.innerHTML = list.map(r=>{
-    const bookedN = TEAMS.filter(t=>dispTeam(r,t).status==='booked').length;
-    const summary = bookedN===0 ? TEAMS.length+' teams · all free' : TEAMS.length+' teams · '+bookedN+' booked';
-    return '<div class="card" data-name="'+esc(r.name)+'">'
-      + '<div class="chead"><div class="nm">'+esc(r.name)+'</div><div class="tcount">'+summary+'</div>'
-      + (r.role?'<div class="role">'+esc(r.role)+'</div>':'') + '</div>'
-      + '<div class="tlist">'+TEAMS.map(t=>cardTeamLine(r,t)).join('')+'</div>'
-      + '<div class="cta">Tap to manage →</div>'
-      + '</div>';
-  }).join('');
+  g.innerHTML = list.map(r=>
+    '<div class="card">'
+    + '<div class="nm">'+esc(r.name)+'</div>'
+    + (r.role?'<div class="role">'+esc(r.role)+'</div>':'')
+    + '<div class="teams">'+teamChip(r,'1')+teamChip(r,'2')+'</div>'
+    + '</div>'
+  ).join('');
 }
-
-/* ---------- manage panel ---------- */
-function teamBlock(r, t){
-  const tm=dispTeam(r,t), booked=tm.status==='booked', key=r.name+'|'+t, busy=pending.has(key);
-  const head='<div class="tbh"><span class="tbt">Team '+t+'</span><span class="tst '+(booked?'booked':'free')+'">'+(booked?'Booked':'Available')+'</span></div>';
-  if(booked){
-    const confirming=confirmSet.has(key);
-    return '<div class="tblk booked'+(busy?' busy':'')+'">'+head
-      + '<div class="binfo">'
-      +   '<div><span class="k">Offer No.</span> <b>#'+esc(tm.offer||'—')+'</b></div>'
-      +   (tm.project?'<div><span class="k">Project</span> '+esc(tm.project)+'</div>':'')
-      +   (tm.by?'<div><span class="k">Booked by</span> '+esc(tm.by)+'</div>':'')
-      +   (tm.at?'<div><span class="k">Booked on</span> '+esc(fmtDate(tm.at))+'</div>':'')
-      + '</div>'
-      + '<button class="mbtn danger" data-act="release" data-name="'+esc(r.name)+'" data-team="'+t+'"'+(busy?' disabled':'')+'>'+(confirming?'Tap again to confirm':'Release Team '+t)+'</button>'
-      + '</div>';
-  }
-  return '<div class="tblk free'+(busy?' busy':'')+'">'+head
-    + '<div class="fd"><label>Offer No.</label><input id="mOffer'+t+'" autocomplete="off" placeholder="e.g. 75057/14"'+(busy?' disabled':'')+'></div>'
-    + '<div class="fd"><label>Project / Site (optional)</label><input id="mProject'+t+'" autocomplete="off" placeholder="e.g. Kautilya Marg"'+(busy?' disabled':'')+'></div>'
-    + '<div class="berr" id="berr'+t+'"></div>'
-    + '<button class="mbtn go" data-act="book" data-name="'+esc(r.name)+'" data-team="'+t+'"'+(busy?' disabled':'')+'>Book Team '+t+' →</button>'
-    + '</div>';
-}
-function renderManage(){
-  if(currentManage===null) return;
-  const r=rows.find(x=>x.name===currentManage);
-  if(!r){ closeModal(); return; }
-  document.getElementById('mTtl').textContent=r.name;
-  const bookedN=TEAMS.filter(t=>dispTeam(r,t).status==='booked').length;
-  document.getElementById('mSub').textContent=TEAMS.length+' teams · '+bookedN+' booked'+(r.role?(' · '+r.role):'');
-  document.getElementById('mBody').innerHTML=TEAMS.map(t=>teamBlock(r,t)).join('');
-}
-function refreshViews(){ render(); if(!document.getElementById('modal').hidden) renderManage(); }
 
 /* ---------- data ---------- */
 async function fetchContractors(){
@@ -278,13 +241,13 @@ async function load(silent){
   document.getElementById('refresh').classList.add('spin');
   try{
     rows = await fetchContractors();
-    saveCache(); refreshViews();
+    saveCache(); render();
     setDot('ok','Live · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
     firstLoad=false;
   }catch(e){
     if(firstLoad){
       const cached=loadCache();
-      if(cached && cached.length){ rows=cached; refreshViews(); setDot('err','Offline · showing last known state'); }
+      if(cached && cached.length){ rows=cached; render(); setDot('err','Offline · showing last known state'); }
       else{ document.getElementById('grid').innerHTML='<div class="msg err">Couldn’t reach the sheet.<br><span style="font-size:12px">Check your connection.</span><br><button onclick="load()">Retry</button></div>'; setDot('err','Connection failed'); }
     }else setDot('err','Offline · will retry');
   }finally{ document.getElementById('refresh').classList.remove('spin'); }
@@ -299,55 +262,80 @@ async function post(params){
 }
 async function book(name, team, offer, project){
   const key=name+'|'+team;
-  pending.set(key,{status:'booked',offer,project,by:SUP}); refreshViews(); setDot('busy','Booking…');
+  pending.set(key,{status:'booked',offer,project,by:SUP}); render(); setDot('busy','Booking…');
   try{
     await post({action:'book', name, team, offer, project, by:SUP});
-    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; tm.at=new Date().toISOString(); }
-    pending.delete(key); confirmSet.delete(key); refreshViews(); saveCache();
+    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; }
+    pending.delete(key); render(); saveCache();
     setDot('ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
-  }catch(e){ pending.delete(key); refreshViews(); setDot('err',(e.message||'Booking failed')+' — try again'); }
+  }catch(e){ pending.delete(key); render(); setDot('err',(e.message||'Booking failed')+' — try again'); }
 }
 async function release(name, team){
   const key=name+'|'+team;
-  pending.set(key,{status:'available',offer:'',project:'',by:SUP}); refreshViews(); setDot('busy','Releasing…');
+  pending.set(key,{status:'available',offer:'',project:'',by:SUP}); render(); setDot('busy','Releasing…');
   try{
     await post({action:'release', name, team, by:SUP});
-    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='available'; tm.offer=''; tm.project=''; tm.by=SUP; tm.at=new Date().toISOString(); }
-    pending.delete(key); confirmSet.delete(key); refreshViews(); saveCache();
+    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='available'; tm.offer=''; tm.project=''; tm.by=SUP; }
+    pending.delete(key); render(); saveCache();
     setDot('ok','Released '+esc(name)+' Team '+team);
-  }catch(e){ pending.delete(key); refreshViews(); setDot('err',(e.message||'Release failed')+' — try again'); }
+  }catch(e){ pending.delete(key); render(); setDot('err',(e.message||'Release failed')+' — try again'); }
 }
 
-/* ---------- modal wiring ---------- */
+/* ---------- modal ---------- */
 const modal=document.getElementById('modal');
-function openManage(name){ currentManage=name; confirmSet.clear(); modal.hidden=false; renderManage(); }
-function closeModal(){ modal.hidden=true; currentManage=null; confirmSet.clear(); }
-document.getElementById('mClose').addEventListener('click', closeModal);
+let goHandler=null;
+function closeModal(){ modal.hidden=true; goHandler=null; }
+function showMErr(m){ document.getElementById('mErr').textContent=m||''; }
+document.getElementById('mCancel').addEventListener('click', closeModal);
+document.getElementById('mGo').addEventListener('click', ()=>{ if(goHandler) goHandler(); });
 modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
-document.getElementById('mBody').addEventListener('click', e=>{
-  const b=e.target.closest('button[data-act]'); if(!b) return;
-  const name=b.getAttribute('data-name'), team=b.getAttribute('data-team'), act=b.getAttribute('data-act');
-  if(pending.has(name+'|'+team)) return;
-  if(act==='book'){
-    const offer=(document.getElementById('mOffer'+team).value||'').trim();
-    const project=(document.getElementById('mProject'+team).value||'').trim();
-    if(!offer){ document.getElementById('berr'+team).textContent='Offer No. is required to book.'; return; }
-    book(name, team, offer, project);
-  }else if(act==='release'){
-    const key=name+'|'+team;
-    if(confirmSet.has(key)){ confirmSet.delete(key); release(name, team); }
-    else { confirmSet.add(key); renderManage(); }
-  }
-});
+
+function openBook(name, team){
+  document.getElementById('mbox').classList.remove('rel');
+  document.getElementById('mTtl').textContent='Book '+name;
+  document.getElementById('mSub').textContent='Team '+team+' · assign to an offer';
+  document.getElementById('mBody').innerHTML =
+    '<div class="fd"><label>Offer No.</label><input id="mOffer" inputmode="text" autocomplete="off" placeholder="e.g. 75057/14"></div>'
+   +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>';
+  showMErr('');
+  const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go';
+  modal.hidden=false;
+  setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
+  goHandler=()=>{
+    const offer=(document.getElementById('mOffer').value||'').trim();
+    const project=(document.getElementById('mProject').value||'').trim();
+    if(!offer){ showMErr('Offer No. is required to book.'); return; }
+    closeModal(); book(name, team, offer, project);
+  };
+}
+function openRelease(name, team, tm){
+  document.getElementById('mbox').classList.add('rel');
+  document.getElementById('mTtl').textContent='Release '+name;
+  document.getElementById('mSub').textContent='Team '+team+' · free this team';
+  document.getElementById('mBody').innerHTML =
+    '<div class="relinfo">'
+    + '<div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'
+    + (tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')
+    + (tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')
+    + '</div>';
+  showMErr('');
+  const go=document.getElementById('mGo'); go.textContent='Release'; go.className='mbtn danger';
+  modal.hidden=false;
+  goHandler=()=>{ closeModal(); release(name, team); };
+}
 
 /* ---------- events ---------- */
 document.getElementById('grid').addEventListener('click', e=>{
-  const c=e.target.closest('.card'); if(!c) return;
-  openManage(c.getAttribute('data-name'));
+  const btn=e.target.closest('.team'); if(!btn) return;
+  const name=btn.getAttribute('data-name'), team=btn.getAttribute('data-team');
+  if(pending.has(name+'|'+team)) return;
+  const r=rows.find(x=>x.name===name); if(!r) return;
+  const tm=dispTeam(r,team);
+  if(tm.status==='booked') openRelease(name, team, tm); else openBook(name, team);
 });
 document.getElementById('q').addEventListener('input', e=>{ filter=e.target.value.trim().toLowerCase(); render(); });
 document.getElementById('refresh').addEventListener('click', ()=>load());
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !modal.hidden) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !modal.hidden) closeModal(); else if(e.key==='Enter' && !modal.hidden && goHandler) goHandler(); });
 
 /* ---------- poll ---------- */
 function startPoll(){ stopPoll(); pollTimer=setInterval(()=>{ if(!document.hidden && pending.size===0 && modal.hidden) load(true); }, POLL_MS); }
