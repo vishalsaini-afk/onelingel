@@ -9,25 +9,29 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#ffce1f;--green:#22c55e;--red:#ef4444}
+:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#ffce1f;--green:#22c55e;--red:#ef4444;--blue:#5b9bd5}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
-.wrap{max-width:760px;margin:0 auto;padding:16px 14px 40px;min-height:100vh;display:flex;flex-direction:column}
+.wrap{max-width:820px;margin:0 auto;padding:16px 14px 40px;min-height:100vh}
 
-.top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.top{display:flex;align-items:center;gap:9px;margin-bottom:14px}
 .home{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
 .home:active{background:var(--panel-2)}
 .who{margin-left:auto;font-size:12px;color:var(--muted);text-align:right;line-height:1.3}
 .who b{color:var(--hivis);font-family:'Archivo Narrow';text-transform:uppercase;letter-spacing:.03em;display:block}
 
-.hdr{padding-bottom:14px;border-bottom:2px solid var(--line);margin-bottom:16px}
-.hdr .t{font-family:Archivo;font-weight:900;font-size:22px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);line-height:1.05}
-.hdr .s{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.hdr{padding-bottom:14px;border-bottom:2px solid var(--line);margin-bottom:14px}
+.hdr .t{font-family:Archivo;font-weight:900;font-size:22px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
+.hdr .s{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+
+/* view switch */
+.vtabs{display:flex;gap:6px;margin-bottom:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px}
+.vtab{flex:1;border:none;background:transparent;color:var(--muted);border-radius:9px;padding:11px 6px;font-family:'Archivo Narrow';font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.vtab.on{background:var(--hivis);color:#111}
 
 .stats{display:flex;gap:10px;margin-bottom:14px}
 .stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center}
-.stat.g{border-left:4px solid var(--green)}
-.stat.r{border-left:4px solid var(--red)}
+.stat.g{border-left:4px solid var(--green)}.stat.r{border-left:4px solid var(--red)}
 .stat .n{font-family:Archivo;font-weight:900;font-size:24px;line-height:1}
 .stat.g .n{color:var(--green)}.stat.r .n{color:var(--red)}
 .stat .l{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:6px}
@@ -53,36 +57,74 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
 .legend .lg{background:var(--green)}.legend .lr{background:var(--red)}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 13px}
-.card .nm{font-family:Archivo;font-weight:700;font-size:16px;line-height:1.15;color:var(--text);word-break:break-word}
+.card .nm{font-family:Archivo;font-weight:700;font-size:16px;line-height:1.15;word-break:break-word}
 .card .role{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
-.teams{display:flex;gap:9px;margin-top:12px}
-.team{flex:1;border:1px solid var(--line);border-left:4px solid var(--red);background:var(--panel-2);border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;position:relative;-webkit-tap-highlight-color:transparent;transition:transform .08s,background .15s,border-color .15s}
+.teams{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.team{flex:1 1 46%;min-width:98px;border:1px solid var(--line);border-left:4px solid var(--red);background:var(--panel-2);border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;position:relative;-webkit-tap-highlight-color:transparent;transition:transform .08s,background .15s,border-color .15s}
 .team:active{transform:scale(.96)}
 .team.avail{border-left-color:var(--green);background:linear-gradient(180deg,rgba(34,197,94,.13),rgba(34,197,94,.04))}
 .team .tl{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .team .ts{font-family:Archivo;font-weight:700;font-size:13px;margin-top:3px}
-.team.avail .ts{color:#86efac}
-.team:not(.avail) .ts{color:#fda4a4}
+.team.avail .ts{color:#86efac}.team:not(.avail) .ts{color:#fda4a4}
 .team .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .team.busy{opacity:.5;pointer-events:none}
 .team.busy::after{content:"";position:absolute;top:7px;right:7px;width:10px;height:10px;border:2px solid var(--hivis);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
 
+/* reports */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kc{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 15px}
+.kc.a{border-left:4px solid var(--red)}.kc.o{border-left:4px solid var(--hivis)}.kc.c{border-left:4px solid var(--green)}.kc.t{border-left:4px solid var(--blue)}
+.kc .n{font-family:Archivo;font-weight:900;font-size:26px;line-height:1}
+.kc.a .n{color:#fda4a4}.kc.o .n{color:var(--hivis)}.kc.c .n{color:#86efac}.kc.t .n{color:#a9cdf0}
+.kc .l{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:7px;line-height:1.4}
+.kc .subv{font-size:11px;color:var(--muted);margin-top:3px}
+.rtabs{display:flex;gap:6px;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px}
+.rtab{flex:1;border:none;background:transparent;color:var(--muted);border-radius:8px;padding:9px 6px;font-family:'Archivo Narrow';font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.rtab.on{background:var(--hivis);color:#111}
+.row{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:9px}
+.row.act{border-left:4px solid var(--red)}
+.rtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.rname{font-family:Archivo;font-weight:700;font-size:15px}
+.rmeta{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.rsub{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.rsub b{color:var(--text);font-weight:600}
+.pill{display:inline-block;font-family:'JetBrains Mono';font-weight:700;font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:5px;margin-left:6px}
+.pill.active{background:rgba(239,68,68,.16);color:#fda4a4}
+.pill.released{background:rgba(34,197,94,.15);color:#86efac}
+.pill.reassigned{background:rgba(255,206,31,.15);color:var(--hivis)}
+.ut{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:9px}
+.uthead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.utname{font-family:Archivo;font-weight:700;font-size:14.5px}
+.utnums{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}
+.utnums .on{color:#fda4a4}
+.bar{height:7px;background:var(--panel-2);border-radius:4px;margin-top:9px;overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--hivis),#ffd956);border-radius:4px}
+.utfoot{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)}
+.utfoot b{color:var(--text)}
+.ogrp{background:var(--panel);border:1px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden}
+.ohead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:var(--panel-2)}
+.ooffer{font-family:Archivo;font-weight:900;font-size:15px;color:var(--hivis)}
+.oproj{font-size:12px;color:var(--muted);margin-top:2px}
+.ocount{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);text-transform:uppercase}
+.oline{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;border-top:1px solid var(--line);font-size:12.5px}
+.oline .who2{color:var(--text)}
+.oline .when{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);text-align:right;white-space:nowrap}
+
 .msg{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;line-height:1.6}
 .msg.err{color:#fda4a4}
 .msg button{margin-top:14px;background:var(--hivis);color:#111;border:none;border-radius:8px;padding:10px 22px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
-.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-height:118px;animation:pulse 1.3s ease-in-out infinite}
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-height:100px;animation:pulse 1.3s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
-
-.foot-note{text-align:center;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:26px;opacity:.65;line-height:1.7}
+.foot-note{text-align:center;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:26px;opacity:.65}
 
 /* modal */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal[hidden]{display:none}
 .mbox{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--hivis);border-radius:16px;padding:22px 20px;max-width:380px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,.5)}
 .mbox.rel{border-top-color:var(--red)}
-.mttl{font-family:Archivo;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.03em;color:var(--text);line-height:1.2;margin-bottom:4px}
+.mttl{font-family:Archivo;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.03em;line-height:1.2;margin-bottom:4px}
 .msub{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
 .fd{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
 .fd label{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
@@ -109,28 +151,50 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div class="hdr">
     <div class="t">Contractor Availability</div>
-    <div class="s">Each contractor has 2 teams · tap a team to book (offer no.) or release</div>
+    <div class="s">Tap a team to book (offer no.) or release · teams per contractor set in the sheet</div>
   </div>
 
-  <div class="stats">
-    <div class="stat g"><div class="n" id="cFree">–</div><div class="l">Teams Free</div></div>
-    <div class="stat r"><div class="n" id="cBooked">–</div><div class="l">Booked · Active</div></div>
-    <div class="stat"><div class="n" id="cTotal" style="color:var(--text)">–</div><div class="l">Contractors</div></div>
+  <div class="vtabs">
+    <button class="vtab on" data-view="board">Board</button>
+    <button class="vtab" data-view="reports">📊 Reports</button>
   </div>
 
-  <div class="tools">
-    <div class="search"><span class="mag">🔍</span><input id="q" placeholder="Search contractor…" autocomplete="off"></div>
-    <button class="rf" id="refresh" title="Refresh">⟳</button>
+  <!-- ============ BOARD ============ -->
+  <div id="boardView">
+    <div class="stats">
+      <div class="stat g"><div class="n" id="cFree">–</div><div class="l">Teams Free</div></div>
+      <div class="stat r"><div class="n" id="cBooked">–</div><div class="l">Booked · Active</div></div>
+      <div class="stat"><div class="n" id="cTotal" style="color:var(--text)">–</div><div class="l">Contractors</div></div>
+    </div>
+    <div class="tools">
+      <div class="search"><span class="mag">🔍</span><input id="q" placeholder="Search contractor…" autocomplete="off"></div>
+      <button class="rf" id="refreshB" title="Refresh">⟳</button>
+    </div>
+    <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Loading…</span></div>
+    <div class="legend"><span><i class="lg"></i> Team free</span><span><i class="lr"></i> Booked (offer shown)</span></div>
+    <div id="grid" class="grid"></div>
   </div>
 
-  <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Loading…</span></div>
-
-  <div class="legend">
-    <span><i class="lg"></i> Team free</span>
-    <span><i class="lr"></i> Booked (offer shown)</span>
+  <!-- ============ REPORTS ============ -->
+  <div id="reportsView" hidden>
+    <div class="cards">
+      <div class="kc a"><div class="n" id="kActive">–</div><div class="l">Active Installations</div></div>
+      <div class="kc o"><div class="n" id="kOcc">–</div><div class="l">Teams Occupied</div><div class="subv" id="kOccSub"></div></div>
+      <div class="kc c"><div class="n" id="kEng">–</div><div class="l">Contractors Engaged</div></div>
+      <div class="kc t"><div class="n" id="kTot">–</div><div class="l">Total Bookings</div></div>
+    </div>
+    <div class="rtabs">
+      <button class="rtab on" data-rtab="active">Active</button>
+      <button class="rtab" data-rtab="util">Utilization</button>
+      <button class="rtab" data-rtab="offer">By Offer</button>
+    </div>
+    <div class="tools">
+      <div class="search" id="offerSearch" style="visibility:hidden"><span class="mag">🔍</span><input id="qr" placeholder="Search offer / project / contractor…" autocomplete="off"></div>
+      <button class="rf" id="refreshR" title="Refresh">⟳</button>
+    </div>
+    <div class="sync"><span class="dot" id="dotR"></span><span id="syncR">Loading…</span></div>
+    <div id="reportBody"></div>
   </div>
-
-  <div id="grid" class="grid"></div>
 
   <div class="foot-note">Lingel Field Operations · Live status in Contractors · full history in Bookings</div>
 </div>
@@ -150,202 +214,216 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 </div>
 
 <script>
-/* ---------- config ----------
-   Points at your INVOICE Apps Script (owns the Contractors + Bookings tabs).
-   Same URL as SHEET_WEBAPP_URL inside contractor-invoice.html. */
+/* ---------- config ---------- */
 const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbwC8ZPk7oaU2wNdHabrbWfc2DufOUvj10dyefQMUdQ8ivaWMYrcWrA59iudooV9yLym0Q/exec";
 const API = (function(){
   if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC;
   try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){}
   return INVOICE_EXEC;
 })();
-const POLL_MS = 8000;
-const CACHE_KEY = 'lingel_contractors_cache_v2';
+const POLL_BOARD = 8000, POLL_REPORTS = 15000;
+const CACHE_KEY = 'lingel_contractors_cache_v3';
+const SUP = (function(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; } })();
 
-const SUP = (function(){
-  try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; }
-})();
-
-/* ---------- helpers ---------- */
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 document.getElementById('who').innerHTML = SUP ? '<span>Signed in as</span><b>'+esc(SUP)+'</b>' : '<b style="color:var(--muted)">Not signed in</b>';
-function setDot(kind, txt){
-  const d=document.getElementById('dot'); d.className='dot'+(kind?(' '+kind):'');
-  if(txt!==undefined) document.getElementById('syncTxt').textContent=txt;
-}
-function normTeam(t){ t=t||{}; return {
-  status:(String(t.status||'').toLowerCase()==='booked')?'booked':'available',
-  offer:String(t.offer||'').trim(), project:String(t.project||'').trim(),
-  by:String(t.by||'').trim(), at:t.at||'' }; }
-function normRow(c){ return {
-  name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(),
-  team1:normTeam(c.team1), team2:normTeam(c.team2) }; }
-function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
-function loadCache(){ try{ var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); return Array.isArray(c)?c.map(normRow):null; }catch(e){ return null; } }
 
 /* ---------- state ---------- */
-let rows = [];
-const pending = new Map();     // "name|team" -> optimistic team object
-let filter = '';
-let pollTimer = null;
-let firstLoad = true;
+let view = 'board';
+let rows = [];                 // contractors
+let bookings = [];             // history rows
+const pending = new Map();
+let filter = '', rfilter = '', rtab = 'active';
+let pollTimer = null, firstLoad = true, bookingsLoaded = false;
 
-function teamOf(r, t){ return t==='1' ? r.team1 : r.team2; }
-function dispTeam(r, t){ const k=r.name+'|'+t; return pending.has(k) ? pending.get(k) : teamOf(r,t); }
+/* ---------- shared helpers ---------- */
+function setDot(id, txtId, kind, txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
+function normTeam(t){ t=t||{}; return { status:(String(t.status||'').toLowerCase()==='booked')?'booked':'available', offer:String(t.offer||'').trim(), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'' }; }
+function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams }; }
+function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
+function loadCache(){ try{ var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); return Array.isArray(c)?c.map(normRow):null; }catch(e){ return null; } }
+function teamOf(r,t){ return r.teams[Number(t)-1]; }
+function dispTeam(r,t){ const k=r.name+'|'+t; return pending.has(k)?pending.get(k):teamOf(r,t); }
 
-/* ---------- rendering ---------- */
+/* ================= BOARD ================= */
 function counts(){
   let free=0, booked=0;
-  rows.forEach(r=>{ ['1','2'].forEach(t=>{ (dispTeam(r,t).status==='booked') ? booked++ : free++; }); });
-  document.getElementById('cFree').textContent = free;
-  document.getElementById('cBooked').textContent = booked;
-  document.getElementById('cTotal').textContent = rows.length;
+  rows.forEach(r=>{ for(let t=1;t<=r.teams.length;t++){ (dispTeam(r,String(t)).status==='booked')?booked++:free++; } });
+  document.getElementById('cFree').textContent=free;
+  document.getElementById('cBooked').textContent=booked;
+  document.getElementById('cTotal').textContent=rows.length;
 }
-function teamChip(r, t){
-  const tm = dispTeam(r,t);
-  const avail = tm.status!=='booked';
-  const busy = pending.has(r.name+'|'+t) ? ' busy' : '';
-  const sub = (!avail && tm.offer)
-      ? '<div class="to">#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')+'</div>'
-      : (!avail ? '<div class="to">booked</div>' : '<div class="to">tap to book</div>');
-  return '<button class="team'+(avail?' avail':'')+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'">'
-       +   '<div class="tl">Team '+t+'</div>'
-       +   '<div class="ts">'+(avail?'Available':'Booked')+'</div>'
-       +   sub
-       + '</button>';
+function teamChip(r,t){
+  const tm=dispTeam(r,t), avail=tm.status!=='booked', busy=pending.has(r.name+'|'+t)?' busy':'';
+  const sub=(!avail&&tm.offer)?'<div class="to">#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')+'</div>':(!avail?'<div class="to">booked</div>':'<div class="to">tap to book</div>');
+  return '<button class="team'+(avail?' avail':'')+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'"><div class="tl">Team '+t+'</div><div class="ts">'+(avail?'Available':'Booked')+'</div>'+sub+'</button>';
 }
-function render(){
-  const g=document.getElementById('grid');
-  counts();
-  const list = rows.filter(r=> !filter || r.name.toLowerCase().includes(filter) || (r.role||'').toLowerCase().includes(filter));
+function renderBoard(){
+  const g=document.getElementById('grid'); counts();
+  const list=rows.filter(r=> !filter || r.name.toLowerCase().includes(filter) || (r.role||'').toLowerCase().includes(filter));
   if(!rows.length){ g.innerHTML='<div class="msg">No contractors found in the sheet.<br><span style="font-size:12px">Add names to the <b>Contractors</b> tab, then refresh.</span></div>'; return; }
   if(!list.length){ g.innerHTML='<div class="msg">No contractor matches “'+esc(filter)+'”.</div>'; return; }
-  g.innerHTML = list.map(r=>
-    '<div class="card">'
-    + '<div class="nm">'+esc(r.name)+'</div>'
-    + (r.role?'<div class="role">'+esc(r.role)+'</div>':'')
-    + '<div class="teams">'+teamChip(r,'1')+teamChip(r,'2')+'</div>'
-    + '</div>'
-  ).join('');
+  g.innerHTML=list.map(r=>{ let chips=''; for(let t=1;t<=r.teams.length;t++) chips+=teamChip(r,String(t));
+    return '<div class="card"><div class="nm">'+esc(r.name)+'</div>'+(r.role?'<div class="role">'+esc(r.role)+'</div>':'')+'<div class="teams">'+chips+'</div></div>'; }).join('');
 }
-
-/* ---------- data ---------- */
-async function fetchContractors(){
-  const r = await fetch(API+'?action=contractors&t='+Date.now());
-  const data = await r.json();
-  if(!data || data.ok===false) throw new Error((data&&data.error)||'Server error');
-  return (data.contractors||[]).map(normRow).filter(c=>c.name);
-}
-async function load(silent){
-  if(!silent) setDot('busy','Syncing…');
-  document.getElementById('refresh').classList.add('spin');
+async function loadBoard(silent){
+  if(!silent) setDot('dot','syncTxt','busy','Syncing…');
+  document.getElementById('refreshB').classList.add('spin');
   try{
-    rows = await fetchContractors();
-    saveCache(); render();
-    setDot('ok','Live · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+    const r=await fetch(API+'?action=contractors&t='+Date.now()); const data=await r.json();
+    if(!data||data.ok===false) throw new Error((data&&data.error)||'Server error');
+    rows=(data.contractors||[]).map(normRow).filter(c=>c.name);
+    saveCache(); renderBoard();
+    setDot('dot','syncTxt','ok','Live · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
     firstLoad=false;
   }catch(e){
-    if(firstLoad){
-      const cached=loadCache();
-      if(cached && cached.length){ rows=cached; render(); setDot('err','Offline · showing last known state'); }
-      else{ document.getElementById('grid').innerHTML='<div class="msg err">Couldn’t reach the sheet.<br><span style="font-size:12px">Check your connection.</span><br><button onclick="load()">Retry</button></div>'; setDot('err','Connection failed'); }
-    }else setDot('err','Offline · will retry');
-  }finally{ document.getElementById('refresh').classList.remove('spin'); }
+    if(firstLoad){ const cached=loadCache(); if(cached&&cached.length){ rows=cached; renderBoard(); setDot('dot','syncTxt','err','Offline · last known state'); }
+      else{ document.getElementById('grid').innerHTML='<div class="msg err">Couldn’t reach the sheet.<br><button onclick="loadBoard()">Retry</button></div>'; setDot('dot','syncTxt','err','Connection failed'); } }
+    else setDot('dot','syncTxt','err','Offline · will retry');
+  }finally{ document.getElementById('refreshB').classList.remove('spin'); }
 }
 
-/* ---------- book / release ---------- */
-async function post(params){
-  const r = await fetch(API,{method:'POST', body:new URLSearchParams(params)});
-  const data = await r.json();
-  if(!data || data.ok===false) throw new Error((data&&data.error)||'Save failed');
-  return data;
-}
-async function book(name, team, offer, project){
-  const key=name+'|'+team;
-  pending.set(key,{status:'booked',offer,project,by:SUP}); render(); setDot('busy','Booking…');
-  try{
-    await post({action:'book', name, team, offer, project, by:SUP});
+/* book / release */
+async function apiPost(params){ const r=await fetch(API,{method:'POST',body:new URLSearchParams(params)}); const data=await r.json(); if(!data||data.ok===false) throw new Error((data&&data.error)||'Save failed'); return data; }
+async function book(name,team,offer,project){
+  const key=name+'|'+team; pending.set(key,{status:'booked',offer,project,by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Booking…');
+  try{ await apiPost({action:'book',name,team,offer,project,by:SUP});
     const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; }
-    pending.delete(key); render(); saveCache();
-    setDot('ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
-  }catch(e){ pending.delete(key); render(); setDot('err',(e.message||'Booking failed')+' — try again'); }
+    pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false;
+    setDot('dot','syncTxt','ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
+  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); }
 }
-async function release(name, team){
-  const key=name+'|'+team;
-  pending.set(key,{status:'available',offer:'',project:'',by:SUP}); render(); setDot('busy','Releasing…');
-  try{
-    await post({action:'release', name, team, by:SUP});
+async function release(name,team){
+  const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Releasing…');
+  try{ await apiPost({action:'release',name,team,by:SUP});
     const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='available'; tm.offer=''; tm.project=''; tm.by=SUP; }
-    pending.delete(key); render(); saveCache();
-    setDot('ok','Released '+esc(name)+' Team '+team);
-  }catch(e){ pending.delete(key); render(); setDot('err',(e.message||'Release failed')+' — try again'); }
+    pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false;
+    setDot('dot','syncTxt','ok','Released '+esc(name)+' Team '+team);
+  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Release failed')+' — try again'); }
 }
 
-/* ---------- modal ---------- */
-const modal=document.getElementById('modal');
-let goHandler=null;
+/* modal */
+const modal=document.getElementById('modal'); let goHandler=null;
 function closeModal(){ modal.hidden=true; goHandler=null; }
 function showMErr(m){ document.getElementById('mErr').textContent=m||''; }
-document.getElementById('mCancel').addEventListener('click', closeModal);
-document.getElementById('mGo').addEventListener('click', ()=>{ if(goHandler) goHandler(); });
-modal.addEventListener('click', e=>{ if(e.target===modal) closeModal(); });
-
-function openBook(name, team){
+document.getElementById('mCancel').addEventListener('click',closeModal);
+document.getElementById('mGo').addEventListener('click',()=>{ if(goHandler) goHandler(); });
+modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
+function openBook(name,team){
   document.getElementById('mbox').classList.remove('rel');
   document.getElementById('mTtl').textContent='Book '+name;
   document.getElementById('mSub').textContent='Team '+team+' · assign to an offer';
-  document.getElementById('mBody').innerHTML =
-    '<div class="fd"><label>Offer No.</label><input id="mOffer" inputmode="text" autocomplete="off" placeholder="e.g. 75057/14"></div>'
-   +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>';
-  showMErr('');
-  const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go';
-  modal.hidden=false;
+  document.getElementById('mBody').innerHTML='<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div><div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
-  goHandler=()=>{
-    const offer=(document.getElementById('mOffer').value||'').trim();
-    const project=(document.getElementById('mProject').value||'').trim();
-    if(!offer){ showMErr('Offer No. is required to book.'); return; }
-    closeModal(); book(name, team, offer, project);
-  };
+  goHandler=()=>{ const offer=(document.getElementById('mOffer').value||'').trim(); const project=(document.getElementById('mProject').value||'').trim(); if(!offer){ showMErr('Offer No. is required to book.'); return; } closeModal(); book(name,team,offer,project); };
 }
-function openRelease(name, team, tm){
+function openRelease(name,team,tm){
   document.getElementById('mbox').classList.add('rel');
   document.getElementById('mTtl').textContent='Release '+name;
   document.getElementById('mSub').textContent='Team '+team+' · free this team';
-  document.getElementById('mBody').innerHTML =
-    '<div class="relinfo">'
-    + '<div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'
-    + (tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')
-    + (tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')
-    + '</div>';
-  showMErr('');
-  const go=document.getElementById('mGo'); go.textContent='Release'; go.className='mbtn danger';
-  modal.hidden=false;
-  goHandler=()=>{ closeModal(); release(name, team); };
+  document.getElementById('mBody').innerHTML='<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release'; go.className='mbtn danger'; modal.hidden=false;
+  goHandler=()=>{ closeModal(); release(name,team); };
 }
-
-/* ---------- events ---------- */
-document.getElementById('grid').addEventListener('click', e=>{
+document.getElementById('grid').addEventListener('click',e=>{
   const btn=e.target.closest('.team'); if(!btn) return;
   const name=btn.getAttribute('data-name'), team=btn.getAttribute('data-team');
   if(pending.has(name+'|'+team)) return;
-  const r=rows.find(x=>x.name===name); if(!r) return;
-  const tm=dispTeam(r,team);
-  if(tm.status==='booked') openRelease(name, team, tm); else openBook(name, team);
+  const r=rows.find(x=>x.name===name); if(!r) return; const tm=dispTeam(r,team);
+  if(tm.status==='booked') openRelease(name,team,tm); else openBook(name,team);
 });
-document.getElementById('q').addEventListener('input', e=>{ filter=e.target.value.trim().toLowerCase(); render(); });
-document.getElementById('refresh').addEventListener('click', ()=>load());
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !modal.hidden) closeModal(); else if(e.key==='Enter' && !modal.hidden && goHandler) goHandler(); });
+document.getElementById('q').addEventListener('input',e=>{ filter=e.target.value.trim().toLowerCase(); renderBoard(); });
+document.getElementById('refreshB').addEventListener('click',()=>loadBoard());
 
-/* ---------- poll ---------- */
-function startPoll(){ stopPoll(); pollTimer=setInterval(()=>{ if(!document.hidden && pending.size===0 && modal.hidden) load(true); }, POLL_MS); }
+/* ================= REPORTS ================= */
+const OFFER=0,PROJECT=1,CONTRACTOR=2,TEAM=3,BY=4,BOOKED=5,RELEASED=6,STATUS=7;
+function isActive(r){ return String(r[STATUS]||'').trim().toLowerCase()==='active'; }
+function parseD(v){ if(!v) return null; const d=new Date(v); return isNaN(d)?null:d; }
+function durMs(r){ const s=parseD(r[BOOKED]); if(!s) return 0; const e=parseD(r[RELEASED])||new Date(); return Math.max(0,e-s); }
+function fmtDur(ms){ const d=ms/86400000; if(d>=1) return (Math.round(d*10)/10)+'d'; const h=ms/3600000; return Math.max(1,Math.round(h))+'h'; }
+function fmtDate(v){ const d=parseD(v); return d?d.toLocaleDateString([], {day:'2-digit',month:'short'}):'—'; }
+function statusPill(r){ const s=String(r[STATUS]||'').trim().toLowerCase(); const cls=s==='active'?'active':(s==='reassigned'?'reassigned':'released'); return '<span class="pill '+cls+'">'+esc(r[STATUS]||'—')+'</span>'; }
+function totalTeams(){ return rows.reduce((s,c)=>s+(c.teamCount||(c.teams?c.teams.length:0)||0),0); }
+
+function renderSummary(){
+  const active=bookings.filter(isActive);
+  document.getElementById('kActive').textContent=active.length;
+  const tt=totalTeams();
+  document.getElementById('kOcc').textContent=tt?active.length+'/'+tt:active.length;
+  document.getElementById('kOccSub').textContent=tt?Math.round(active.length/tt*100)+'% of teams':'';
+  const eng=new Set(active.map(r=>String(r[CONTRACTOR]).trim().toLowerCase())); eng.delete('');
+  document.getElementById('kEng').textContent=eng.size;
+  document.getElementById('kTot').textContent=bookings.length;
+}
+function viewActive(){
+  const list=bookings.filter(isActive).sort((a,b)=>(parseD(a[BOOKED])||0)-(parseD(b[BOOKED])||0));
+  if(!list.length) return '<div class="msg">No active installations right now.</div>';
+  return list.map(r=>'<div class="row act"><div class="rtop"><div class="rname">'+esc(r[CONTRACTOR])+' · '+esc(r[TEAM])+'</div><div class="rmeta">'+fmtDur(durMs(r))+' running</div></div><div class="rsub">Offer <b>#'+esc(r[OFFER]||'—')+'</b>'+(r[PROJECT]?' · '+esc(r[PROJECT]):'')+'<br>Booked by '+esc(r[BY]||'—')+' on '+fmtDate(r[BOOKED])+'</div></div>').join('');
+}
+function viewUtil(){
+  const map={};
+  bookings.forEach(r=>{ const k=String(r[CONTRACTOR]).trim(); if(!k) return; const m=map[k]||(map[k]={name:k,jobs:0,active:0,ms:0}); m.jobs++; if(isActive(r)) m.active++; m.ms+=durMs(r); });
+  const list=Object.values(map).sort((a,b)=>b.active-a.active||b.ms-a.ms||b.jobs-a.jobs);
+  if(!list.length) return '<div class="msg">No bookings recorded yet.</div>';
+  const maxMs=Math.max.apply(null,list.map(x=>x.ms).concat([1]));
+  return list.map(m=>'<div class="ut"><div class="uthead"><div class="utname">'+esc(m.name)+'</div><div class="utnums">'+(m.active?'<span class="on">'+m.active+' active</span> · ':'')+m.jobs+' jobs</div></div><div class="bar"><i style="width:'+Math.round(m.ms/maxMs*100)+'%"></i></div><div class="utfoot"><span>Booked time <b>'+fmtDur(m.ms)+'</b></span><span>Completed <b>'+(m.jobs-m.active)+'</b></span></div></div>').join('');
+}
+function lastTs(g){ return Math.max.apply(null,g.rows.map(r=>+(parseD(r[RELEASED])||parseD(r[BOOKED])||0)).concat([0])); }
+function viewOffer(){
+  const groups={};
+  bookings.forEach(r=>{ const off=String(r[OFFER]||'').trim()||'(no offer)'; const g=groups[off]||(groups[off]={offer:off,project:'',rows:[]}); if(!g.project&&r[PROJECT]) g.project=String(r[PROJECT]).trim(); g.rows.push(r); });
+  let list=Object.values(groups);
+  if(rfilter) list=list.filter(g=>g.offer.toLowerCase().includes(rfilter)||(g.project||'').toLowerCase().includes(rfilter)||g.rows.some(r=>String(r[CONTRACTOR]).toLowerCase().includes(rfilter)));
+  list.sort((a,b)=>lastTs(b)-lastTs(a));
+  if(!list.length) return '<div class="msg">No matching offers.</div>';
+  return list.map(g=>{ const rowsHtml=g.rows.slice().sort((a,b)=>(parseD(b[BOOKED])||0)-(parseD(a[BOOKED])||0)).map(r=>'<div class="oline"><div class="who2">'+esc(r[CONTRACTOR])+' · '+esc(r[TEAM])+statusPill(r)+'</div><div class="when">'+fmtDate(r[BOOKED])+' → '+(r[RELEASED]?fmtDate(r[RELEASED]):'now')+'</div></div>').join('');
+    return '<div class="ogrp"><div class="ohead"><div><div class="ooffer">#'+esc(g.offer)+'</div>'+(g.project?'<div class="oproj">'+esc(g.project)+'</div>':'')+'</div><div class="ocount">'+g.rows.length+' booking'+(g.rows.length>1?'s':'')+'</div></div>'+rowsHtml+'</div>'; }).join('');
+}
+function renderReports(){
+  renderSummary();
+  document.getElementById('offerSearch').style.visibility=(rtab==='offer')?'visible':'hidden';
+  document.getElementById('reportBody').innerHTML = rtab==='active'?viewActive():rtab==='util'?viewUtil():viewOffer();
+}
+async function loadReports(silent){
+  if(!silent){ setDot('dotR','syncR','busy','Syncing…'); document.getElementById('reportBody').innerHTML=Array.from({length:3}).map(()=>'<div class="skel" style="min-height:64px"></div>').join(''); }
+  document.getElementById('refreshR').classList.add('spin');
+  try{
+    const bk=await fetch(API+'?action=bookings&t='+Date.now()).then(r=>r.json());
+    if(!bk||bk.ok===false) throw new Error((bk&&bk.error)||'Server error');
+    bookings=Array.isArray(bk.bookings)?bk.bookings:[]; bookingsLoaded=true;
+    renderReports();
+    setDot('dotR','syncR','ok','Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · '+bookings.length+' rows');
+  }catch(e){
+    document.getElementById('reportBody').innerHTML='<div class="msg err">Couldn’t load reports.<br><button onclick="loadReports()">Retry</button></div>';
+    setDot('dotR','syncR','err','Connection failed');
+  }finally{ document.getElementById('refreshR').classList.remove('spin'); }
+}
+document.querySelectorAll('.rtab').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.rtab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); rtab=b.getAttribute('data-rtab'); renderReports(); }));
+document.getElementById('qr').addEventListener('input',e=>{ rfilter=e.target.value.trim().toLowerCase(); if(rtab==='offer') renderReports(); });
+document.getElementById('refreshR').addEventListener('click',()=>loadReports());
+
+/* ================= VIEW SWITCH + POLL ================= */
+function startPoll(){ stopPoll(); pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return;
+  if(view==='board'){ if(pending.size===0) loadBoard(true); } else loadReports(true);
+}, view==='board'?POLL_BOARD:POLL_REPORTS); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
-document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopPoll(); else { load(true); startPoll(); } });
-window.addEventListener('online', ()=>load(true));
+function switchView(v){
+  view=v;
+  document.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on', x.getAttribute('data-view')===v));
+  document.getElementById('boardView').hidden = v!=='board';
+  document.getElementById('reportsView').hidden = v!=='reports';
+  if(v==='reports' && !bookingsLoaded) loadReports(); else if(v==='reports') renderReports();
+  startPoll();
+}
+document.querySelectorAll('.vtab').forEach(b=>b.addEventListener('click',()=>switchView(b.getAttribute('data-view'))));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!modal.hidden) closeModal(); else if(e.key==='Enter'&&!modal.hidden&&goHandler) goHandler(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else loadReports(true); startPoll(); } });
+window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else loadReports(true); });
 
 /* ---------- boot ---------- */
-document.getElementById('grid').innerHTML = Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
-load(); startPoll();
+document.getElementById('grid').innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
+loadBoard(); startPoll();
 if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
 </body>
