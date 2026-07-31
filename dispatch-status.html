@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1,user-scalable=no">
 <title>Lingel — Dispatch Status</title>
 <meta name="theme-color" content="#13161b">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,15 +26,27 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .btn{border:1px solid var(--line);background:var(--panel-2);color:var(--text);border-radius:8px;padding:8px 11px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
 .btn:hover,.btn:active{border-color:var(--hivis);color:var(--hivis)}
 .btn.solid{background:var(--hivis);color:#111;border-color:var(--hivis)}
-.frame-wrap{flex:1;position:relative;min-height:0;background:var(--panel);overflow:auto;-webkit-overflow-scrolling:touch}
+.btn.hidden{display:none}
+
+.stage{position:relative;flex:1;min-height:0;background:var(--panel)}
+.frame-wrap{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch}
 .frame-sizer{position:relative}
 .frame-sizer iframe{display:block;width:100%;height:100%;border:0}
 .loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono';font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);pointer-events:none}
+
+/* transparent gesture layer that sits over the cross-origin dashboard to catch pinch/pan */
+.gcatch{position:absolute;inset:0;z-index:3;background:transparent;touch-action:none;display:none}
+.gcatch.off{pointer-events:none}
+
 .zoom{position:absolute;right:14px;bottom:14px;display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:0 4px 18px rgba(0,0,0,.45);z-index:5}
 .zoom button{border:none;background:transparent;color:var(--text);width:36px;height:36px;border-radius:7px;font-size:19px;font-family:'Spline Sans';cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
 .zoom button:hover,.zoom button:active{background:var(--panel-2);color:var(--hivis)}
 .zoom .lvl{min-width:52px;text-align:center;font-family:'JetBrains Mono';font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
 .zoom .lvl:hover{color:var(--hivis)}
+
+.hint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:7px 14px;font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);box-shadow:0 4px 18px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .3s}
+.hint.show{opacity:1}
+
 @media(max-width:520px){.ttl small{display:none}.home,.btn{padding:8px 9px;font-size:11px}.topbar{gap:7px}}
 </style>
 </head>
@@ -42,41 +54,47 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 <div class="topbar">
   <a class="home" href="index.html">← Home</a>
   <div class="ttl">Dispatch Status<small>Production &amp; Dispatch Dashboard</small></div>
-  <button class="btn spacer" id="presentBtn" onclick="togglePresent()">⤢ Present</button>
+  <button class="btn spacer hidden" id="modeBtn" onclick="toggleMode()">✋ Interact</button>
+  <button class="btn" id="presentBtn" onclick="togglePresent()">⤢ Present</button>
   <a class="btn solid" href="https://datastudio.google.com/embed/reporting/d3563ccf-bfcc-45b3-9a53-c047004cf58f/page/Df13F" target="_blank" rel="noopener">Open ↗</a>
 </div>
 
-<div class="frame-wrap" id="wrap">
-  <div class="loading">Loading dashboard…</div>
-  <div class="frame-sizer" id="sizer">
-    <iframe id="frame"
-      src="https://datastudio.google.com/embed/reporting/d3563ccf-bfcc-45b3-9a53-c047004cf58f/page/Df13F"
-      frameborder="0"
-      style="border:0"
-      allowfullscreen
-      sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+<div class="stage" id="stage">
+  <div class="frame-wrap" id="wrap">
+    <div class="frame-sizer" id="sizer">
+      <iframe id="frame"
+        src="https://datastudio.google.com/embed/reporting/d3563ccf-bfcc-45b3-9a53-c047004cf58f/page/Df13F"
+        frameborder="0"
+        style="border:0"
+        allowfullscreen
+        sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+    </div>
   </div>
+
+  <div class="loading">Loading dashboard…</div>
+  <div class="gcatch" id="gcatch"></div>
 
   <div class="zoom">
     <button title="Zoom out" onclick="stepZoom(-1)">−</button>
     <span class="lvl" id="lvl" title="Reset to fit" onclick="setZoom(1)">100%</span>
     <button title="Zoom in" onclick="stepZoom(1)">+</button>
   </div>
+
+  <div class="hint" id="hint">Pinch to zoom · drag to pan</div>
 </div>
 
 <script>
-/* ---- Zoom: grow the frame box inside a scrollable wrap (works with the cross-origin dashboard) ---- */
 var wrap=document.getElementById('wrap');
 var sizer=document.getElementById('sizer');
 var lvl=document.getElementById('lvl');
+var gcatch=document.getElementById('gcatch');
 var STEPS=[0.5,0.67,0.8,1,1.25,1.5,2,2.5,3];
+var MINZ=STEPS[0], MAXZ=STEPS[STEPS.length-1];
 var zoom=1;
 
 function baseSize(){ return {w:wrap.clientWidth, h:wrap.clientHeight}; }
 function applyZoom(){
-  // at zoom 1 the frame fits the viewport (no scroll); above 1 it grows and the wrap scrolls
   var wasFit=(Math.abs(zoom-1)<0.001);
-  // measure the un-zoomed viewport first so scrollbars don't feed back into the size
   sizer.style.width='100%'; sizer.style.height='100%';
   var b=baseSize();
   sizer.style.width=(b.w*zoom)+'px';
@@ -84,27 +102,104 @@ function applyZoom(){
   lvl.textContent=Math.round(zoom*100)+'%';
   if(wasFit){ wrap.scrollLeft=0; wrap.scrollTop=0; }
 }
-function setZoom(z){
-  zoom=Math.max(STEPS[0],Math.min(STEPS[STEPS.length-1],z));
+function clampZoom(z){ return Math.max(MINZ,Math.min(MAXZ,z)); }
+function setZoom(z){ zoom=clampZoom(z); applyZoom(); }
+/* zoom while keeping the content point under (fx,fy) — coords relative to the wrap viewport — stationary */
+function setZoomAt(z, fx, fy){
+  var oldZoom=zoom;
+  var cx=(wrap.scrollLeft+fx)/oldZoom;
+  var cy=(wrap.scrollTop+fy)/oldZoom;
+  zoom=clampZoom(z);
   applyZoom();
+  wrap.scrollLeft=cx*zoom-fx;
+  wrap.scrollTop=cy*zoom-fy;
 }
 function stepZoom(dir){
-  // snap to the nearest preset then move one step
   var i=0,best=1e9;
   for(var k=0;k<STEPS.length;k++){var d=Math.abs(STEPS[k]-zoom);if(d<best){best=d;i=k;}}
   i=Math.max(0,Math.min(STEPS.length-1,i+dir));
-  setZoom(STEPS[i]);
+  var b=baseSize();
+  setZoomAt(STEPS[i], b.w/2, b.h/2);   /* buttons zoom about the centre */
 }
-// keep the fit correct on rotate / window resize while at 100%
 var rt;
 addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(function(){ if(Math.abs(zoom-1)<0.001) applyZoom(); },150); });
-// Ctrl/Cmd + wheel to zoom
 wrap.addEventListener('wheel',function(e){ if(e.ctrlKey||e.metaKey){ e.preventDefault(); stepZoom(e.deltaY<0?1:-1); } },{passive:false});
 
-/* ---- Present: take the whole page fullscreen (toolbar + zoom stay usable) ---- */
+/* ---------- touch: pinch to zoom + one-finger pan (over the cross-origin frame) ---------- */
+var isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+function wrapRect(){ return wrap.getBoundingClientRect(); }
+function dist(a,b){ var dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
+function mid(a,b){ return {x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2}; }
+
+var G={mode:null,startDist:0,startZoom:1,lastX:0,lastY:0,lastTap:0};
+function onTS(e){
+  if(e.touches.length>=2){
+    G.mode='pinch'; G.startDist=dist(e.touches[0],e.touches[1]); G.startZoom=zoom;
+    e.preventDefault();
+  } else if(e.touches.length===1){
+    G.mode='pan'; G.lastX=e.touches[0].clientX; G.lastY=e.touches[0].clientY;
+    /* double-tap to toggle fit / 2x at the tap point */
+    var now=Date.now(), r=wrapRect();
+    if(now-G.lastTap<300){
+      var fx=e.touches[0].clientX-r.left, fy=e.touches[0].clientY-r.top;
+      setZoomAt(zoom>1.01?1:2, fx, fy);
+      G.lastTap=0; e.preventDefault();
+    } else { G.lastTap=now; }
+  }
+}
+function onTM(e){
+  if(G.mode==='pinch' && e.touches.length>=2){
+    e.preventDefault();
+    var r=wrapRect(), m=mid(e.touches[0],e.touches[1]);
+    var nz=G.startZoom*(dist(e.touches[0],e.touches[1])/G.startDist);
+    setZoomAt(nz, m.x-r.left, m.y-r.top);
+  } else if(G.mode==='pan' && e.touches.length===1){
+    e.preventDefault();
+    var t=e.touches[0];
+    wrap.scrollLeft-=(t.clientX-G.lastX);
+    wrap.scrollTop -=(t.clientY-G.lastY);
+    G.lastX=t.clientX; G.lastY=t.clientY;
+  }
+}
+function onTE(e){
+  if(e.touches.length===0){ G.mode=null; }
+  else if(e.touches.length===1){ G.mode='pan'; G.lastX=e.touches[0].clientX; G.lastY=e.touches[0].clientY; }
+}
+
+/* ---------- Interact / Zoom mode toggle (touch only) ---------- */
+var gmode='zoom';
+function updateModeBtn(){
+  var b=document.getElementById('modeBtn');
+  if(gmode==='zoom'){ b.textContent='✋ Interact'; b.classList.remove('solid'); }
+  else { b.textContent='🔍 Zoom'; b.classList.add('solid'); }
+}
+function toggleMode(){
+  gmode = (gmode==='zoom') ? 'interact' : 'zoom';
+  gcatch.classList.toggle('off', gmode==='interact');
+  updateModeBtn();
+  showHint(gmode==='zoom' ? 'Pinch to zoom · drag to pan' : 'Tap the dashboard to interact');
+}
+var hintT;
+function showHint(txt){
+  var h=document.getElementById('hint'); h.textContent=txt; h.classList.add('show');
+  clearTimeout(hintT); hintT=setTimeout(function(){ h.classList.remove('show'); },2200);
+}
+
+if(isTouch){
+  gcatch.style.display='block';
+  gcatch.addEventListener('touchstart',onTS,{passive:false});
+  gcatch.addEventListener('touchmove',onTM,{passive:false});
+  gcatch.addEventListener('touchend',onTE);
+  gcatch.addEventListener('touchcancel',onTE);
+  document.getElementById('modeBtn').classList.remove('hidden');
+  updateModeBtn();
+  setTimeout(function(){ showHint('Pinch to zoom · drag to pan'); },700);
+}
+
+/* ---------- Present: whole page fullscreen ---------- */
 function fsEl(){ return document.fullscreenElement||document.webkitFullscreenElement; }
 function togglePresent(){
-  var el=document.documentElement, btn=document.getElementById('presentBtn');
+  var el=document.documentElement;
   try{
     if(!fsEl()){ (el.requestFullscreen||el.webkitRequestFullscreen).call(el); }
     else{ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
@@ -121,7 +216,6 @@ document.addEventListener('webkitfullscreenchange',fsChanged);
 
 applyZoom();
 
-/* installable app + offline: register the service worker (shared with the suite) */
 if('serviceWorker' in navigator){
   addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
 }
