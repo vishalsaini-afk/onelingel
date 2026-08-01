@@ -113,7 +113,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .foot-note{text-align:center;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:26px;opacity:.65}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal[hidden]{display:none}
-.mbox{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--hivis);border-radius:16px;padding:22px 20px;max-width:380px;width:100%;box-shadow:0 12px 48px rgba(0,0,0,.5)}
+.mbox{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--hivis);border-radius:16px;padding:22px 20px;max-width:380px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 12px 48px rgba(0,0,0,.5)}
 .mbox.rel{border-top-color:var(--red)}.mbox.na{border-top-color:var(--amber)}
 .mttl{font-family:Archivo;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.03em;line-height:1.2;margin-bottom:4px}
 .msub{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
@@ -135,6 +135,76 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .mbtn.go{background:var(--hivis);color:#111}
 .mbtn.danger{background:var(--red);color:#fff}
 .mbtn.amber{background:var(--amber);color:#111}
+/* segmented control */
+.seg{display:flex;gap:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:4px}
+.seg button{flex:1;border:none;background:transparent;color:var(--muted);border-radius:6px;padding:9px 6px;font-family:'Archivo Narrow';font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer}
+.seg button.on{background:var(--hivis);color:#111}
+/* ===== DAY PLAN ===== */
+.planbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.pbtn{border:none;border-radius:9px;padding:11px 14px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:var(--hivis);color:#111}
+.pbtn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.pbtn:active{transform:scale(.97)}
+.preporthd{padding-bottom:10px;border-bottom:2px solid var(--line);margin-bottom:14px}
+.prt{font-family:Archivo;font-weight:900;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+.prs{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.pday{margin-bottom:20px}
+.pdayhd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-left:4px solid var(--hivis);border-radius:10px;padding:9px 13px;margin-bottom:12px}
+.pdlbl{font-family:Archivo;font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:.03em;color:var(--hivis)}
+.pddate{font-family:'JetBrains Mono';font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pdhr{display:flex;align-items:center;gap:12px}
+.sameas{display:inline-flex;align-items:center;gap:6px;font-family:'Archivo Narrow';font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sameas input{width:17px;height:17px;accent-color:var(--hivis);cursor:pointer;margin:0}
+/* supervisor board */
+#supDaySeg{flex:1}
+.schip{border:1px solid var(--line);border-left:4px solid var(--muted);background:var(--panel-2);border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;flex:1 1 46%;min-width:98px;-webkit-tap-highlight-color:transparent;transition:transform .08s}
+.schip:active{transform:scale(.96)}
+.schip.tmeas{border-left-color:var(--blue);background:rgba(91,155,213,.09)}
+.schip.tvisit{border-left-color:var(--amber);background:rgba(240,166,58,.07)}
+.schip .tl{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.schip .ts{font-family:Archivo;font-weight:700;font-size:13px;margin-top:3px}
+.schip.tmeas .ts{color:#a9cdf0}.schip.tvisit .ts{color:var(--amber)}
+.schip .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.schip.add{border-left-color:var(--line);display:flex;align-items:center;justify-content:center;min-height:56px}
+.schip.add .ts{color:var(--muted)}
+.psec{margin-bottom:14px}
+.psectt{font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.psectt .cnt{font-family:'JetBrains Mono';font-size:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:1px 8px}
+.sgrp{margin-bottom:10px}
+.shead{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--hivis);background:rgba(255,206,31,.08);border-radius:6px;padding:5px 9px;margin-bottom:6px}
+.prow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px}
+.pmain{flex:0 0 auto}
+.pc{font-family:Archivo;font-weight:700;font-size:14px}
+.pt{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-left:6px}
+.psite{flex:1 1 auto;font-size:12.5px;color:var(--muted);text-align:right;line-height:1.5;min-width:120px}
+.psite b{color:var(--text);font-family:'Archivo Narrow'}
+.pcity{display:inline-block;margin-left:8px;color:var(--muted)}
+.psales{display:inline-block;margin-left:8px;font-family:'JetBrains Mono';font-size:10px;color:var(--muted)}
+.hold{display:inline-block;background:rgba(240,166,58,.15);color:var(--amber);font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:6px}
+.tbadge{display:inline-block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px;margin-left:8px}
+.tbadge.meas{background:rgba(91,155,213,.18);color:#a9cdf0}
+.tbadge.visit{background:rgba(240,166,58,.16);color:var(--amber)}
+.pdel{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:7px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:0 0 auto;margin-left:6px}
+.pdel:active{background:var(--panel-2)}
+.pempty{color:var(--muted);font-size:12.5px;padding:8px 4px;font-style:italic}
+@media print{
+  @page{margin:12mm}
+  body{background:#fff;color:#111}
+  .top,.hdr,.vtabs,#boardView,#reportsView,.foot-note,.planbar,.sync,.noprint,.modal{display:none!important}
+  #planView{display:block!important}
+  .wrap{max-width:none;padding:0;min-height:0}
+  .preporthd{border-bottom:2px solid #111}.prt{color:#111}.prs{color:#555}
+  .pday{break-inside:avoid;page-break-inside:avoid}
+  .pdayhd{background:#f2f2f2;color:#111;border:1px solid #ccc;border-left:4px solid #111}
+  .pdlbl{color:#111}.pddate{color:#555}
+  .psectt{color:#111}.psectt .cnt{background:#eee;color:#555;border-color:#ccc}
+  .shead{background:#eee;color:#111}
+  .prow{border:1px solid #ddd;background:#fff}
+  .pc{color:#111}.pt{color:#555}.psite{color:#333}.psite b{color:#111}
+  .pcity,.psales{color:#555}
+  .hold{background:#fde68a;color:#7c5b00}
+  .tbadge.meas{background:#dbeafe;color:#1e40af}.tbadge.visit{background:#fde9d3;color:#9a4a00}
+  .pempty{color:#888}
+}
 </style>
 </head>
 <body>
@@ -149,10 +219,16 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   </div>
   <div class="vtabs">
     <button class="vtab on" data-view="board">Board</button>
+    <button class="vtab" data-view="plan">📋 Day Plan</button>
     <button class="vtab" data-view="reports">📊 Reports</button>
   </div>
 
   <div id="boardView">
+    <div class="rtabs" id="boardSub">
+      <button class="rtab on" data-bsub="contractors">👷 Contractors</button>
+      <button class="rtab" data-bsub="supervisors">👔 Supervisors</button>
+    </div>
+    <div id="conBoard">
     <div class="stats">
       <div class="stat g"><div class="n" id="cFree">–</div><div class="l">Teams Free</div></div>
       <div class="stat r"><div class="n" id="cBooked">–</div><div class="l">Booked</div></div>
@@ -166,6 +242,15 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Loading…</span></div>
     <div class="legend"><span><i class="lg"></i> Free</span><span><i class="lr"></i> Booked</span><span><i class="ln"></i> On leave (NA)</span></div>
     <div id="grid" class="grid"></div>
+    </div>
+    <div id="supBoard" hidden>
+      <div class="tools">
+        <div class="seg" id="supDaySeg"><button type="button" data-val="today">Today</button><button type="button" data-val="tomorrow" class="on">Tomorrow</button></div>
+        <button class="rf" id="refreshSup" title="Refresh">⟳</button>
+      </div>
+      <div class="sync"><span class="dot" id="dotS"></span><span id="syncS">Tap a slot to plan · up to 4 per supervisor/day</span></div>
+      <div id="supGrid" class="grid"></div>
+    </div>
   </div>
 
   <div id="reportsView" hidden>
@@ -188,8 +273,22 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     <div id="reportBody"></div>
   </div>
 
+  <div id="planView" hidden>
+    <div class="planbar noprint">
+      <button id="btnAddSup" class="pbtn">＋ Supervisor plan</button>
+      <button id="btnCopy" class="pbtn ghost">📋 Copy</button>
+      <button id="btnPrint" class="pbtn ghost">🖨 Print / PDF</button>
+      <button class="rf" id="refreshP" title="Refresh">⟳</button>
+    </div>
+    <div class="sync noprint"><span class="dot" id="dotP"></span><span id="syncP">—</span></div>
+    <div id="planReport"></div>
+  </div>
+
   <div class="foot-note">Lingel Field Operations · Live status in Contractors · full history in Bookings</div>
 </div>
+
+<datalist id="dlSales"></datalist>
+<datalist id="dlSup"></datalist>
 
 <div class="modal" id="modal" hidden>
   <div class="mbox" id="mbox">
@@ -217,6 +316,76 @@ const pending=new Map();
 let filter='', rfilter='', rtab='active';
 let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 
+/* ===== DAY-PLAN state ===== */
+const POLL_PLAN=20000;
+const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
+const SUP_SHEET_ID='14kBmSlBJwnFP8Gugf9JH5VCDlxjP3f9PfQ0ruv3J8FQ', SUP_TAB='Lingel Supervisors';
+let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
+function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
+function contractorItems(date){
+  if(date===TODAY()){
+    const items=[];
+    rows.forEach(r=>{ for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t)); if(tm && tm.status==='booked'){ const meta=planById('c|'+r.name+'|'+t+'|'+TODAY())||{}; items.push({ id:'c|'+r.name+'|'+t+'|'+TODAY(), contractor:r.name, team:String(t), offer:tm.offer||meta.offer||'', project:tm.project||meta.project||'', city:meta.city||'', salesperson:meta.salesperson||'', holdBy:meta.holdBy||'' }); } } });
+    return items;
+  }
+  return planFor(date,'contractor');
+}
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function TODAY(){ return isoDate(new Date()); }
+function TOMORROW(){ const t=new Date(); t.setDate(t.getDate()+1); return isoDate(t); }
+function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.length<3) return iso||'—'; const dt=new Date(p[0],p[1]-1,p[2]); return dt.toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); }
+function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'contractor'), date:String(p.date||''), contractor:String(p.contractor||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
+function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
+function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
+function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
+function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
+function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
+async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
+async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
+async function pushPlanDelete(id){ try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
+function upsertPlan(entry){ const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
+function planById(id){ return plans.find(p=>p.id===id); }
+function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind); }
+function swapDate(id,d){ return String(id).replace(/\|[^|]*$/, '|'+d); }
+function sameAsTodayOn(){
+  const ci=contractorItems(TODAY()), si=plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY());
+  if(!ci.length && !si.length) return false;
+  const cOk=ci.every(it=>plans.some(p=>p.id==='c|'+it.contractor+'|'+it.team+'|'+TOMORROW()));
+  const sOk=si.every(t=>plans.some(p=>p.id==='s|'+t.id.split('|')[1]+'|'+TOMORROW()));
+  return cOk && sOk;
+}
+function toggleSameAsToday(checked){
+  if(checked){
+    contractorItems(TODAY()).forEach(it=>{ upsertPlan({ id:'c|'+it.contractor+'|'+it.team+'|'+TOMORROW(), kind:'contractor', date:TOMORROW(), contractor:it.contractor, team:it.team, offer:it.offer, project:it.project, city:it.city, salesperson:it.salesperson, holdBy:it.holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() }); });
+    plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY()).forEach(t=>{ upsertPlan(Object.assign({},t,{ id:'s|'+t.id.split('|')[1]+'|'+TOMORROW(), date:TOMORROW(), by:SUP, at:new Date().toISOString() })); });
+    setDot('dotP','syncP','ok','Tomorrow copied from today');
+  } else {
+    const todayC=new Set(contractorItems(TODAY()).map(it=>'c|'+it.contractor+'|'+it.team+'|'+TODAY()));
+    const todayS=new Set(plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY()).map(p=>p.id));
+    const rm=plans.filter(p=>{ if(p.date!==TOMORROW()) return false; return p.kind==='contractor' ? todayC.has('c|'+p.contractor+'|'+p.team+'|'+TODAY()) : todayS.has('s|'+p.id.split('|')[1]+'|'+TODAY()); });
+    rm.forEach(p=>{ plans=plans.filter(x=>x.id!==p.id); pushPlanDelete(p.id); }); savePlansLocal();
+    setDot('dotP','syncP','ok','Cleared copied plan');
+  }
+  renderPlan();
+}
+function parseCsv(t){ const rows=[]; let row=[],cur='',q=false; for(let i=0;i<t.length;i++){ const c=t[i]; if(q){ if(c==='"'){ if(t[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; } else { if(c==='"')q=true; else if(c===','){row.push(cur);cur='';} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else if(c!=='\r')cur+=c; } } if(cur.length||row.length){row.push(cur);rows.push(row);} return rows; }
+function namesFromCsv(txt){ if(!txt || /<html/i.test(txt)) return []; const rows=parseCsv(txt).filter(r=>r.some(x=>String(x).trim())); if(!rows.length) return []; const hdr=rows[0].map(x=>String(x).toLowerCase()); let col=0; for(let i=0;i<hdr.length;i++){ if(hdr[i].indexOf('name')>=0){col=i;break;} } const out=[],seen={}; for(let r=1;r<rows.length;r++){ const v=String(rows[r][col]||'').trim(); if(v&&!seen[v.toLowerCase()]){seen[v.toLowerCase()]=1;out.push(v);} } return out; }
+async function fetchSheetSupervisors(){
+  const base='https://docs.google.com/spreadsheets/d/'+SUP_SHEET_ID+'/gviz/tq?tqx=out:csv';
+  const tries=[base+'&sheet='+encodeURIComponent(SUP_TAB), base+'&gid=0'];
+  for(let i=0;i<tries.length;i++){ try{ const txt=await fetch(tries[i]).then(r=>r.text()); const names=namesFromCsv(txt); if(names.length) return names; }catch(e){} }
+  return [];
+}
+async function loadSupervisors(){
+  try{ const a=JSON.parse(localStorage.getItem(SUP_KEY)||'[]'); if(Array.isArray(a)) supList=a; }catch(e){}
+  let got=[];
+  try{ const r=await fetch(API+'?action=supervisors&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.supervisors)) got=d.supervisors.map(s=>String(s).trim()).filter(Boolean); }catch(e){}
+  if(!got.length){ got=await fetchSheetSupervisors(); }
+  if(got.length){ supList=got.filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase())); try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){} }
+  fillDatalist('dlSup', supList);
+  if(view==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
+}
+
 function setDot(id,txtId,kind,txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
 function normStatus(v){ const s=String(v||'').toLowerCase(); return s==='booked'?'booked':s==='na'?'na':'available'; }
 function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:String(t.offer||'').trim(), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'' }; }
@@ -238,7 +407,7 @@ function counts(){
 function teamChip(r,t){
   const tm=dispTeam(r,t), busy=pending.has(r.name+'|'+t)?' busy':'';
   let cls, label, sub;
-  if(tm.status==='booked'){ cls=''; label='Booked'; sub=tm.offer?('#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')):'booked'; }
+  if(tm.status==='booked'){ cls=''; const pe=planById('c|'+r.name+'|'+t+'|'+TODAY()); if(pe&&pe.holdBy){ label='Held'; sub='hold · '+esc(pe.holdBy); } else { label='Booked'; sub=tm.offer?('#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')):'booked'; } }
   else if(tm.status==='na'){ cls=' na'; label='On leave'; sub='tap to manage'; }
   else { cls=' avail'; label='Available'; sub='tap to book'; }
   return '<div class="team'+cls+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'"><div class="tl">Team '+t+'</div><div class="ts">'+label+'</div><div class="to">'+sub+'</div></div>';
@@ -278,6 +447,7 @@ async function release(name,team){
   const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Releasing…');
   try{ await apiPost({action:'release',name,team,by:SUP});
     const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='available'; tm.offer=''; tm.project=''; tm.by=SUP; }
+    const pid='c|'+name+'|'+team+'|'+TODAY(); if(planById(pid)){ plans=plans.filter(p=>p.id!==pid); savePlansLocal(); pushPlanDelete(pid); }
     pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Released '+esc(name)+' Team '+team);
   }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Release failed')+' — try again'); }
 }
@@ -299,23 +469,154 @@ modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
 function setBox(cls){ document.getElementById('mbox').className='mbox'+(cls?(' '+cls):''); }
 function dutyRow(onDuty){ return '<div class="mduty"><div><div class="mdt">Team status</div><div class="mds '+(onDuty?'ond':'onl')+'">'+(onDuty?'On duty':'On leave')+'</div></div><span class="sw'+(onDuty?' on':'')+'" id="mSw"></span></div>'; }
 function wireDutySwitch(name,team){ const s=document.getElementById('mSw'); if(s) s.onclick=()=>{ closeModal(); handleSwitch(name,team); }; }
+function seg(id,opts,active){ return '<div class="seg" id="'+id+'">'+opts.map(o=>'<button type="button" data-val="'+esc(o.v)+'"'+(o.v===active?' class="on"':'')+'>'+esc(o.l)+'</button>').join('')+'</div>'; }
+function wireSegs(){ document.querySelectorAll('#mBody .seg').forEach(s=>{ s.querySelectorAll('button').forEach(b=>b.onclick=()=>{ s.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }); }); }
+function segVal(id){ const on=document.querySelector('#'+id+' button.on'); return on?on.getAttribute('data-val'):''; }
 function openBook(name,team){
   setBox('');
   document.getElementById('mTtl').textContent='Book '+name;
-  document.getElementById('mSub').textContent='Team '+team+' · assign to an offer';
-  document.getElementById('mBody').innerHTML=dutyRow(true)+'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div><div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>';
+  document.getElementById('mSub').textContent='Team '+team+' · plan an assignment';
+  document.getElementById('mBody').innerHTML=dutyRow(true)
+    +'<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:TODAY(),l:'Today'},{v:TOMORROW(),l:'Tomorrow'}],TOMORROW())+'</div>'
+    +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh"></div>'
+    +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
+    +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
+    +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>'
+    +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
-  wireDutySwitch(name,team);
+  wireSegs(); wireDutySwitch(name,team);
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
-  goHandler=()=>{ const offer=(document.getElementById('mOffer').value||'').trim(); const project=(document.getElementById('mProject').value||'').trim(); if(!offer){ showMErr('Offer No. is required to book.'); return; } closeModal(); book(name,team,offer,project); };
+  goHandler=()=>{
+    const date=segVal('segDate')||TODAY(), holdBy=segVal('segHold');
+    const offer=(document.getElementById('mOffer').value||'').trim();
+    const project=(document.getElementById('mProject').value||'').trim();
+    const city=(document.getElementById('mCity').value||'').trim();
+    const sales=(document.getElementById('mSales').value||'').trim();
+    if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
+    const entry={ id:'c|'+name+'|'+team+'|'+date, kind:'contractor', date, contractor:name, team:String(team), offer, project, city, salesperson:sales, holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() };
+    upsertPlan(entry); rememberSalesperson(sales); closeModal();
+    if(date===TODAY()){ book(name,team,offer,project); }
+    else { renderBoard(); setDot('dot','syncTxt','ok','Planned '+esc(name)+' Team '+team+' for tomorrow'); }
+    if(view==='plan') renderPlan();
+  };
+}
+function openSupPlan(preset){
+  preset=preset||{}; const ed=preset.edit||null;
+  setBox('');
+  document.getElementById('mTtl').textContent= ed?'Edit supervisor plan':'Plan Supervisor';
+  document.getElementById('mSub').textContent='Site measurement or site visit';
+  const daySel = ed ? (ed.date===TODAY()?'today':'tomorrow') : (preset.day||supDay||'tomorrow');
+  const supName = ed ? ed.supervisor : (preset.supervisor||'');
+  const task = ed ? ed.task : 'Measurement';
+  document.getElementById('mBody').innerHTML=
+    '<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:'today',l:'Today'},{v:'tomorrow',l:'Tomorrow'}],daySel)+'</div>'
+    +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
+    +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
+    +'<div class="fd"><label>Offer No. (optional)</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
+    +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg" value="'+esc(ed?ed.project:'')+'"></div>'
+    +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi" value="'+esc(ed?ed.city:'')+'"></div>'
+    +'<div class="fd"><label>Salesperson (optional)</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh" value="'+esc(ed?ed.salesperson:'')+'"></div>'
+    +(ed?'<button type="button" id="mDelSup" class="mbtn ghost" style="width:100%;margin-top:2px;border-color:var(--red);color:#fda4a4">Remove this plan</button>':'');
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent= ed?'Save':'Add to plan →'; go.className='mbtn go'; modal.hidden=false;
+  wireSegs();
+  if(ed){ const del=document.getElementById('mDelSup'); if(del) del.onclick=()=>{ plans=plans.filter(p=>p.id!==ed.id); savePlansLocal(); pushPlanDelete(ed.id); closeModal(); if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); setDot('dotS','syncS','ok','Removed plan'); }; }
+  setTimeout(()=>{ const o=document.getElementById('mSupName'); if(o && !supName) o.focus(); },50);
+  goHandler=()=>{
+    const date=dateOf(segVal('segDate')||'tomorrow'), task2=segVal('segTask')||'Measurement';
+    const sup=(document.getElementById('mSupName').value||'').trim();
+    if(!sup){ showMErr('Supervisor name is required.'); return; }
+    const others=plans.filter(p=>p.kind==='supervisor'&&p.date===date&&p.supervisor===sup&&(!ed||p.id!==ed.id));
+    if(others.length>=4){ showMErr(sup+' already has 4 plans that day.'); return; }
+    const base = ed ? ed.id.split('|')[1] : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    const id='s|'+base+'|'+date;
+    const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:(document.getElementById('mSales').value||'').trim(), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
+    if(ed && ed.id!==id){ plans=plans.filter(p=>p.id!==ed.id); pushPlanDelete(ed.id); }
+    upsertPlan(entry); rememberSalesperson(entry.salesperson); closeModal();
+    if(view==='board') renderSupBoard(); if(view==='plan') renderPlan();
+    setDot('dotS','syncS','ok',(ed?'Updated ':'Added ')+esc(sup)+' · '+task2);
+  };
+}
+function renderSupBoard(){
+  const day=dateOf(supDay), grid=document.getElementById('supGrid');
+  const names=[...new Set([].concat(supList||[], plans.filter(p=>p.kind==='supervisor'&&p.date===day).map(p=>p.supervisor)).map(s=>String(s||'').trim()).filter(Boolean))];
+  names.sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+  if(!names.length){ grid.innerHTML='<div class="msg">No supervisors yet.<br><span style="font-size:12px">Add names to the <b>Lingel Supervisors</b> sheet (needs the backend), or just tap ＋ after typing a name in the Day Plan tab.</span></div>'; return; }
+  grid.innerHTML=names.map(nm=>{
+    const slots=plans.filter(p=>p.kind==='supervisor'&&p.date===day&&p.supervisor===nm);
+    let chips=slots.map(p=>{ const cls=p.task==='Measurement'?'tmeas':'tvisit'; const site=p.offer?('#'+esc(p.offer)):(p.project?esc(p.project):'—'); const sub=p.city?esc(p.city):(p.salesperson?esc(p.salesperson):''); return '<button class="schip '+cls+'" data-sid="'+esc(p.id)+'"><div class="tl">'+esc(p.task||'Task')+'</div><div class="ts">'+site+'</div>'+(sub?'<div class="to">'+sub+'</div>':'')+'</button>'; }).join('');
+    if(slots.length<4) chips+='<button class="schip add" data-supadd="'+esc(nm)+'"><div class="ts">＋ Add plan</div></button>';
+    return '<div class="card"><div class="nm">'+esc(nm)+'</div><div class="role">'+slots.length+' / 4 planned · '+(supDay==='today'?'Today':'Tomorrow')+'</div><div class="teams">'+chips+'</div></div>';
+  }).join('');
+}
+function deletePlanEntry(id){
+  const parts=String(id).split('|');
+  if(parts[0]==='c' && parts[3]===TODAY()){ const r=rows.find(x=>x.name===parts[1]); if(r){ const t=teamOf(r,parts[2]); if(t && t.status==='booked'){ release(parts[1],parts[2]); renderPlan(); return; } } }
+  const e=planById(id); if(e){ plans=plans.filter(p=>p.id!==id); savePlansLocal(); pushPlanDelete(id); }
+  renderBoard(); renderPlan();
+}
+function saveHold(name,team,holdBy){
+  const r=rows.find(x=>x.name===name); const tm=r?teamOf(r,team):null;
+  const id='c|'+name+'|'+team+'|'+TODAY();
+  let e=planById(id);
+  if(!e){ e={ id:id, kind:'contractor', date:TODAY(), contractor:name, team:String(team), offer:tm?tm.offer:'', project:tm?tm.project:'', city:'', salesperson:'', holdBy:'', supervisor:'', task:'', by:SUP, at:'' }; }
+  e=Object.assign({},e,{ holdBy:holdBy, at:new Date().toISOString() });
+  upsertPlan(e); renderBoard(); if(view==='plan') renderPlan();
+}
+/* ===== DAY-PLAN report ===== */
+function bySalesperson(list){
+  const g={}; list.forEach(p=>{ const k=(p.salesperson||'').trim()||'— Unassigned —'; (g[k]||(g[k]=[])).push(p); });
+  return Object.keys(g).sort((a,b)=>{ const au=a.charAt(0)==='—', bu=b.charAt(0)==='—'; if(au&&!bu) return 1; if(bu&&!au) return -1; return a.toLowerCase().localeCompare(b.toLowerCase()); })
+    .map(k=>({ sales:k, items:g[k].sort((x,y)=>x.contractor.toLowerCase().localeCompare(y.contractor.toLowerCase())) }));
+}
+function contractorRow(p){
+  const site = p.holdBy ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('<b>#'+esc(p.offer||'—')+'</b>'+(p.project?' '+esc(p.project):''));
+  return '<div class="prow"><div class="pmain"><span class="pc">'+esc(p.contractor)+'</span><span class="pt">Team '+esc(p.team)+'</span></div><div class="psite">'+site+(p.city?'<span class="pcity">📍 '+esc(p.city)+'</span>':'')+'</div><button class="pdel noprint" data-id="'+esc(p.id)+'">✕</button></div>';
+}
+function supRow(p){
+  const badge='<span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span>';
+  const detail=(p.offer?'<b>#'+esc(p.offer)+'</b>':'')+(p.project?' '+esc(p.project):'')+(p.city?'<span class="pcity">📍 '+esc(p.city)+'</span>':'')+(p.salesperson?'<span class="psales">'+esc(p.salesperson)+'</span>':'');
+  return '<div class="prow"><div class="pmain"><span class="pc">'+esc(p.supervisor)+'</span>'+badge+'</div><div class="psite">'+(detail||'<span style="opacity:.5">—</span>')+'</div><button class="pdel noprint" data-id="'+esc(p.id)+'">✕</button></div>';
+}
+function dayBlock(lbl,date,isTomorrow){
+  const citems=contractorItems(date);
+  const cg=bySalesperson(citems);
+  const sup=planFor(date,'supervisor').sort((a,b)=>a.supervisor.toLowerCase().localeCompare(b.supervisor.toLowerCase()));
+  const cCount=citems.length;
+  const cHtml=cg.length ? cg.map(grp=>'<div class="sgrp"><div class="shead">'+esc(grp.sales)+'</div>'+grp.items.map(contractorRow).join('')+'</div>').join('') : '<div class="pempty">No contractors planned.</div>';
+  const sHtml=sup.length ? sup.map(supRow).join('') : '<div class="pempty">No supervisors planned.</div>';
+  const tick=isTomorrow ? '<label class="sameas noprint" title="Copy today\u2019s plan into tomorrow"><input type="checkbox" id="sameAsToday"'+(sameAsTodayOn()?' checked':'')+'> Same as today</label>' : '';
+  return '<div class="pday"><div class="pdayhd"><span class="pdlbl">'+lbl+'</span><span class="pdhr">'+tick+'<span class="pddate">'+prettyDate(date)+'</span></span></div>'
+    +'<div class="psec"><div class="psectt">👷 Contractors <span class="cnt">'+cCount+'</span></div>'+cHtml+'</div>'
+    +'<div class="psec"><div class="psectt">👔 Supervisors <span class="cnt">'+sup.length+'</span></div>'+sHtml+'</div></div>';
+}
+function renderPlan(){
+  document.getElementById('planReport').innerHTML=
+    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+(SUP?' · '+esc(SUP):'')+'</div></div>'
+    + dayBlock('Today',TODAY(),false) + dayBlock('Tomorrow',TOMORROW(),true);
+}
+function planText(){
+  const days=[['TODAY',TODAY()],['TOMORROW',TOMORROW()]]; let out='LINGEL — DAY PLAN\n'+prettyDate(TODAY())+(SUP?'  ('+SUP+')':'')+'\n';
+  days.forEach(function(dd){ const lbl=dd[0], d=dd[1];
+    out+='\n===== '+lbl+' · '+prettyDate(d)+' =====\n';
+    out+='\n[ CONTRACTORS ]\n'; const g=bySalesperson(contractorItems(d));
+    if(!g.length) out+='  (none)\n';
+    g.forEach(function(grp){ out+='• '+grp.sales+'\n'; grp.items.forEach(function(p){ out+='   - '+p.contractor+' (Team '+p.team+') → '+(p.holdBy?('HOLD: '+p.holdBy):('#'+(p.offer||'—')+(p.project?' '+p.project:'')))+(p.city?' · '+p.city:'')+'\n'; }); });
+    out+='\n[ SUPERVISORS ]\n'; const s=planFor(d,'supervisor');
+    if(!s.length) out+='  (none)\n';
+    s.forEach(function(p){ out+='   - '+p.supervisor+' → '+p.task+(p.offer?' · #'+p.offer:'')+(p.project?' '+p.project:'')+(p.city?' · '+p.city:'')+(p.salesperson?' ('+p.salesperson+')':'')+'\n'; });
+  });
+  return out;
 }
 function openRelease(name,team,tm){
   setBox('rel');
   document.getElementById('mTtl').textContent='Release '+name;
   document.getElementById('mSub').textContent='Team '+team+' · free this team';
-  document.getElementById('mBody').innerHTML=dutyRow(true)+'<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>';
+  const curHold=(planById('c|'+name+'|'+team+'|'+TODAY())||{}).holdBy||'';
+  document.getElementById('mBody').innerHTML=dutyRow(true)+'<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
+    +'<div class="fd"><label>Hold by</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],curHold)+'</div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release'; go.className='mbtn danger'; modal.hidden=false;
   wireDutySwitch(name,team);
+  document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#mBody #segHold button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); const v=b.getAttribute('data-val'); saveHold(name,team,v); showMErr(''); setDot('dot','syncTxt','ok',v?('On hold · '+v):'Hold cleared'); });
   goHandler=()=>{ closeModal(); release(name,team); };
 }
 function openNAModal(name,team){
@@ -350,6 +651,27 @@ document.getElementById('grid').addEventListener('click',e=>{
 });
 document.getElementById('q').addEventListener('input',e=>{ filter=e.target.value.trim().toLowerCase(); renderBoard(); });
 document.getElementById('refreshB').addEventListener('click',()=>loadBoard());
+
+/* ===== supervisor board wiring ===== */
+document.querySelectorAll('#boardSub .rtab').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#boardSub .rtab').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  const s=b.getAttribute('data-bsub');
+  document.getElementById('conBoard').hidden = s!=='contractors';
+  document.getElementById('supBoard').hidden = s!=='supervisors';
+  if(s==='supervisors'){ renderSupBoard(); if(!supList.length) loadSupervisors().then(renderSupBoard); }
+}));
+document.querySelectorAll('#supDaySeg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#supDaySeg button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  supDay=b.getAttribute('data-val'); renderSupBoard();
+}));
+document.getElementById('refreshSup').addEventListener('click',()=>{
+  const btn=document.getElementById('refreshSup'); btn.classList.add('spin'); setDot('dotS','syncS','busy','Syncing…');
+  loadSupervisors().then(()=>syncPlansFromServer()).then(ok=>{ renderSupBoard(); btn.classList.remove('spin'); setDot('dotS','syncS',ok?'ok':'err',ok?('Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); });
+});
+document.getElementById('supGrid').addEventListener('click',e=>{
+  const add=e.target.closest('[data-supadd]'); if(add){ openSupPlan({supervisor:add.getAttribute('data-supadd'), day:supDay}); return; }
+  const chip=e.target.closest('[data-sid]'); if(chip){ const p=planById(chip.getAttribute('data-sid')); if(p) openSupPlan({edit:p}); }
+});
 
 /* ============ REPORTS ============ */
 const OFFER=0,PROJECT=1,CONTRACTOR=2,TEAM=3,BY=4,BOOKED=5,RELEASED=6,STATUS=7;
@@ -410,25 +732,39 @@ async function loadReports(silent){
   }catch(e){ document.getElementById('reportBody').innerHTML='<div class="msg err">Couldn’t load reports.<br><button onclick="loadReports()">Retry</button></div>'; setDot('dotR','syncR','err','Connection failed'); }
   finally{ document.getElementById('refreshR').classList.remove('spin'); }
 }
-document.querySelectorAll('.rtab').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('.rtab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); rtab=b.getAttribute('data-rtab'); renderReports(); }));
+document.querySelectorAll('#reportsView .rtab').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('#reportsView .rtab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); rtab=b.getAttribute('data-rtab'); renderReports(); }));
 document.getElementById('qr').addEventListener('input',e=>{ rfilter=e.target.value.trim().toLowerCase(); if(rtab==='offer') renderReports(); });
 document.getElementById('refreshR').addEventListener('click',()=>loadReports());
 
+/* ============ DAY-PLAN wiring ============ */
+document.getElementById('planReport').addEventListener('click',e=>{ const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
+document.getElementById('planReport').addEventListener('change',e=>{ if(e.target && e.target.id==='sameAsToday') toggleSameAsToday(e.target.checked); });
+document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
+document.getElementById('btnPrint').addEventListener('click',()=>window.print());
+document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
+document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
+
 /* ============ VIEW SWITCH + POLL ============ */
-function startPoll(){ stopPoll(); pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else loadReports(true); }, view==='board'?POLL_BOARD:POLL_REPORTS); }
+function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:(view==='reports'?POLL_REPORTS:POLL_PLAN); pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else if(view==='reports'){ loadReports(true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 function switchView(v){
   view=v;
   document.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on', x.getAttribute('data-view')===v));
   document.getElementById('boardView').hidden = v!=='board';
+  document.getElementById('planView').hidden = v!=='plan';
   document.getElementById('reportsView').hidden = v!=='reports';
   if(v==='reports' && !bookingsLoaded) loadReports(); else if(v==='reports') renderReports();
+  if(v==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
+  if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
   startPoll();
 }
 document.querySelectorAll('.vtab').forEach(b=>b.addEventListener('click',()=>switchView(b.getAttribute('data-view'))));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!modal.hidden) closeModal(); else if(e.key==='Enter'&&!modal.hidden&&goHandler) goHandler(); });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else loadReports(true); startPoll(); } });
-window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else loadReports(true); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else if(view==='reports') loadReports(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
+window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else if(view==='reports') loadReports(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
+
+/* ===== init day-plan ===== */
+loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); renderPlan(); loadSupervisors(); syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); });
 
 document.getElementById('grid').innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
 loadBoard(); startPoll();
