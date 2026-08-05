@@ -186,6 +186,22 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .pdel{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:7px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:0 0 auto;margin-left:6px}
 .pdel:active{background:var(--panel-2)}
 .pempty{color:var(--muted);font-size:12.5px;padding:8px 4px;font-style:italic}
+.pbtn.wa{background:#25d366;color:#0a2e17}
+.ptabwrap{overflow-x:auto;border:1px solid var(--line);border-radius:11px}
+.ptab{width:100%;border-collapse:collapse;font-size:12.5px;min-width:560px}
+.ptab thead th{position:sticky;top:0;background:var(--panel-2);color:var(--muted);font-family:'Archivo Narrow';font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ptab td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--text);vertical-align:middle}
+.ptab tbody tr:last-child td{border-bottom:none}
+.ptab tr.grp td{background:var(--panel);color:var(--hivis);font-family:'Archivo Narrow';font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-top:1px solid var(--line)}
+.ptab tr.grp .gcnt{font-family:'JetBrains Mono';font-size:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:1px 7px;margin-left:6px}
+.ptab td.cn{font-weight:700;color:#fff}
+.ptab .daypill{display:inline-block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:6px;margin-right:6px}
+.ptab .daypill.td{background:rgba(74,222,128,.18);color:#4ade80}
+.ptab .daypill.tm{background:rgba(91,155,213,.18);color:#a9cdf0}
+.ptab .dd{color:var(--muted);font-size:11px;white-space:nowrap}
+.ptab .dcell{white-space:nowrap}
+.ptab td.xcol{width:38px;text-align:center;padding:6px}
+.ptab .xcol .pdel{margin:0;width:26px;height:26px}
 @media print{
   @page{margin:12mm}
   body{background:#fff;color:#111}
@@ -193,14 +209,19 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   #planView{display:block!important}
   .wrap{max-width:none;padding:0;min-height:0}
   .preporthd{border-bottom:2px solid #111}.prt{color:#111}.prs{color:#555}
-  .pday{break-inside:avoid;page-break-inside:avoid}
-  .pdayhd{background:#f2f2f2;color:#111;border:1px solid #ccc;border-left:4px solid #111}
-  .pdlbl{color:#111}.pddate{color:#555}
   .psectt{color:#111}.psectt .cnt{background:#eee;color:#555;border-color:#ccc}
-  .shead{background:#eee;color:#111}
-  .prow{border:1px solid #ddd;background:#fff}
-  .pc{color:#111}.pt{color:#555}.psite{color:#333}.psite b{color:#111}
-  .pcity,.psales{color:#555}
+  .ptabwrap{overflow:visible;border:1px solid #ccc}
+  .ptab{min-width:0}
+  .ptab thead th{background:#f2f2f2;color:#333;border-bottom:1px solid #bbb}
+  .ptab td{border-bottom:1px solid #e2e2e2;color:#111}
+  .ptab td.cn{color:#000}
+  .ptab tr.grp td{background:#eaeaea;color:#111;border-top:1px solid #bbb}
+  .ptab tr.grp .gcnt{background:#fff;color:#555;border-color:#ccc}
+  .ptab .daypill.td{background:#dcfce7;color:#166534}
+  .ptab .daypill.tm{background:#dbeafe;color:#1e40af}
+  .ptab .dd{color:#555}
+  .psec{break-inside:auto}
+  .ptab tr{break-inside:avoid;page-break-inside:avoid}
   .hold{background:#fde68a;color:#7c5b00}
   .tbadge.meas{background:#dbeafe;color:#1e40af}.tbadge.visit{background:#fde9d3;color:#9a4a00}
   .pempty{color:#888}
@@ -255,6 +276,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div id="planView" hidden>
     <div class="planbar noprint">
       <button id="btnAddSup" class="pbtn">＋ Supervisor plan</button>
+      <button id="btnWa" class="pbtn wa">🟢 Share to WhatsApp</button>
       <button id="btnCopy" class="pbtn ghost">📋 Copy</button>
       <button id="btnPrint" class="pbtn ghost">🖨 Print / PDF</button>
       <button class="rf" id="refreshP" title="Refresh">⟳</button>
@@ -303,7 +325,7 @@ function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
 function teamItems(date){
   if(date===TODAY()){
     const items=[];
-    rows.forEach(r=>{ for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t)); if(tm && tm.status==='booked'){ const meta=planById('c|'+r.name+'|'+t+'|'+TODAY())||{}; items.push({ id:'c|'+r.name+'|'+t+'|'+TODAY(), team:r.name, team:String(t), offer:tm.offer||meta.offer||'', project:tm.project||meta.project||'', city:meta.city||'', salesperson:meta.salesperson||'', holdBy:meta.holdBy||'' }); } } });
+    rows.forEach(r=>{ for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t)); if(tm && tm.status==='booked'){ const meta=planById('c|'+r.name+'|'+t+'|'+TODAY())||{}; items.push({ id:'c|'+r.name+'|'+t+'|'+TODAY(), contractor:r.name, team:String(t), offer:tm.offer||meta.offer||'', project:tm.project||meta.project||'', city:meta.city||'', salesperson:meta.salesperson||'', holdBy:meta.holdBy||'' }); } } });
     return items;
   }
   return planFor(date,'team');
@@ -312,7 +334,7 @@ function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(
 function TODAY(){ return isoDate(new Date()); }
 function TOMORROW(){ const t=new Date(); t.setDate(t.getDate()+1); return isoDate(t); }
 function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.length<3) return iso||'—'; const dt=new Date(p[0],p[1]-1,p[2]); return dt.toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); }
-function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:String(p.date||''), team:String(p.team||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
+function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:String(p.date||''), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
 function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
 function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
 function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
@@ -328,19 +350,19 @@ function swapDate(id,d){ return String(id).replace(/\|[^|]*$/, '|'+d); }
 function sameAsTodayOn(){
   const ci=teamItems(TODAY()), si=plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY());
   if(!ci.length && !si.length) return false;
-  const cOk=ci.every(it=>plans.some(p=>p.id==='c|'+it.team+'|'+it.team+'|'+TOMORROW()));
+  const cOk=ci.every(it=>plans.some(p=>p.id==='c|'+it.contractor+'|'+it.team+'|'+TOMORROW()));
   const sOk=si.every(t=>plans.some(p=>p.id==='s|'+t.id.split('|')[1]+'|'+TOMORROW()));
   return cOk && sOk;
 }
 function toggleSameAsToday(checked){
   if(checked){
-    teamItems(TODAY()).forEach(it=>{ upsertPlan({ id:'c|'+it.team+'|'+it.team+'|'+TOMORROW(), kind:'team', date:TOMORROW(), team:it.team, team:it.team, offer:it.offer, project:it.project, city:it.city, salesperson:it.salesperson, holdBy:it.holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() }); });
+    teamItems(TODAY()).forEach(it=>{ upsertPlan({ id:'c|'+it.contractor+'|'+it.team+'|'+TOMORROW(), kind:'team', date:TOMORROW(), contractor:it.contractor, team:it.team, offer:it.offer, project:it.project, city:it.city, salesperson:it.salesperson, holdBy:it.holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() }); });
     plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY()).forEach(t=>{ upsertPlan(Object.assign({},t,{ id:'s|'+t.id.split('|')[1]+'|'+TOMORROW(), date:TOMORROW(), by:SUP, at:new Date().toISOString() })); });
     setDot('dotP','syncP','ok','Tomorrow copied from today');
   } else {
-    const todayC=new Set(teamItems(TODAY()).map(it=>'c|'+it.team+'|'+it.team+'|'+TODAY()));
+    const todayC=new Set(teamItems(TODAY()).map(it=>'c|'+it.contractor+'|'+it.team+'|'+TODAY()));
     const todayS=new Set(plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY()).map(p=>p.id));
-    const rm=plans.filter(p=>{ if(p.date!==TOMORROW()) return false; return p.kind==='team' ? todayC.has('c|'+p.team+'|'+p.team+'|'+TODAY()) : todayS.has('s|'+p.id.split('|')[1]+'|'+TODAY()); });
+    const rm=plans.filter(p=>{ if(p.date!==TOMORROW()) return false; return p.kind==='team' ? todayC.has('c|'+p.contractor+'|'+p.team+'|'+TODAY()) : todayS.has('s|'+p.id.split('|')[1]+'|'+TODAY()); });
     rm.forEach(p=>{ plans=plans.filter(x=>x.id!==p.id); pushPlanDelete(p.id); }); savePlansLocal();
     setDot('dotP','syncP','ok','Cleared copied plan');
   }
@@ -460,7 +482,7 @@ function openBook(name,team){
     const city=(document.getElementById('mCity').value||'').trim();
     const sales=(document.getElementById('mSales').value||'').trim();
     if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
-    const entry={ id:'c|'+name+'|'+team+'|'+date, kind:'team', date, team:name, team:String(team), offer, project, city, salesperson:sales, holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() };
+    const entry={ id:'c|'+name+'|'+team+'|'+date, kind:'team', date, contractor:name, team:String(team), offer, project, city, salesperson:sales, holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() };
     upsertPlan(entry); rememberSalesperson(sales); closeModal();
     if(date===TODAY()){ book(name,team,offer,project,holdBy,city,sales); }
     else { renderBoard(); setDot('dot','syncTxt','ok','Planned '+esc(name)+' Team '+team+' for tomorrow'); }
@@ -496,7 +518,7 @@ function openSupPlan(preset){
     if(others.length>=4){ showMErr(sup+' already has 4 plans that day.'); return; }
     const base = ed ? ed.id.split('|')[1] : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
     const id='s|'+base+'|'+date;
-    const entry={ id:id, kind:'supervisor', date:date, team:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:(document.getElementById('mSales').value||'').trim(), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
+    const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:(document.getElementById('mSales').value||'').trim(), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
     if(ed && ed.id!==id){ plans=plans.filter(p=>p.id!==ed.id); pushPlanDelete(ed.id); }
     upsertPlan(entry); rememberSalesperson(entry.salesperson); closeModal();
     if(view==='board') renderSupBoard(); if(view==='plan') renderPlan();
@@ -525,54 +547,70 @@ function saveHold(name,team,holdBy){
   const r=rows.find(x=>x.name===name); const tm=r?teamOf(r,team):null;
   const id='c|'+name+'|'+team+'|'+TODAY();
   let e=planById(id);
-  if(!e){ e={ id:id, kind:'team', date:TODAY(), team:name, team:String(team), offer:tm?tm.offer:'', project:tm?tm.project:'', city:'', salesperson:'', holdBy:'', supervisor:'', task:'', by:SUP, at:'' }; }
+  if(!e){ e={ id:id, kind:'team', date:TODAY(), contractor:name, team:String(team), offer:tm?tm.offer:'', project:tm?tm.project:'', city:'', salesperson:'', holdBy:'', supervisor:'', task:'', by:SUP, at:'' }; }
   e=Object.assign({},e,{ holdBy:holdBy, at:new Date().toISOString() });
   upsertPlan(e); renderBoard(); if(view==='plan') renderPlan();
   if(tm && tm.status==='booked'){ try{ fetch(API,{method:'POST',body:new URLSearchParams({action:'setHold',name:name,team:String(team),holdBy:holdBy||''})}); }catch(_){ } }
 }
-/* ===== DAY-PLAN report ===== */
-function bySalesperson(list){
-  const g={}; list.forEach(p=>{ const k=(p.salesperson||'').trim()||'— Unassigned —'; (g[k]||(g[k]=[])).push(p); });
-  return Object.keys(g).sort((a,b)=>{ const au=a.charAt(0)==='—', bu=b.charAt(0)==='—'; if(au&&!bu) return 1; if(bu&&!au) return -1; return a.toLowerCase().localeCompare(b.toLowerCase()); })
-    .map(k=>({ sales:k, items:g[k].sort((x,y)=>x.team.toLowerCase().localeCompare(y.team.toLowerCase())) }));
+/* ===== DAY-PLAN report (tabular) ===== */
+function dayTag(date){ return date===TODAY() ? 'Today' : (date===TOMORROW() ? 'Tomorrow' : 'Plan'); }
+function allContractorItems(){
+  const out=[];
+  teamItems(TODAY()).forEach(it=>out.push(Object.assign({date:TODAY()},it)));
+  planFor(TOMORROW(),'team').forEach(p=>out.push(p));
+  return out;
 }
-function teamRow(p){
-  const site = p.holdBy ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('<b>#'+esc(p.offer||'—')+'</b>'+(p.project?' '+esc(p.project):''));
-  return '<div class="prow"><div class="pmain"><span class="pc">'+esc(p.team)+'</span><span class="pt">Team '+esc(p.team)+'</span></div><div class="psite">'+site+(p.city?'<span class="pcity">📍 '+esc(p.city)+'</span>':'')+'</div><button class="pdel noprint" data-id="'+esc(p.id)+'">✕</button></div>';
+function groupBy(list,keyFn,unlabel){
+  const g={}; list.forEach(p=>{ const k=(keyFn(p)||'').trim()|| ('— '+unlabel+' —'); (g[k]||(g[k]=[])).push(p); });
+  return Object.keys(g).sort((a,b)=>{ const au=a.charAt(0)==='—', bu=b.charAt(0)==='—'; if(au&&!bu) return 1; if(bu&&!au) return -1; return a.toLowerCase().localeCompare(b.toLowerCase()); }).map(k=>({key:k, items:g[k]}));
 }
-function supRow(p){
-  const badge='<span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span>';
-  const detail=(p.offer?'<b>#'+esc(p.offer)+'</b>':'')+(p.project?' '+esc(p.project):'')+(p.city?'<span class="pcity">📍 '+esc(p.city)+'</span>':'')+(p.salesperson?'<span class="psales">'+esc(p.salesperson)+'</span>':'');
-  return '<div class="prow"><div class="pmain"><span class="pc">'+esc(p.supervisor)+'</span>'+badge+'</div><div class="psite">'+(detail||'<span style="opacity:.5">—</span>')+'</div><button class="pdel noprint" data-id="'+esc(p.id)+'">✕</button></div>';
+function planCell(p){ return p.holdBy ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('#'+esc(p.offer||'—')); }
+function dayCell(p){ const t=dayTag(p.date); return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+t+'</span><span class="dd">'+prettyDate(p.date)+'</span>'; }
+function contractorTable(){
+  const groups=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
+  if(!groups.length) return '<div class="pempty">No contractor teams planned.</div>';
+  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Client</th><th>City</th><th>Contractor</th><th>Team</th><th>Plan</th><th class="xcol noprint"></th></tr></thead>';
+  groups.forEach(grp=>{
+    h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
+    grp.items.sort((a,b)=>(a.date===b.date? (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()) : (a.date<b.date?-1:1)));
+    grp.items.forEach(p=>{ h+='<tr><td>'+planCell(p)+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td><td>Team '+esc(p.team||'—')+'</td><td class="dcell">'+dayCell(p)+'</td><td class="xcol noprint"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>'; });
+    h+='</tbody>';
+  });
+  return h+'</table></div>';
 }
-function dayBlock(lbl,date,isTomorrow){
-  const citems=teamItems(date);
-  const cg=bySalesperson(citems);
-  const sup=planFor(date,'supervisor').sort((a,b)=>a.supervisor.toLowerCase().localeCompare(b.supervisor.toLowerCase()));
-  const cCount=citems.length;
-  const cHtml=cg.length ? cg.map(grp=>'<div class="sgrp"><div class="shead">'+esc(grp.sales)+'</div>'+grp.items.map(teamRow).join('')+'</div>').join('') : '<div class="pempty">No teams planned.</div>';
-  const sHtml=sup.length ? sup.map(supRow).join('') : '<div class="pempty">No supervisors planned.</div>';
-  const tick=isTomorrow ? '<label class="sameas noprint" title="Copy today\u2019s plan into tomorrow"><input type="checkbox" id="sameAsToday"'+(sameAsTodayOn()?' checked':'')+'> Same as today</label>' : '';
-  return '<div class="pday"><div class="pdayhd"><span class="pdlbl">'+lbl+'</span><span class="pdhr">'+tick+'<span class="pddate">'+prettyDate(date)+'</span></span></div>'
-    +'<div class="psec"><div class="psectt">👷 teams <span class="cnt">'+cCount+'</span></div>'+cHtml+'</div>'
-    +'<div class="psec"><div class="psectt">👔 Supervisors <span class="cnt">'+sup.length+'</span></div>'+sHtml+'</div></div>';
+function supTable(){
+  const list=[]; planFor(TODAY(),'supervisor').forEach(p=>list.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>list.push(p));
+  const groups=groupBy(list, p=>p.supervisor, 'Unnamed');
+  if(!groups.length) return '<div class="pempty">No supervisors planned.</div>';
+  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Task</th><th>Offer No.</th><th>Client</th><th>City</th><th>Salesperson</th><th>Plan</th><th class="xcol noprint"></th></tr></thead>';
+  groups.forEach(grp=>{
+    h+='<tbody><tr class="grp"><td colspan="7">👔 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
+    grp.items.sort((a,b)=>(a.date<b.date?-1:(a.date>b.date?1:0)));
+    grp.items.forEach(p=>{ h+='<tr><td><span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span></td><td>'+(p.offer?'#'+esc(p.offer):'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td>'+(p.salesperson?esc(p.salesperson):'—')+'</td><td class="dcell">'+dayCell(p)+'</td><td class="xcol noprint"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>'; });
+    h+='</tbody>';
+  });
+  return h+'</table></div>';
 }
 function renderPlan(){
+  const tickTom='<label class="sameas noprint" title="Copy today\u2019s plan into tomorrow"><input type="checkbox" id="sameAsToday"'+(sameAsTodayOn()?' checked':'')+'> Tomorrow = same as today</label>';
   document.getElementById('planReport').innerHTML=
-    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+(SUP?' · '+esc(SUP):'')+'</div></div>'
-    + dayBlock('Today',TODAY(),false) + dayBlock('Tomorrow',TOMORROW(),true);
+    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?' · '+esc(SUP):'')+'</div>'+tickTom+'</div>'
+    +'<div class="psec"><div class="psectt">👷 Contractor Teams — grouped by salesperson</div>'+contractorTable()+'</div>'
+    +'<div class="psec"><div class="psectt">👔 Supervisors — grouped by supervisor</div>'+supTable()+'</div>';
 }
 function planText(){
-  const days=[['TODAY',TODAY()],['TOMORROW',TOMORROW()]]; let out='LINGEL — DAY PLAN\n'+prettyDate(TODAY())+(SUP?'  ('+SUP+')':'')+'\n';
-  days.forEach(function(dd){ const lbl=dd[0], d=dd[1];
-    out+='\n===== '+lbl+' · '+prettyDate(d)+' =====\n';
-    out+='\n[ teamS ]\n'; const g=bySalesperson(teamItems(d));
-    if(!g.length) out+='  (none)\n';
-    g.forEach(function(grp){ out+='• '+grp.sales+'\n'; grp.items.forEach(function(p){ out+='   - '+p.team+' (Team '+p.team+') → '+(p.holdBy?('HOLD: '+p.holdBy):('#'+(p.offer||'—')+(p.project?' '+p.project:'')))+(p.city?' · '+p.city:'')+'\n'; }); });
-    out+='\n[ SUPERVISORS ]\n'; const s=planFor(d,'supervisor');
-    if(!s.length) out+='  (none)\n';
-    s.forEach(function(p){ out+='   - '+p.supervisor+' → '+p.task+(p.offer?' · #'+p.offer:'')+(p.project?' '+p.project:'')+(p.city?' · '+p.city:'')+(p.salesperson?' ('+p.salesperson+')':'')+'\n'; });
-  });
+  let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?'  ('+SUP+')':'')+'\n';
+  out+='\n*👷 CONTRACTOR TEAMS*\n';
+  const cg=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
+  if(!cg.length) out+='  (none)\n';
+  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.date<b.date?-1:1)).forEach(function(p){
+    out+='  • '+(p.holdBy?('HOLD: '+p.holdBy):('#'+(p.offer||'—')))+' | '+(p.project||'—')+(p.city?' | '+p.city:'')+' | '+(p.contractor||'—')+' Team '+(p.team||'—')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
+  out+='\n*👔 SUPERVISORS*\n';
+  const sl=[]; planFor(TODAY(),'supervisor').forEach(p=>sl.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>sl.push(p));
+  const sg=groupBy(sl, p=>p.supervisor, 'Unnamed');
+  if(!sg.length) out+='  (none)\n';
+  sg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.date<b.date?-1:1)).forEach(function(p){
+    out+='  • '+(p.task||'—')+(p.offer?' | #'+p.offer:'')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+(p.salesperson?' | '+p.salesperson:'')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
   return out;
 }
 function openRelease(name,team,tm){
@@ -646,6 +684,7 @@ document.getElementById('supGrid').addEventListener('click',e=>{
 document.getElementById('planReport').addEventListener('click',e=>{ const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
 document.getElementById('planReport').addEventListener('change',e=>{ if(e.target && e.target.id==='sameAsToday') toggleSameAsToday(e.target.checked); });
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
+document.getElementById('btnWa').addEventListener('click',()=>{ const url='https://wa.me/?text='+encodeURIComponent(planText()); window.open(url,'_blank'); });
 document.getElementById('btnPrint').addEventListener('click',()=>window.print());
 document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
