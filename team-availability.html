@@ -314,7 +314,6 @@ let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 /* ===== DAY-PLAN state ===== */
 const POLL_PLAN=20000;
 const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
-const SUP_SHEET_ID='14kBmSlBJwnFP8Gugf9JH5VCDlxjP3f9PfQ0ruv3J8FQ', SUP_TAB='Lingel Supervisors';
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
 function contractorItems(date){
@@ -363,20 +362,13 @@ function toggleSameAsToday(checked){
   }
   renderPlan();
 }
-function parseCsv(t){ const rows=[]; let row=[],cur='',q=false; for(let i=0;i<t.length;i++){ const c=t[i]; if(q){ if(c==='"'){ if(t[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; } else { if(c==='"')q=true; else if(c===','){row.push(cur);cur='';} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else if(c!=='\r')cur+=c; } } if(cur.length||row.length){row.push(cur);rows.push(row);} return rows; }
-function namesFromCsv(txt){ if(!txt || /<html/i.test(txt)) return []; const rows=parseCsv(txt).filter(r=>r.some(x=>String(x).trim())); if(!rows.length) return []; const hdr=rows[0].map(x=>String(x).toLowerCase()); let col=0; for(let i=0;i<hdr.length;i++){ if(hdr[i].indexOf('name')>=0){col=i;break;} } const out=[],seen={}; for(let r=1;r<rows.length;r++){ const v=String(rows[r][col]||'').trim(); if(v&&!seen[v.toLowerCase()]){seen[v.toLowerCase()]=1;out.push(v);} } return out; }
-async function fetchSheetSupervisors(){
-  const base='https://docs.google.com/spreadsheets/d/'+SUP_SHEET_ID+'/gviz/tq?tqx=out:csv';
-  const tries=[base+'&sheet='+encodeURIComponent(SUP_TAB), base+'&gid=0'];
-  for(let i=0;i<tries.length;i++){ try{ const txt=await fetch(tries[i]).then(r=>r.text()); const names=namesFromCsv(txt); if(names.length) return names; }catch(e){} }
-  return [];
-}
+function rememberSupervisor(s){ s=(s||'').trim(); if(!s) return; if(!supList.some(x=>x.toLowerCase()===s.toLowerCase())) supList.push(s); supList.sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase())); try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){} fillDatalist('dlSup', supList); }
 async function loadSupervisors(){
-  try{ const a=JSON.parse(localStorage.getItem(SUP_KEY)||'[]'); if(Array.isArray(a)) supList=a; }catch(e){}
-  let got=[];
-  try{ const r=await fetch(API+'?action=supervisors&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.supervisors)) got=d.supervisors.map(s=>String(s).trim()).filter(Boolean); }catch(e){}
-  if(!got.length){ got=await fetchSheetSupervisors(); }
-  if(got.length){ supList=got.filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase())); try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){} }
+  // Supervisor names are entered by hand and remembered locally — no sheet fetch.
+  let names=[]; try{ const a=JSON.parse(localStorage.getItem(SUP_KEY)||'[]'); if(Array.isArray(a)) names=a; }catch(e){}
+  const fromPlans=plans.filter(p=>p.kind==='supervisor').map(p=>p.supervisor);
+  supList=[...new Set([].concat(names,fromPlans).map(s=>String(s||'').trim()).filter(Boolean))].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+  try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){}
   fillDatalist('dlSup', supList);
   if(view==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
 }
@@ -526,7 +518,7 @@ function openSupPlan(preset){
     const id='s|'+base+'|'+date;
     const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:(document.getElementById('mSales').value||'').trim(), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
     if(ed && ed.id!==id){ plans=plans.filter(p=>p.id!==ed.id); pushPlanDelete(ed.id); }
-    upsertPlan(entry); rememberSalesperson(entry.salesperson); closeModal();
+    upsertPlan(entry); rememberSalesperson(entry.salesperson); rememberSupervisor(entry.supervisor); closeModal();
     if(view==='board') renderSupBoard(); if(view==='plan') renderPlan();
     setDot('dotS','syncS','ok',(ed?'Updated ':'Added ')+esc(sup)+' · '+task2);
   };
@@ -535,7 +527,7 @@ function renderSupBoard(){
   const day=dateOf(supDay), grid=document.getElementById('supGrid');
   const names=[...new Set([].concat(supList||[], plans.filter(p=>p.kind==='supervisor'&&p.date===day).map(p=>p.supervisor)).map(s=>String(s||'').trim()).filter(Boolean))];
   names.sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
-  if(!names.length){ grid.innerHTML='<div class="msg">No supervisors yet.<br><span style="font-size:12px">Add names to the <b>Lingel Supervisors</b> sheet (needs the backend), or just tap ＋ after typing a name in the Day Plan tab.</span></div>'; return; }
+  if(!names.length){ grid.innerHTML='<div class="msg">No supervisors yet.<br><span style="font-size:12px">Add one from the Day Plan tab (＋ Supervisor plan) — type the name and it\u2019s remembered here.</span></div>'; return; }
   grid.innerHTML=names.map(nm=>{
     const slots=plans.filter(p=>p.kind==='supervisor'&&p.date===day&&p.supervisor===nm);
     let chips=slots.map(p=>{ const cls=p.task==='Measurement'?'tmeas':'tvisit'; const site=p.offer?('#'+esc(p.offer)):(p.project?esc(p.project):'—'); const sub=p.city?esc(p.city):(p.salesperson?esc(p.salesperson):''); return '<button class="schip '+cls+'" data-sid="'+esc(p.id)+'"><div class="tl">'+esc(p.task||'Task')+'</div><div class="ts">'+site+'</div>'+(sub?'<div class="to">'+sub+'</div>':'')+'</button>'; }).join('');
