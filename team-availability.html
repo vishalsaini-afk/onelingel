@@ -301,7 +301,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 <script>
 const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbwC8ZPk7oaU2wNdHabrbWfc2DufOUvj10dyefQMUdQ8ivaWMYrcWrA59iudooV9yLym0Q/exec";
 const API = (function(){ if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC; try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){} return INVOICE_EXEC; })();
-const DAYPLAN_API = ""; // <-- paste the standalone Day Plan web-app /exec here (blank = use the main API)
+const https://script.google.com/macros/s/AKfycbzGwNu43XMPCfJX0YTmf20YkOF7fxEmLsKAvYP2hKK0-PYHs_I1lef343TYlzdIdfI_Yw/exec= ""; // <-- paste the standalone Day Plan web-app /exec here (blank = use the main API)
 const PLAN_API = (DAYPLAN_API && DAYPLAN_API.indexOf('script.google.com')>=0) ? DAYPLAN_API : API;
 const POLL_BOARD=8000, POLL_REPORTS=15000, CACHE_KEY='lingel_contractors_cache_v5';
 const SUP=(function(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; } })();
