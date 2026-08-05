@@ -276,7 +276,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div id="planView" hidden>
     <div class="planbar noprint">
       <button id="btnAddSup" class="pbtn">＋ Supervisor plan</button>
-      <button id="btnWa" class="pbtn wa">🟢 Share to WhatsApp</button>
+      <button id="btnWa" class="pbtn wa">🟢 Share PDF (WhatsApp)</button>
       <button id="btnCopy" class="pbtn ghost">📋 Copy</button>
       <button id="btnPrint" class="pbtn ghost">🖨 Print / PDF</button>
       <button class="rf" id="refreshP" title="Refresh">⟳</button>
@@ -613,6 +613,61 @@ function planText(){
     out+='  • '+(p.task||'—')+(p.offer?' | #'+p.offer:'')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+(p.salesperson?' | '+p.salesperson:'')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
   return out;
 }
+/* ===== PDF export + WhatsApp share ===== */
+let _pdfLoad=null;
+function _loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=()=>res(); s.onerror=()=>rej(new Error('Could not load PDF library (need internet)')); document.head.appendChild(s); }); }
+function ensurePdfLib(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if(!_pdfLoad){ _pdfLoad=(async()=>{
+    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+  })().catch(e=>{ _pdfLoad=null; throw e; }); }
+  return _pdfLoad;
+}
+async function buildPlanPdf(){
+  await ensurePdfLib();
+  const { jsPDF }=window.jspdf; const doc=new jsPDF({unit:'pt',format:'a4'}); const M=40;
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(17); doc.text('LINGEL — Day Plan', M, 46);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(90);
+  doc.text(prettyDate(TODAY())+'   ->   '+prettyDate(TOMORROW())+(SUP?'      ·      '+SUP:''), M, 63);
+  doc.setTextColor(17);
+  const grpStyle={fontStyle:'bold', fillColor:[238,238,232], textColor:20};
+  // Contractors
+  const cbody=[]; groupBy(allContractorItems(),p=>p.salesperson,'Unassigned').forEach(grp=>{
+    cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:6, styles:grpStyle}]);
+    grp.items.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(p=>cbody.push([
+      p.holdBy?('HOLD · '+p.holdBy):('#'+(p.offer||'—')), p.project||'—', p.city||'—', p.contractor||'—', 'Team '+(p.team||'—'), dayTag(p.date)+' · '+prettyDate(p.date) ]));
+  });
+  doc.autoTable({ startY:80, head:[['Offer No.','Client','City','Contractor','Team','Plan']], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
+    theme:'grid', styles:{fontSize:8.5,cellPadding:4,lineColor:[220,220,220]}, headStyles:{fillColor:[25,25,25],textColor:255,fontSize:8.5}, margin:{left:M,right:M} });
+  // Supervisors
+  let y=doc.lastAutoTable.finalY+22; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Supervisors', M, y);
+  const sl=[]; planFor(TODAY(),'supervisor').forEach(p=>sl.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>sl.push(p));
+  const sbody=[]; groupBy(sl,p=>p.supervisor,'Unnamed').forEach(grp=>{
+    sbody.push([{content:'Supervisor: '+grp.key+'  ('+grp.items.length+')', colSpan:6, styles:grpStyle}]);
+    grp.items.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(p=>sbody.push([
+      p.task||'—', p.offer?('#'+p.offer):'—', p.project||'—', p.city||'—', p.salesperson||'—', dayTag(p.date)+' · '+prettyDate(p.date) ]));
+  });
+  doc.autoTable({ startY:y+8, head:[['Task','Offer No.','Client','City','Salesperson','Plan']], body:sbody.length?sbody:[[{content:'No supervisors planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
+    theme:'grid', styles:{fontSize:8.5,cellPadding:4,lineColor:[220,220,220]}, headStyles:{fillColor:[25,25,25],textColor:255,fontSize:8.5}, margin:{left:M,right:M} });
+  return doc;
+}
+async function sharePlanPdf(){
+  setDot('dotP','syncP','busy','Building PDF…');
+  try{
+    const doc=await buildPlanPdf();
+    const fname='Lingel-DayPlan-'+TODAY()+'.pdf';
+    const blob=doc.output('blob');
+    const file=new File([blob],fname,{type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({ files:[file], title:'Lingel Day Plan', text:'Lingel Day Plan · '+prettyDate(TODAY())+' -> '+prettyDate(TOMORROW()) });
+      setDot('dotP','syncP','ok','Shared PDF');
+    } else {
+      const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
+      setDot('dotP','syncP','ok','PDF saved — attach it in WhatsApp');
+    }
+  }catch(e){ if(e && e.name==='AbortError'){ setDot('dotP','syncP','ok','Share cancelled'); return; } setDot('dotP','syncP','err',(e && e.message)||'PDF failed'); }
+}
 function openRelease(name,team,tm){
   setBox('rel');
   document.getElementById('mTtl').textContent='Release '+name;
@@ -684,7 +739,7 @@ document.getElementById('supGrid').addEventListener('click',e=>{
 document.getElementById('planReport').addEventListener('click',e=>{ const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
 document.getElementById('planReport').addEventListener('change',e=>{ if(e.target && e.target.id==='sameAsToday') toggleSameAsToday(e.target.checked); });
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
-document.getElementById('btnWa').addEventListener('click',()=>{ const url='https://wa.me/?text='+encodeURIComponent(planText()); window.open(url,'_blank'); });
+document.getElementById('btnWa').addEventListener('click',()=>sharePlanPdf());
 document.getElementById('btnPrint').addEventListener('click',()=>window.print());
 document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
