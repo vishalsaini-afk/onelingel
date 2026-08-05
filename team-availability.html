@@ -1,769 +1,243 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
-<title>Lingel — Team Availability</title>
-<meta name="theme-color" content="#13161b">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#ffce1f;--green:#22c55e;--red:#ef4444;--blue:#5b9bd5;--amber:#f0a63a}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
-.wrap{max-width:820px;margin:0 auto;padding:16px 14px 40px;min-height:100vh}
-.top{display:flex;align-items:center;gap:9px;margin-bottom:14px}
-.home{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--muted);border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
-.home:active{background:var(--panel-2)}
-.who{margin-left:auto;font-size:12px;color:var(--muted);text-align:right;line-height:1.3}
-.who b{color:var(--hivis);font-family:'Archivo Narrow';text-transform:uppercase;letter-spacing:.03em;display:block}
-.hdr{padding-bottom:14px;border-bottom:2px solid var(--line);margin-bottom:14px}
-.hdr .t{font-family:Archivo;font-weight:900;font-size:22px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
-.hdr .s{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:6px}
-.vtabs{display:flex;gap:6px;margin-bottom:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px}
-.vtab{flex:1;border:none;background:transparent;color:var(--muted);border-radius:9px;padding:11px 6px;font-family:'Archivo Narrow';font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
-.vtab.on{background:var(--hivis);color:#111}
-.stats{display:flex;gap:10px;margin-bottom:14px}
-.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center}
-.stat.g{border-left:4px solid var(--green)}.stat.r{border-left:4px solid var(--red)}.stat.n{border-left:4px solid var(--amber)}
-.stat .n{font-family:Archivo;font-weight:900;font-size:23px;line-height:1}
-.stat.g .n{color:var(--green)}.stat.r .n{color:var(--red)}.stat.n .n{color:var(--amber)}
-.stat .l{font-family:'JetBrains Mono';font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px}
-.tools{display:flex;gap:8px;align-items:center;margin-bottom:12px}
-.search{flex:1;position:relative}
-.search input{width:100%;border:1px solid var(--line);border-radius:9px;padding:11px 13px 11px 36px;font-size:15px;background:var(--panel-2);color:var(--text);font-family:'Spline Sans',sans-serif}
-.search input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
-.search .mag{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px}
-.rf{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;width:44px;height:44px;font-size:18px;cursor:pointer;flex-shrink:0}
-.rf:active{background:var(--panel-2)}.rf.spin{animation:sp 1s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
-.sync{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;min-height:16px}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
-.dot.ok{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18)}
-.dot.err{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
-.dot.busy{background:var(--hivis);box-shadow:0 0 0 3px rgba(255,206,31,.18)}
-.legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:12px;font-size:12px;color:var(--muted)}
-.legend span{display:inline-flex;align-items:center;gap:7px}
-.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
-.legend .lg{background:var(--green)}.legend .lr{background:var(--red)}.legend .ln{background:var(--amber)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 13px}
-.card .nm{font-family:Archivo;font-weight:700;font-size:16px;line-height:1.15;word-break:break-word}
-.card .role{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
-.teams{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.team{flex:1 1 46%;min-width:98px;border:1px solid var(--line);border-left:4px solid var(--red);background:var(--panel-2);border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;position:relative;-webkit-tap-highlight-color:transparent;transition:transform .08s,background .15s,border-color .15s}
-.team:active{transform:scale(.96)}
-.team.avail{border-left-color:var(--green);background:linear-gradient(180deg,rgba(34,197,94,.13),rgba(34,197,94,.04))}
-.team.na{border-left-color:var(--amber);background:rgba(240,166,58,.06)}
-.team .tl{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.team .ts{font-family:Archivo;font-weight:700;font-size:13px;margin-top:3px}
-.team.avail .ts{color:#86efac}.team:not(.avail):not(.na) .ts{color:#fda4a4}.team.na .ts{color:var(--amber)}
-.team .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.team.busy{opacity:.5;pointer-events:none}
-.thead{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
-.swwrap{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
-.swlbl{font-family:'JetBrains Mono';font-size:8px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1}
-.swlbl.ond{color:#86efac}
-.swlbl.onl{color:var(--amber)}
-.sw{position:relative;width:46px;height:26px;border-radius:26px;background:var(--panel);border:1px solid var(--line);cursor:pointer;flex-shrink:0;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
-.sw::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
-.sw.on{background:rgba(34,197,94,.22);border-color:var(--green)}
-.sw.on::after{transform:translateX(20px);background:var(--green)}
-.sw.busy{opacity:.5;pointer-events:none}
-/* reports */
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
-.kc{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 15px}
-.kc.a{border-left:4px solid var(--red)}.kc.o{border-left:4px solid var(--hivis)}.kc.c{border-left:4px solid var(--green)}.kc.t{border-left:4px solid var(--blue)}
-.kc .n{font-family:Archivo;font-weight:900;font-size:26px;line-height:1}
-.kc.a .n{color:#fda4a4}.kc.o .n{color:var(--hivis)}.kc.c .n{color:#86efac}.kc.t .n{color:#a9cdf0}
-.kc .l{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:7px;line-height:1.4}
-.kc .subv{font-size:11px;color:var(--muted);margin-top:3px}
-.rtabs{display:flex;gap:6px;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:5px}
-.rtab{flex:1;border:none;background:transparent;color:var(--muted);border-radius:8px;padding:9px 6px;font-family:'Archivo Narrow';font-weight:700;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
-.rtab.on{background:var(--hivis);color:#111}
-.row{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:9px}
-.row.act{border-left:4px solid var(--red)}
-.rtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.rname{font-family:Archivo;font-weight:700;font-size:15px}
-.rmeta{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
-.rsub{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}.rsub b{color:var(--text);font-weight:600}
-.pill{display:inline-block;font-family:'JetBrains Mono';font-weight:700;font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:5px;margin-left:6px}
-.pill.active{background:rgba(239,68,68,.16);color:#fda4a4}.pill.released{background:rgba(34,197,94,.15);color:#86efac}.pill.reassigned{background:rgba(255,206,31,.15);color:var(--hivis)}
-.ut{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:9px}
-.uthead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.utname{font-family:Archivo;font-weight:700;font-size:14.5px}
-.utnums{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.03em;text-transform:uppercase}.utnums .on{color:#fda4a4}
-.bar{height:7px;background:var(--panel-2);border-radius:4px;margin-top:9px;overflow:hidden}
-.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--hivis),#ffd956);border-radius:4px}
-.utfoot{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--muted)}.utfoot b{color:var(--text)}
-.ogrp{background:var(--panel);border:1px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden}
-.ohead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:var(--panel-2)}
-.ooffer{font-family:Archivo;font-weight:900;font-size:15px;color:var(--hivis)}
-.oproj{font-size:12px;color:var(--muted);margin-top:2px}
-.ocount{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);text-transform:uppercase}
-.oline{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;border-top:1px solid var(--line);font-size:12.5px}
-.oline .who2{color:var(--text)}
-.oline .when{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);text-align:right;white-space:nowrap}
-.msg{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;line-height:1.6}
-.msg.err{color:#fda4a4}
-.msg button{margin-top:14px;background:var(--hivis);color:#111;border:none;border-radius:8px;padding:10px 22px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
-.skel{background:var(--panel);border:1px solid var(--line);border-radius:14px;min-height:100px;animation:pulse 1.3s ease-in-out infinite}
-@keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
-.foot-note{text-align:center;font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:26px;opacity:.65}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal[hidden]{display:none}
-.mbox{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--hivis);border-radius:16px;padding:22px 20px;max-width:380px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 12px 48px rgba(0,0,0,.5)}
-.mbox.rel{border-top-color:var(--red)}.mbox.na{border-top-color:var(--amber)}
-.mttl{font-family:Archivo;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.03em;line-height:1.2;margin-bottom:4px}
-.msub{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
-.fd{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
-.fd label{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-.fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
-.fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
-.relinfo{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.7}
-.relinfo b{color:var(--hivis);font-family:'Archivo Narrow'}
-.relinfo .k{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.mduty{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:14px}
-.mduty .mdt{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.mduty .mds{font-family:Archivo;font-weight:700;font-size:13.5px;margin-top:2px}
-.mduty .mds.ond{color:#86efac}.mduty .mds.onl{color:var(--amber)}
-.mErr{color:#fda4a4;font-size:12px;min-height:15px;margin:-4px 0 10px}
-.mbtns{display:flex;gap:9px;margin-top:4px}
-.mbtn{flex:1;border:none;border-radius:9px;padding:12px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
-.mbtn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
-.mbtn.go{background:var(--hivis);color:#111}
-.mbtn.danger{background:var(--red);color:#fff}
-.mbtn.amber{background:var(--amber);color:#111}
-/* segmented control */
-.seg{display:flex;gap:6px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:4px}
-.seg button{flex:1;border:none;background:transparent;color:var(--muted);border-radius:6px;padding:9px 6px;font-family:'Archivo Narrow';font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer}
-.seg button.on{background:var(--hivis);color:#111}
-/* ===== DAY PLAN ===== */
-.planbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
-.pbtn{border:none;border-radius:9px;padding:11px 14px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:var(--hivis);color:#111}
-.pbtn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--line)}
-.pbtn:active{transform:scale(.97)}
-.preporthd{padding-bottom:10px;border-bottom:2px solid var(--line);margin-bottom:14px}
-.prt{font-family:Archivo;font-weight:900;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
-.prs{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:4px}
-.pday{margin-bottom:20px}
-.pdayhd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:var(--panel-2);border:1px solid var(--line);border-left:4px solid var(--hivis);border-radius:10px;padding:9px 13px;margin-bottom:12px}
-.pdlbl{font-family:Archivo;font-weight:900;font-size:15px;text-transform:uppercase;letter-spacing:.03em;color:var(--hivis)}
-.pddate{font-family:'JetBrains Mono';font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.pdhr{display:flex;align-items:center;gap:12px}
-.sameas{display:inline-flex;align-items:center;gap:6px;font-family:'Archivo Narrow';font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);cursor:pointer;-webkit-tap-highlight-color:transparent}
-.sameas input{width:17px;height:17px;accent-color:var(--hivis);cursor:pointer;margin:0}
-/* supervisor board */
-#supDaySeg{flex:1}
-.schip{border:1px solid var(--line);border-left:4px solid var(--muted);background:var(--panel-2);border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;color:var(--text);font-family:inherit;flex:1 1 46%;min-width:98px;-webkit-tap-highlight-color:transparent;transition:transform .08s}
-.schip:active{transform:scale(.96)}
-.schip.tmeas{border-left-color:var(--blue);background:rgba(91,155,213,.09)}
-.schip.tvisit{border-left-color:var(--amber);background:rgba(240,166,58,.07)}
-.schip .tl{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
-.schip .ts{font-family:Archivo;font-weight:700;font-size:13px;margin-top:3px}
-.schip.tmeas .ts{color:#a9cdf0}.schip.tvisit .ts{color:var(--amber)}
-.schip .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.schip.add{border-left-color:var(--line);display:flex;align-items:center;justify-content:center;min-height:56px}
-.schip.add .ts{color:var(--muted)}
-.psec{margin-bottom:14px}
-.psectt{font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.psectt .cnt{font-family:'JetBrains Mono';font-size:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:1px 8px}
-.sgrp{margin-bottom:10px}
-.shead{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--hivis);background:rgba(255,206,31,.08);border-radius:6px;padding:5px 9px;margin-bottom:6px}
-.prow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px}
-.pmain{flex:0 0 auto}
-.pc{font-family:Archivo;font-weight:700;font-size:14px}
-.pt{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);margin-left:6px}
-.psite{flex:1 1 auto;font-size:12.5px;color:var(--muted);text-align:right;line-height:1.5;min-width:120px}
-.psite b{color:var(--text);font-family:'Archivo Narrow'}
-.pcity{display:inline-block;margin-left:8px;color:var(--muted)}
-.psales{display:inline-block;margin-left:8px;font-family:'JetBrains Mono';font-size:10px;color:var(--muted)}
-.hold{display:inline-block;background:rgba(240,166,58,.15);color:var(--amber);font-family:'JetBrains Mono';font-size:10px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:6px}
-.tbadge{display:inline-block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px;margin-left:8px}
-.tbadge.meas{background:rgba(91,155,213,.18);color:#a9cdf0}
-.tbadge.visit{background:rgba(240,166,58,.16);color:var(--amber)}
-.pdel{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:7px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:0 0 auto;margin-left:6px}
-.pdel:active{background:var(--panel-2)}
-.pempty{color:var(--muted);font-size:12.5px;padding:8px 4px;font-style:italic}
-.ptabwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px}
-.ptab{width:100%;border-collapse:collapse;font-size:12.5px}
-.ptab th{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel-2)}
-.ptab td{padding:9px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--text)}
-.ptab tbody tr:last-child td{border-bottom:none}
-.ptab tbody tr:nth-child(odd){background:rgba(255,255,255,.02)}
-.ptab td.sp{font-weight:700;font-family:'Archivo Narrow'}
-.ptab td.ctr{text-align:center;font-family:'JetBrains Mono';color:var(--muted)}
-.ptab .xcol{width:36px;text-align:center}
-.ptab .pdel{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:6px;width:24px;height:24px;font-size:11px;cursor:pointer;padding:0}
-.ptab .pdel:active{background:var(--panel-2)}
-@media print{
-  @page{margin:12mm}
-  body{background:#fff;color:#111}
-  .top,.hdr,.vtabs,#boardView,#reportsView,.foot-note,.planbar,.sync,.noprint,.modal{display:none!important}
-  #planView{display:block!important}
-  .wrap{max-width:none;padding:0;min-height:0}
-  .preporthd{border-bottom:2px solid #111}.prt{color:#111}.prs{color:#555}
-  .pday{break-inside:avoid;page-break-inside:avoid}
-  .pdayhd{background:#f2f2f2;color:#111;border:1px solid #ccc;border-left:4px solid #111}
-  .pdlbl{color:#111}.pddate{color:#555}
-  .psectt{color:#111}.psectt .cnt{background:#eee;color:#555;border-color:#ccc}
-  .shead{background:#eee;color:#111}
-  .prow{border:1px solid #ddd;background:#fff}
-  .pc{color:#111}.pt{color:#555}.psite{color:#333}.psite b{color:#111}
-  .pcity,.psales{color:#555}
-  .hold{background:#fde68a;color:#7c5b00}
-  .tbadge.meas{background:#dbeafe;color:#1e40af}.tbadge.visit{background:#fde9d3;color:#9a4a00}
-  .pempty{color:#888}
-  .ptabwrap{border-color:#bbb}
-  .ptab th{color:#111;background:#eee;border-color:#999}
-  .ptab td{color:#111;border-color:#ccc}
-  .ptab tbody tr:nth-child(odd){background:#f6f6f6}
-  .ptab td.ctr{color:#333}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Availability Dashboard</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --available: #10b981;
+      --busy: #ef4444;
+      --remote: #f59e0b;
+      --offline: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      padding: 1.5rem;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      font-size: 0.85rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+
+    .status-badge.connected { background: #dcfce7; color: #15803d; }
+    .status-badge.loading { background: #fef3c7; color: #b45309; }
+    .status-badge.error { background: #fee2e2; color: #b91c1c; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .avatar-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+
+    .status-Available { background-color: var(--available); }
+    .status-Busy { background-color: var(--busy); }
+    .status-Remote { background-color: var(--remote); }
+    .status-Offline { background-color: var(--offline); }
+
+    .actions {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #1d4ed8;
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <a class="home" href="index.html">← Hub</a>
-    <div class="who" id="who"></div>
-  </div>
-  <div class="hdr">
-    <div class="t">Team Availability</div>
-    <div class="s">Tap a team to book, release, or set on leave (NA)</div>
-  </div>
-  <div class="vtabs">
-    <button class="vtab on" data-view="board">Board</button>
-    <button class="vtab" data-view="plan">📋 Day Plan</button>
+
+<div class="container">
+  <div class="header">
+    <h1 class="title">Team Availability</h1>
+    <span id="connection-status" class="status-badge loading">Connecting...</span>
   </div>
 
-  <div id="boardView">
-    <div class="rtabs" id="boardSub">
-      <button class="rtab on" data-bsub="contractors">👷 Contractors</button>
-      <button class="rtab" data-bsub="supervisors">👔 Supervisors</button>
-    </div>
-    <div id="conBoard">
-    <div class="stats">
-      <div class="stat g"><div class="n" id="cFree">–</div><div class="l">Teams Free</div></div>
-      <div class="stat r"><div class="n" id="cBooked">–</div><div class="l">Booked</div></div>
-      <div class="stat n"><div class="n" id="cNA">–</div><div class="l">On Leave</div></div>
-      <div class="stat"><div class="n" id="cTotal" style="color:var(--text)">–</div><div class="l">Contractors</div></div>
-    </div>
-    <div class="tools">
-      <div class="search"><span class="mag">🔍</span><input id="q" placeholder="Search contractor…" autocomplete="off"></div>
-      <button class="rf" id="refreshB" title="Refresh">⟳</button>
-    </div>
-    <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">Loading…</span></div>
-    <div class="legend"><span><i class="lg"></i> Free</span><span><i class="lr"></i> Booked</span><span><i class="ln"></i> On leave (NA)</span></div>
-    <div id="grid" class="grid"></div>
-    </div>
-    <div id="supBoard" hidden>
-      <div class="tools">
-        <div class="seg" id="supDaySeg"><button type="button" data-val="today">Today</button><button type="button" data-val="tomorrow" class="on">Tomorrow</button></div>
-        <button class="rf" id="refreshSup" title="Refresh">⟳</button>
-      </div>
-      <div class="sync"><span class="dot" id="dotS"></span><span id="syncS">Tap a slot to plan · up to 4 per supervisor/day</span></div>
-      <div id="supGrid" class="grid"></div>
-    </div>
-  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Member</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Notes / Return Date</th>
+      </tr>
+    </thead>
+    <tbody id="team-table-body">
+      <tr>
+        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+          Loading availability data...
+        </td>
+      </tr>
+    </tbody>
+  </table>
 
-  <div id="planView" hidden>
-    <div class="planbar noprint">
-      <button id="btnAddSup" class="pbtn">＋ Supervisor plan</button>
-      <button id="btnCopy" class="pbtn ghost">📋 Copy</button>
-      <button id="btnPrint" class="pbtn ghost">🖨 Print / PDF</button>
-      <button class="rf" id="refreshP" title="Refresh">⟳</button>
-    </div>
-    <div class="sync noprint"><span class="dot" id="dotP"></span><span id="syncP">—</span></div>
-    <div id="planReport"></div>
-  </div>
-
-  <div class="foot-note">Lingel Field Operations · Live status in Contractors · full history in Bookings</div>
-</div>
-
-<datalist id="dlSales"></datalist>
-<datalist id="dlSup"></datalist>
-
-<div class="modal" id="modal" hidden>
-  <div class="mbox" id="mbox">
-    <div class="mttl" id="mTtl"></div>
-    <div class="msub" id="mSub"></div>
-    <div id="mBody"></div>
-    <div class="mErr" id="mErr"></div>
-    <div class="mbtns">
-      <button class="mbtn ghost" id="mCancel">Cancel</button>
-      <button class="mbtn go" id="mGo">OK</button>
-    </div>
+  <div class="actions">
+    <button onclick="fetchAvailabilityData()">Refresh Data</button>
   </div>
 </div>
 
 <script>
-const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbwC8ZPk7oaU2wNdHabrbWfc2DufOUvj10dyefQMUdQ8ivaWMYrcWrA59iudooV9yLym0Q/exec";
-const API = (function(){ if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC; try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){} return INVOICE_EXEC; })();
-const https://script.google.com/macros/s/AKfycbzGwNu43XMPCfJX0YTmf20YkOF7fxEmLsKAvYP2hKK0-PYHs_I1lef343TYlzdIdfI_Yw/exec= ""; // <-- paste the standalone Day Plan web-app /exec here (blank = use the main API)
-const PLAN_API = (DAYPLAN_API && DAYPLAN_API.indexOf('script.google.com')>=0) ? DAYPLAN_API : API;
-const POLL_BOARD=8000, POLL_REPORTS=15000, CACHE_KEY='lingel_contractors_cache_v5';
-const SUP=(function(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; } })();
-function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-document.getElementById('who').innerHTML = SUP ? '<span>Signed in as</span><b>'+esc(SUP)+'</b>' : '<b style="color:var(--muted)">Not signed in</b>';
+  // Replace this with your actual Google Apps Script Web App URL
+  const GOOGLE_SCRIPT_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
-let view='board', rows=[], bookings=[];
-const pending=new Map();
-let filter='', rfilter='', rtab='active';
-let pollTimer=null, firstLoad=true, bookingsLoaded=false;
+  async function fetchAvailabilityData() {
+    const statusBadge = document.getElementById("connection-status");
+    const tbody = document.getElementById("team-table-body");
 
-/* ===== DAY-PLAN state ===== */
-const POLL_PLAN=20000;
-const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
-let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
-function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
-function contractorItems(date){
-  if(date===TODAY()){
-    const items=[];
-    rows.forEach(r=>{ for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t)); if(tm && tm.status==='booked'){ const meta=planById('c|'+r.name+'|'+t+'|'+TODAY())||{}; items.push({ id:'c|'+r.name+'|'+t+'|'+TODAY(), contractor:r.name, team:String(t), offer:tm.offer||meta.offer||'', project:tm.project||meta.project||'', city:meta.city||'', salesperson:meta.salesperson||'', holdBy:meta.holdBy||'' }); } } });
-    return items;
+    statusBadge.textContent = "Updating...";
+    statusBadge.className = "status-badge loading";
+
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_URL);
+      const data = await response.json();
+
+      tbody.innerHTML = ""; // Clear existing rows
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 2rem;">No data found.</td></tr>`;
+        return;
+      }
+
+      data.forEach(member => {
+        const initials = member.name ? member.name.split(' ').map(n => n[0]).join('') : '?';
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>
+            <div class="avatar-cell">
+              <div class="avatar">${initials}</div>
+              <div>
+                <strong>${member.name || 'N/A'}</strong>
+              </div>
+            </div>
+          </td>
+          <td>${member.role || 'N/A'}</td>
+          <td>
+            <span class="status-dot status-${member.status}"></span>
+            ${member.status || 'Unknown'}
+          </td>
+          <td>${member.notes || '-'}</td>
+        `;
+
+        tbody.appendChild(row);
+      });
+
+      statusBadge.textContent = "Connected";
+      statusBadge.className = "status-badge connected";
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      statusBadge.textContent = "Connection Error";
+      statusBadge.className = "status-badge error";
+      
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; color: var(--busy); padding: 2rem;">
+            Failed to fetch team data. Please verify the Apps Script URL.
+          </td>
+        </tr>`;
+    }
   }
-  return planFor(date,'contractor');
-}
-function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function TODAY(){ return isoDate(new Date()); }
-function TOMORROW(){ const t=new Date(); t.setDate(t.getDate()+1); return isoDate(t); }
-function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.length<3) return iso||'—'; const dt=new Date(p[0],p[1]-1,p[2]); return dt.toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); }
-function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'contractor'), date:String(p.date||''), contractor:String(p.contractor||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
-function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
-function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
-function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
-function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
-function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
-async function syncPlansFromServer(){ try{ const r=await fetch(PLAN_API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ if(d.plans.length===0 && plans.length>0){ plans.forEach(p=>pushPlan(p)); return true; } plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
-async function pushPlan(entry){ try{ await fetch(PLAN_API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
-async function pushPlanDelete(id){ try{ await fetch(PLAN_API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
-function upsertPlan(entry){ const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
-function planById(id){ return plans.find(p=>p.id===id); }
-function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind); }
-function swapDate(id,d){ return String(id).replace(/\|[^|]*$/, '|'+d); }
-function sameAsTodayOn(){
-  const ci=contractorItems(TODAY()), si=plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY());
-  if(!ci.length && !si.length) return false;
-  const cOk=ci.every(it=>plans.some(p=>p.id==='c|'+it.contractor+'|'+it.team+'|'+TOMORROW()));
-  const sOk=si.every(t=>plans.some(p=>p.id==='s|'+t.id.split('|')[1]+'|'+TOMORROW()));
-  return cOk && sOk;
-}
-function toggleSameAsToday(checked){
-  if(checked){
-    contractorItems(TODAY()).forEach(it=>{ upsertPlan({ id:'c|'+it.contractor+'|'+it.team+'|'+TOMORROW(), kind:'contractor', date:TOMORROW(), contractor:it.contractor, team:it.team, offer:it.offer, project:it.project, city:it.city, salesperson:it.salesperson, holdBy:it.holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() }); });
-    plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY()).forEach(t=>{ upsertPlan(Object.assign({},t,{ id:'s|'+t.id.split('|')[1]+'|'+TOMORROW(), date:TOMORROW(), by:SUP, at:new Date().toISOString() })); });
-    setDot('dotP','syncP','ok','Tomorrow copied from today');
-  } else {
-    const todayC=new Set(contractorItems(TODAY()).map(it=>'c|'+it.contractor+'|'+it.team+'|'+TODAY()));
-    const todayS=new Set(plans.filter(p=>p.kind==='supervisor'&&p.date===TODAY()).map(p=>p.id));
-    const rm=plans.filter(p=>{ if(p.date!==TOMORROW()) return false; return p.kind==='contractor' ? todayC.has('c|'+p.contractor+'|'+p.team+'|'+TODAY()) : todayS.has('s|'+p.id.split('|')[1]+'|'+TODAY()); });
-    rm.forEach(p=>{ plans=plans.filter(x=>x.id!==p.id); pushPlanDelete(p.id); }); savePlansLocal();
-    setDot('dotP','syncP','ok','Cleared copied plan');
-  }
-  renderPlan();
-}
-function rememberSupervisor(s){ s=(s||'').trim(); if(!s) return; if(!supList.some(x=>x.toLowerCase()===s.toLowerCase())) supList.push(s); supList.sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase())); try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){} fillDatalist('dlSup', supList); }
-async function loadSupervisors(){
-  // Supervisor names are entered by hand and remembered locally — no sheet fetch.
-  let names=[]; try{ const a=JSON.parse(localStorage.getItem(SUP_KEY)||'[]'); if(Array.isArray(a)) names=a; }catch(e){}
-  const fromPlans=plans.filter(p=>p.kind==='supervisor').map(p=>p.supervisor);
-  supList=[...new Set([].concat(names,fromPlans).map(s=>String(s||'').trim()).filter(Boolean))].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
-  try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){}
-  fillDatalist('dlSup', supList);
-  if(view==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
-}
 
-function setDot(id,txtId,kind,txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
-function normStatus(v){ const s=String(v||'').toLowerCase(); return s==='booked'?'booked':s==='na'?'na':'available'; }
-function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:String(t.offer||'').trim(), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'' }; }
-function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams }; }
-function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
-function loadCache(){ try{ var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); return Array.isArray(c)?c.map(normRow):null; }catch(e){ return null; } }
-function teamOf(r,t){ return r.teams[Number(t)-1]; }
-function dispTeam(r,t){ const k=r.name+'|'+t; return pending.has(k)?pending.get(k):teamOf(r,t); }
-
-/* ============ BOARD ============ */
-function counts(){
-  let free=0, booked=0, na=0;
-  rows.forEach(r=>{ for(let t=1;t<=r.teams.length;t++){ const st=dispTeam(r,String(t)).status; if(st==='booked')booked++; else if(st==='na')na++; else free++; } });
-  document.getElementById('cFree').textContent=free;
-  document.getElementById('cBooked').textContent=booked;
-  document.getElementById('cNA').textContent=na;
-  document.getElementById('cTotal').textContent=rows.length;
-}
-function teamChip(r,t){
-  const tm=dispTeam(r,t), busy=pending.has(r.name+'|'+t)?' busy':'';
-  let cls, label, sub;
-  if(tm.status==='booked'){ cls=''; const pe=planById('c|'+r.name+'|'+t+'|'+TODAY()); if(pe&&pe.holdBy){ label='Held'; sub='hold · '+esc(pe.holdBy); } else { label='Booked'; sub=tm.offer?('#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')):'booked'; } }
-  else if(tm.status==='na'){ cls=' na'; label='On leave'; sub='tap to manage'; }
-  else { cls=' avail'; label='Available'; sub='tap to book'; }
-  return '<div class="team'+cls+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'"><div class="tl">Team '+t+'</div><div class="ts">'+label+'</div><div class="to">'+sub+'</div></div>';
-}
-function renderBoard(){
-  const g=document.getElementById('grid'); counts();
-  const list=rows.filter(r=> !filter || r.name.toLowerCase().includes(filter) || (r.role||'').toLowerCase().includes(filter));
-  if(!rows.length){ g.innerHTML='<div class="msg">No contractors found in the sheet.<br><span style="font-size:12px">Add names to the <b>Contractors</b> tab, then refresh.</span></div>'; return; }
-  if(!list.length){ g.innerHTML='<div class="msg">No contractor matches “'+esc(filter)+'”.</div>'; return; }
-  g.innerHTML=list.map(r=>{ let chips=''; for(let t=1;t<=r.teams.length;t++) chips+=teamChip(r,String(t));
-    return '<div class="card"><div class="nm">'+esc(r.name)+'</div>'+(r.role?'<div class="role">'+esc(r.role)+'</div>':'')+'<div class="teams">'+chips+'</div></div>'; }).join('');
-}
-async function loadBoard(silent){
-  if(!silent) setDot('dot','syncTxt','busy','Syncing…');
-  document.getElementById('refreshB').classList.add('spin');
-  try{
-    const r=await fetch(API+'?action=contractors&t='+Date.now()); const data=await r.json();
-    if(!data||data.ok===false) throw new Error((data&&data.error)||'Server error');
-    rows=(data.contractors||[]).map(normRow).filter(c=>c.name);
-    saveCache(); renderBoard();
-    setDot('dot','syncTxt','ok','Live · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})); firstLoad=false;
-  }catch(e){
-    if(firstLoad){ const cached=loadCache(); if(cached&&cached.length){ rows=cached; renderBoard(); setDot('dot','syncTxt','err','Offline · last known state'); }
-      else{ document.getElementById('grid').innerHTML='<div class="msg err">Couldn’t reach the sheet.<br><button onclick="loadBoard()">Retry</button></div>'; setDot('dot','syncTxt','err','Connection failed'); } }
-    else setDot('dot','syncTxt','err','Offline · will retry');
-  }finally{ document.getElementById('refreshB').classList.remove('spin'); }
-}
-async function apiPost(params){ const r=await fetch(API,{method:'POST',body:new URLSearchParams(params)}); const data=await r.json(); if(!data||data.ok===false) throw new Error((data&&data.error)||'Save failed'); return data; }
-async function book(name,team,offer,project){
-  const key=name+'|'+team; pending.set(key,{status:'booked',offer,project,by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Booking…');
-  try{ await apiPost({action:'book',name,team,offer,project,by:SUP});
-    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; }
-    pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
-  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); }
-}
-async function release(name,team){
-  const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Releasing…');
-  try{ await apiPost({action:'release',name,team,by:SUP});
-    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='available'; tm.offer=''; tm.project=''; tm.by=SUP; }
-    const pid='c|'+name+'|'+team+'|'+TODAY(); if(planById(pid)){ plans=plans.filter(p=>p.id!==pid); savePlansLocal(); pushPlanDelete(pid); }
-    pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Released '+esc(name)+' Team '+team);
-  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Release failed')+' — try again'); }
-}
-async function setNA(name,team,na){
-  const key=name+'|'+team; pending.set(key,{status:na?'na':'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy',na?'Marking on leave…':'Reopening…');
-  try{ await apiPost({action:'setTeamNA',name,team,na:na?'1':'0',by:SUP});
-    const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status=na?'na':'available'; tm.offer=''; tm.project=''; }
-    pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok',esc(name)+' Team '+team+(na?' → on leave':' → available'));
-  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Update failed')+' — try again'); }
-}
-
-/* modal */
-const modal=document.getElementById('modal'); let goHandler=null;
-function closeModal(){ modal.hidden=true; goHandler=null; }
-function showMErr(m){ document.getElementById('mErr').textContent=m||''; }
-document.getElementById('mCancel').addEventListener('click',closeModal);
-document.getElementById('mGo').addEventListener('click',()=>{ if(goHandler) goHandler(); });
-modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
-function setBox(cls){ document.getElementById('mbox').className='mbox'+(cls?(' '+cls):''); }
-function dutyRow(onDuty){ return '<div class="mduty"><div><div class="mdt">Team status</div><div class="mds '+(onDuty?'ond':'onl')+'">'+(onDuty?'On duty':'On leave')+'</div></div><span class="sw'+(onDuty?' on':'')+'" id="mSw"></span></div>'; }
-function wireDutySwitch(name,team){ const s=document.getElementById('mSw'); if(s) s.onclick=()=>{ closeModal(); handleSwitch(name,team); }; }
-function seg(id,opts,active){ return '<div class="seg" id="'+id+'">'+opts.map(o=>'<button type="button" data-val="'+esc(o.v)+'"'+(o.v===active?' class="on"':'')+'>'+esc(o.l)+'</button>').join('')+'</div>'; }
-function wireSegs(){ document.querySelectorAll('#mBody .seg').forEach(s=>{ s.querySelectorAll('button').forEach(b=>b.onclick=()=>{ s.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }); }); }
-function segVal(id){ const on=document.querySelector('#'+id+' button.on'); return on?on.getAttribute('data-val'):''; }
-function openBook(name,team){
-  setBox('');
-  document.getElementById('mTtl').textContent='Book '+name;
-  document.getElementById('mSub').textContent='Team '+team+' · plan an assignment';
-  document.getElementById('mBody').innerHTML=dutyRow(true)
-    +'<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:TODAY(),l:'Today'},{v:TOMORROW(),l:'Tomorrow'}],TOMORROW())+'</div>'
-    +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh"></div>'
-    +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
-    +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
-    +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>'
-    +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
-  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
-  wireSegs(); wireDutySwitch(name,team);
-  setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
-  goHandler=()=>{
-    const date=segVal('segDate')||TODAY(), holdBy=segVal('segHold');
-    const offer=(document.getElementById('mOffer').value||'').trim();
-    const project=(document.getElementById('mProject').value||'').trim();
-    const city=(document.getElementById('mCity').value||'').trim();
-    const sales=(document.getElementById('mSales').value||'').trim();
-    if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
-    const entry={ id:'c|'+name+'|'+team+'|'+date, kind:'contractor', date, contractor:name, team:String(team), offer, project, city, salesperson:sales, holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() };
-    upsertPlan(entry); rememberSalesperson(sales); closeModal();
-    if(date===TODAY()){ book(name,team,offer,project); }
-    else { renderBoard(); setDot('dot','syncTxt','ok','Planned '+esc(name)+' Team '+team+' for tomorrow'); }
-    if(view==='plan') renderPlan();
-  };
-}
-function openSupPlan(preset){
-  preset=preset||{}; const ed=preset.edit||null;
-  setBox('');
-  document.getElementById('mTtl').textContent= ed?'Edit supervisor plan':'Plan Supervisor';
-  document.getElementById('mSub').textContent='Site measurement or site visit';
-  const daySel = ed ? (ed.date===TODAY()?'today':'tomorrow') : (preset.day||supDay||'tomorrow');
-  const supName = ed ? ed.supervisor : (preset.supervisor||'');
-  const task = ed ? ed.task : 'Measurement';
-  document.getElementById('mBody').innerHTML=
-    '<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:'today',l:'Today'},{v:'tomorrow',l:'Tomorrow'}],daySel)+'</div>'
-    +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
-    +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
-    +'<div class="fd"><label>Offer No. (optional)</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
-    +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg" value="'+esc(ed?ed.project:'')+'"></div>'
-    +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi" value="'+esc(ed?ed.city:'')+'"></div>'
-    +'<div class="fd"><label>Salesperson (optional)</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh" value="'+esc(ed?ed.salesperson:'')+'"></div>'
-    +(ed?'<button type="button" id="mDelSup" class="mbtn ghost" style="width:100%;margin-top:2px;border-color:var(--red);color:#fda4a4">Remove this plan</button>':'');
-  showMErr(''); const go=document.getElementById('mGo'); go.textContent= ed?'Save':'Add to plan →'; go.className='mbtn go'; modal.hidden=false;
-  wireSegs();
-  if(ed){ const del=document.getElementById('mDelSup'); if(del) del.onclick=()=>{ plans=plans.filter(p=>p.id!==ed.id); savePlansLocal(); pushPlanDelete(ed.id); closeModal(); if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); setDot('dotS','syncS','ok','Removed plan'); }; }
-  setTimeout(()=>{ const o=document.getElementById('mSupName'); if(o && !supName) o.focus(); },50);
-  goHandler=()=>{
-    const date=dateOf(segVal('segDate')||'tomorrow'), task2=segVal('segTask')||'Measurement';
-    const sup=(document.getElementById('mSupName').value||'').trim();
-    if(!sup){ showMErr('Supervisor name is required.'); return; }
-    const others=plans.filter(p=>p.kind==='supervisor'&&p.date===date&&p.supervisor===sup&&(!ed||p.id!==ed.id));
-    if(others.length>=4){ showMErr(sup+' already has 4 plans that day.'); return; }
-    const base = ed ? ed.id.split('|')[1] : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-    const id='s|'+base+'|'+date;
-    const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:(document.getElementById('mSales').value||'').trim(), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
-    if(ed && ed.id!==id){ plans=plans.filter(p=>p.id!==ed.id); pushPlanDelete(ed.id); }
-    upsertPlan(entry); rememberSalesperson(entry.salesperson); rememberSupervisor(entry.supervisor); closeModal();
-    if(view==='board') renderSupBoard(); if(view==='plan') renderPlan();
-    setDot('dotS','syncS','ok',(ed?'Updated ':'Added ')+esc(sup)+' · '+task2);
-  };
-}
-function renderSupBoard(){
-  const day=dateOf(supDay), grid=document.getElementById('supGrid');
-  const names=[...new Set([].concat(supList||[], plans.filter(p=>p.kind==='supervisor'&&p.date===day).map(p=>p.supervisor)).map(s=>String(s||'').trim()).filter(Boolean))];
-  names.sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
-  if(!names.length){ grid.innerHTML='<div class="msg">No supervisors yet.<br><span style="font-size:12px">Add one from the Day Plan tab (＋ Supervisor plan) — type the name and it\u2019s remembered here.</span></div>'; return; }
-  grid.innerHTML=names.map(nm=>{
-    const slots=plans.filter(p=>p.kind==='supervisor'&&p.date===day&&p.supervisor===nm);
-    let chips=slots.map(p=>{ const cls=p.task==='Measurement'?'tmeas':'tvisit'; const site=p.offer?('#'+esc(p.offer)):(p.project?esc(p.project):'—'); const sub=p.city?esc(p.city):(p.salesperson?esc(p.salesperson):''); return '<button class="schip '+cls+'" data-sid="'+esc(p.id)+'"><div class="tl">'+esc(p.task||'Task')+'</div><div class="ts">'+site+'</div>'+(sub?'<div class="to">'+sub+'</div>':'')+'</button>'; }).join('');
-    if(slots.length<4) chips+='<button class="schip add" data-supadd="'+esc(nm)+'"><div class="ts">＋ Add plan</div></button>';
-    return '<div class="card"><div class="nm">'+esc(nm)+'</div><div class="role">'+slots.length+' / 4 planned · '+(supDay==='today'?'Today':'Tomorrow')+'</div><div class="teams">'+chips+'</div></div>';
-  }).join('');
-}
-function deletePlanEntry(id){
-  const parts=String(id).split('|');
-  if(parts[0]==='c' && parts[3]===TODAY()){ const r=rows.find(x=>x.name===parts[1]); if(r){ const t=teamOf(r,parts[2]); if(t && t.status==='booked'){ release(parts[1],parts[2]); renderPlan(); return; } } }
-  const e=planById(id); if(e){ plans=plans.filter(p=>p.id!==id); savePlansLocal(); pushPlanDelete(id); }
-  renderBoard(); renderPlan();
-}
-function saveHold(name,team,holdBy){
-  const r=rows.find(x=>x.name===name); const tm=r?teamOf(r,team):null;
-  const id='c|'+name+'|'+team+'|'+TODAY();
-  let e=planById(id);
-  if(!e){ e={ id:id, kind:'contractor', date:TODAY(), contractor:name, team:String(team), offer:tm?tm.offer:'', project:tm?tm.project:'', city:'', salesperson:'', holdBy:'', supervisor:'', task:'', by:SUP, at:'' }; }
-  e=Object.assign({},e,{ holdBy:holdBy, at:new Date().toISOString() });
-  upsertPlan(e); renderBoard(); if(view==='plan') renderPlan();
-}
-/* ===== DAY-PLAN report ===== */
-function bySalesperson(list){
-  const g={}; list.forEach(p=>{ const k=(p.salesperson||'').trim()||'— Unassigned —'; (g[k]||(g[k]=[])).push(p); });
-  return Object.keys(g).sort((a,b)=>{ const au=a.charAt(0)==='—', bu=b.charAt(0)==='—'; if(au&&!bu) return 1; if(bu&&!au) return -1; return a.toLowerCase().localeCompare(b.toLowerCase()); })
-    .map(k=>({ sales:k, items:g[k].sort((x,y)=>x.contractor.toLowerCase().localeCompare(y.contractor.toLowerCase())) }));
-}
-function planContractorTable(date){
-  const items=contractorItems(date).slice().sort((a,b)=>{
-    const sa=(a.salesperson||'').trim(), sb=(b.salesperson||'').trim();
-    if(!sa&&sb) return 1; if(sa&&!sb) return -1;
-    const c=sa.toLowerCase().localeCompare(sb.toLowerCase()); if(c) return c;
-    return a.contractor.toLowerCase().localeCompare(b.contractor.toLowerCase());
-  });
-  if(!items.length) return '<div class="pempty">No contractors planned.</div>';
-  const body=items.map(p=>{
-    const site = p.holdBy ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('#'+esc(p.offer||'—')+(p.project?' '+esc(p.project):''));
-    return '<tr><td class="sp">'+esc(p.salesperson||'—')+'</td><td>'+esc(p.contractor)+'</td><td class="ctr">'+esc(p.team)+'</td><td>'+site+'</td><td>'+esc(p.city||'—')+'</td><td class="noprint xcol"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>';
-  }).join('');
-  return '<div class="ptabwrap"><table class="ptab"><thead><tr><th>Salesperson</th><th>Contractor</th><th>Team</th><th>Site</th><th>City</th><th class="noprint xcol"></th></tr></thead><tbody>'+body+'</tbody></table></div>';
-}
-function planSupTable(date){
-  const items=planFor(date,'supervisor').slice().sort((a,b)=> a.supervisor.toLowerCase().localeCompare(b.supervisor.toLowerCase()) || String(a.task||'').localeCompare(String(b.task||'')) );
-  if(!items.length) return '<div class="pempty">No supervisors planned.</div>';
-  const body=items.map(p=>{
-    const badge='<span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span>';
-    const site=((p.offer?'#'+esc(p.offer):'')+(p.project?' '+esc(p.project):'')).trim()||'—';
-    return '<tr><td class="sp">'+esc(p.supervisor)+'</td><td>'+badge+'</td><td>'+site+'</td><td>'+esc(p.city||'—')+'</td><td>'+esc(p.salesperson||'—')+'</td><td class="noprint xcol"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>';
-  }).join('');
-  return '<div class="ptabwrap"><table class="ptab"><thead><tr><th>Supervisor</th><th>Task</th><th>Site</th><th>City</th><th>Salesperson</th><th class="noprint xcol"></th></tr></thead><tbody>'+body+'</tbody></table></div>';
-}
-function dayBlock(lbl,date,isTomorrow){
-  const cCount=contractorItems(date).length;
-  const sCount=planFor(date,'supervisor').length;
-  const tick=isTomorrow ? '<label class="sameas noprint" title="Copy today\u2019s plan into tomorrow"><input type="checkbox" id="sameAsToday"'+(sameAsTodayOn()?' checked':'')+'> Same as today</label>' : '';
-  return '<div class="pday"><div class="pdayhd"><span class="pdlbl">'+lbl+'</span><span class="pdhr">'+tick+'<span class="pddate">'+prettyDate(date)+'</span></span></div>'
-    +'<div class="psec"><div class="psectt">👷 Contractors — by salesperson <span class="cnt">'+cCount+'</span></div>'+planContractorTable(date)+'</div>'
-    +'<div class="psec"><div class="psectt">👔 Supervisors — by name <span class="cnt">'+sCount+'</span></div>'+planSupTable(date)+'</div></div>';
-}
-function renderPlan(){
-  document.getElementById('planReport').innerHTML=
-    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+(SUP?' · '+esc(SUP):'')+'</div></div>'
-    + dayBlock('Today',TODAY(),false) + dayBlock('Tomorrow',TOMORROW(),true);
-}
-function planText(){
-  const days=[['TODAY',TODAY()],['TOMORROW',TOMORROW()]]; let out='LINGEL — DAY PLAN\n'+prettyDate(TODAY())+(SUP?'  ('+SUP+')':'')+'\n';
-  days.forEach(function(dd){ const lbl=dd[0], d=dd[1];
-    out+='\n===== '+lbl+' · '+prettyDate(d)+' =====\n';
-    out+='\n[ CONTRACTORS ]\n'; const g=bySalesperson(contractorItems(d));
-    if(!g.length) out+='  (none)\n';
-    g.forEach(function(grp){ out+='• '+grp.sales+'\n'; grp.items.forEach(function(p){ out+='   - '+p.contractor+' (Team '+p.team+') → '+(p.holdBy?('HOLD: '+p.holdBy):('#'+(p.offer||'—')+(p.project?' '+p.project:'')))+(p.city?' · '+p.city:'')+'\n'; }); });
-    out+='\n[ SUPERVISORS ]\n'; const s=planFor(d,'supervisor');
-    if(!s.length) out+='  (none)\n';
-    s.forEach(function(p){ out+='   - '+p.supervisor+' → '+p.task+(p.offer?' · #'+p.offer:'')+(p.project?' '+p.project:'')+(p.city?' · '+p.city:'')+(p.salesperson?' ('+p.salesperson+')':'')+'\n'; });
-  });
-  return out;
-}
-function openRelease(name,team,tm){
-  setBox('rel');
-  document.getElementById('mTtl').textContent='Release '+name;
-  document.getElementById('mSub').textContent='Team '+team+' · free this team';
-  const curHold=(planById('c|'+name+'|'+team+'|'+TODAY())||{}).holdBy||'';
-  document.getElementById('mBody').innerHTML=dutyRow(true)+'<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
-    +'<div class="fd"><label>Hold by</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],curHold)+'</div>';
-  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release'; go.className='mbtn danger'; modal.hidden=false;
-  wireDutySwitch(name,team);
-  document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#mBody #segHold button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); const v=b.getAttribute('data-val'); saveHold(name,team,v); showMErr(''); setDot('dot','syncTxt','ok',v?('On hold · '+v):'Hold cleared'); });
-  goHandler=()=>{ closeModal(); release(name,team); };
-}
-function openNAModal(name,team){
-  setBox('na');
-  document.getElementById('mTtl').textContent=name;
-  document.getElementById('mSub').textContent='Team '+team+' · on leave';
-  document.getElementById('mBody').innerHTML=dutyRow(false)+'<div class="relinfo">This team is on leave and can’t be booked. Flip the switch (or the button below) to bring it back on duty.</div>';
-  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Set on duty'; go.className='mbtn go'; modal.hidden=false;
-  wireDutySwitch(name,team);
-  goHandler=()=>{ closeModal(); setNA(name,team,false); };
-}
-function handleSwitch(name,team){
-  const r=rows.find(x=>x.name===name); if(!r) return; const tm=dispTeam(r,team);
-  if(tm.status==='na'){ setNA(name,team,false); return; }        // on leave -> on duty
-  if(tm.status==='booked'){ openLeave(name,team,tm); return; }   // booked -> confirm ending the job
-  setNA(name,team,true);                                          // available -> on leave
-}
-function openLeave(name,team,tm){
-  setBox('na');
-  document.getElementById('mTtl').textContent='Set Team '+team+' on leave';
-  document.getElementById('mSub').textContent=name+' · this team is booked';
-  document.getElementById('mBody').innerHTML='<div class="relinfo">Team '+team+' is booked on <b>#'+esc(tm.offer||'—')+'</b>'+(tm.project?' ('+esc(tm.project)+')':'')+'. Putting it on leave will end that job and free the offer.</div>';
-  showMErr(''); const go=document.getElementById('mGo'); go.textContent='On leave'; go.className='mbtn amber'; modal.hidden=false;
-  goHandler=()=>{ closeModal(); setNA(name,team,true); };
-}
-document.getElementById('grid').addEventListener('click',e=>{
-  const btn=e.target.closest('.team'); if(!btn) return;
-  const name=btn.getAttribute('data-name'), team=btn.getAttribute('data-team');
-  if(pending.has(name+'|'+team)) return;
-  const r=rows.find(x=>x.name===name); if(!r) return; const tm=dispTeam(r,team);
-  if(tm.status==='booked') openRelease(name,team,tm); else if(tm.status==='na') openNAModal(name,team); else openBook(name,team);
-});
-document.getElementById('q').addEventListener('input',e=>{ filter=e.target.value.trim().toLowerCase(); renderBoard(); });
-document.getElementById('refreshB').addEventListener('click',()=>loadBoard());
-
-/* ===== supervisor board wiring ===== */
-document.querySelectorAll('#boardSub .rtab').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('#boardSub .rtab').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  const s=b.getAttribute('data-bsub');
-  document.getElementById('conBoard').hidden = s!=='contractors';
-  document.getElementById('supBoard').hidden = s!=='supervisors';
-  if(s==='supervisors'){ renderSupBoard(); if(!supList.length) loadSupervisors().then(renderSupBoard); }
-}));
-document.querySelectorAll('#supDaySeg button').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('#supDaySeg button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  supDay=b.getAttribute('data-val'); renderSupBoard();
-}));
-document.getElementById('refreshSup').addEventListener('click',()=>{
-  const btn=document.getElementById('refreshSup'); btn.classList.add('spin'); setDot('dotS','syncS','busy','Syncing…');
-  loadSupervisors().then(()=>syncPlansFromServer()).then(ok=>{ renderSupBoard(); btn.classList.remove('spin'); setDot('dotS','syncS',ok?'ok':'err',ok?('Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); });
-});
-document.getElementById('supGrid').addEventListener('click',e=>{
-  const add=e.target.closest('[data-supadd]'); if(add){ openSupPlan({supervisor:add.getAttribute('data-supadd'), day:supDay}); return; }
-  const chip=e.target.closest('[data-sid]'); if(chip){ const p=planById(chip.getAttribute('data-sid')); if(p) openSupPlan({edit:p}); }
-});
-
-/* ============ REPORTS ============ */
-const OFFER=0,PROJECT=1,CONTRACTOR=2,TEAM=3,BY=4,BOOKED=5,RELEASED=6,STATUS=7;
-function isActive(r){ return String(r[STATUS]||'').trim().toLowerCase()==='active'; }
-function parseD(v){ if(!v) return null; const d=new Date(v); return isNaN(d)?null:d; }
-function durMs(r){ const s=parseD(r[BOOKED]); if(!s) return 0; const e=parseD(r[RELEASED])||new Date(); return Math.max(0,e-s); }
-function fmtDur(ms){ const d=ms/86400000; if(d>=1) return (Math.round(d*10)/10)+'d'; const h=ms/3600000; return Math.max(1,Math.round(h))+'h'; }
-function fmtDate(v){ const d=parseD(v); return d?d.toLocaleDateString([], {day:'2-digit',month:'short'}):'—'; }
-function statusPill(r){ const s=String(r[STATUS]||'').trim().toLowerCase(); const cls=s==='active'?'active':(s==='reassigned'?'reassigned':'released'); return '<span class="pill '+cls+'">'+esc(r[STATUS]||'—')+'</span>'; }
-function totalTeams(){ return rows.reduce((s,c)=>s+(c.teamCount||(c.teams?c.teams.length:0)||0),0); }
-function renderSummary(){
-  const active=bookings.filter(isActive);
-  document.getElementById('kActive').textContent=active.length;
-  const tt=totalTeams();
-  document.getElementById('kOcc').textContent=tt?active.length+'/'+tt:active.length;
-  document.getElementById('kOccSub').textContent=tt?Math.round(active.length/tt*100)+'% of teams':'';
-  const eng=new Set(active.map(r=>String(r[CONTRACTOR]).trim().toLowerCase())); eng.delete('');
-  document.getElementById('kEng').textContent=eng.size;
-  document.getElementById('kTot').textContent=bookings.length;
-}
-function viewActive(){
-  const list=bookings.filter(isActive).sort((a,b)=>(parseD(a[BOOKED])||0)-(parseD(b[BOOKED])||0));
-  if(!list.length) return '<div class="msg">No active installations right now.</div>';
-  return list.map(r=>'<div class="row act"><div class="rtop"><div class="rname">'+esc(r[CONTRACTOR])+' · '+esc(r[TEAM])+'</div><div class="rmeta">'+fmtDur(durMs(r))+' running</div></div><div class="rsub">Offer <b>#'+esc(r[OFFER]||'—')+'</b>'+(r[PROJECT]?' · '+esc(r[PROJECT]):'')+'<br>Booked by '+esc(r[BY]||'—')+' on '+fmtDate(r[BOOKED])+'</div></div>').join('');
-}
-function viewUtil(){
-  const map={};
-  bookings.forEach(r=>{ const k=String(r[CONTRACTOR]).trim(); if(!k) return; const m=map[k]||(map[k]={name:k,jobs:0,active:0,ms:0}); m.jobs++; if(isActive(r)) m.active++; m.ms+=durMs(r); });
-  const list=Object.values(map).sort((a,b)=>b.active-a.active||b.ms-a.ms||b.jobs-a.jobs);
-  if(!list.length) return '<div class="msg">No bookings recorded yet.</div>';
-  const maxMs=Math.max.apply(null,list.map(x=>x.ms).concat([1]));
-  return list.map(m=>'<div class="ut"><div class="uthead"><div class="utname">'+esc(m.name)+'</div><div class="utnums">'+(m.active?'<span class="on">'+m.active+' active</span> · ':'')+m.jobs+' jobs</div></div><div class="bar"><i style="width:'+Math.round(m.ms/maxMs*100)+'%"></i></div><div class="utfoot"><span>Booked time <b>'+fmtDur(m.ms)+'</b></span><span>Completed <b>'+(m.jobs-m.active)+'</b></span></div></div>').join('');
-}
-function lastTs(g){ return Math.max.apply(null,g.rows.map(r=>+(parseD(r[RELEASED])||parseD(r[BOOKED])||0)).concat([0])); }
-function viewOffer(){
-  const groups={};
-  bookings.forEach(r=>{ const off=String(r[OFFER]||'').trim()||'(no offer)'; const g=groups[off]||(groups[off]={offer:off,project:'',rows:[]}); if(!g.project&&r[PROJECT]) g.project=String(r[PROJECT]).trim(); g.rows.push(r); });
-  let list=Object.values(groups);
-  if(rfilter) list=list.filter(g=>g.offer.toLowerCase().includes(rfilter)||(g.project||'').toLowerCase().includes(rfilter)||g.rows.some(r=>String(r[CONTRACTOR]).toLowerCase().includes(rfilter)));
-  list.sort((a,b)=>lastTs(b)-lastTs(a));
-  if(!list.length) return '<div class="msg">No matching offers.</div>';
-  return list.map(g=>{ const rowsHtml=g.rows.slice().sort((a,b)=>(parseD(b[BOOKED])||0)-(parseD(a[BOOKED])||0)).map(r=>'<div class="oline"><div class="who2">'+esc(r[CONTRACTOR])+' · '+esc(r[TEAM])+statusPill(r)+'</div><div class="when">'+fmtDate(r[BOOKED])+' → '+(r[RELEASED]?fmtDate(r[RELEASED]):'now')+'</div></div>').join('');
-    return '<div class="ogrp"><div class="ohead"><div><div class="ooffer">#'+esc(g.offer)+'</div>'+(g.project?'<div class="oproj">'+esc(g.project)+'</div>':'')+'</div><div class="ocount">'+g.rows.length+' booking'+(g.rows.length>1?'s':'')+'</div></div>'+rowsHtml+'</div>'; }).join('');
-}
-function renderReports(){
-  renderSummary();
-  document.getElementById('offerSearch').style.visibility=(rtab==='offer')?'visible':'hidden';
-  document.getElementById('reportBody').innerHTML = rtab==='active'?viewActive():rtab==='util'?viewUtil():viewOffer();
-}
-async function loadReports(silent){
-  if(!silent){ setDot('dotR','syncR','busy','Syncing…'); document.getElementById('reportBody').innerHTML=Array.from({length:3}).map(()=>'<div class="skel" style="min-height:64px"></div>').join(''); }
-  document.getElementById('refreshR').classList.add('spin');
-  try{
-    const bk=await fetch(API+'?action=bookings&t='+Date.now()).then(r=>r.json());
-    if(!bk||bk.ok===false) throw new Error((bk&&bk.error)||'Server error');
-    bookings=Array.isArray(bk.bookings)?bk.bookings:[]; bookingsLoaded=true; renderReports();
-    setDot('dotR','syncR','ok','Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · '+bookings.length+' rows');
-  }catch(e){ document.getElementById('reportBody').innerHTML='<div class="msg err">Couldn’t load reports.<br><button onclick="loadReports()">Retry</button></div>'; setDot('dotR','syncR','err','Connection failed'); }
-  finally{ document.getElementById('refreshR').classList.remove('spin'); }
-}
-
-/* ============ DAY-PLAN wiring ============ */
-document.getElementById('planReport').addEventListener('click',e=>{ const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
-document.getElementById('planReport').addEventListener('change',e=>{ if(e.target && e.target.id==='sameAsToday') toggleSameAsToday(e.target.checked); });
-document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
-document.getElementById('btnPrint').addEventListener('click',()=>window.print());
-document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
-document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
-
-/* ============ VIEW SWITCH + POLL ============ */
-function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:POLL_PLAN; pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
-function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
-function switchView(v){
-  view=v;
-  document.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on', x.getAttribute('data-view')===v));
-  document.getElementById('boardView').hidden = v!=='board';
-  document.getElementById('planView').hidden = v!=='plan';
-  if(v==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
-  if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
-  startPoll();
-}
-document.querySelectorAll('.vtab').forEach(b=>b.addEventListener('click',()=>switchView(b.getAttribute('data-view'))));
-document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!modal.hidden) closeModal(); else if(e.key==='Enter'&&!modal.hidden&&goHandler) goHandler(); });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
-window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
-
-/* ===== init day-plan ===== */
-loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); renderPlan(); loadSupervisors(); syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); });
-
-document.getElementById('grid').innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
-loadBoard(); startPoll();
-if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+  // Load data automatically when the page loads
+  document.addEventListener("DOMContentLoaded", fetchAvailabilityData);
 </script>
+
 </body>
 </html>
