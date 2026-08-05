@@ -443,7 +443,7 @@ function openBook(name,team){
   document.getElementById('mTtl').textContent='Book '+name;
   document.getElementById('mSub').textContent='Team '+team+' · plan an assignment';
   document.getElementById('mBody').innerHTML=dutyRow(true)
-    +'<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:TODAY(),l:'Today'},{v:TOMORROW(),l:'Tomorrow'}],TOMORROW())+'</div>'
+    +'<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:TODAY(),l:'Today'},{v:TOMORROW(),l:'Tomorrow'}],TODAY())+'</div>'
     +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
     +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
@@ -451,6 +451,7 @@ function openBook(name,team){
     +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wireDutySwitch(name,team);
+  (function(){ const sd=document.getElementById('segDate'); if(sd) sd.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ go.textContent=(b.getAttribute('data-val')===TODAY())?'Book →':'Plan →'; })); })();
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
   goHandler=()=>{
     const date=segVal('segDate')||TODAY(), holdBy=segVal('segHold');
