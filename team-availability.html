@@ -301,6 +301,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 <script>
 const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbwC8ZPk7oaU2wNdHabrbWfc2DufOUvj10dyefQMUdQ8ivaWMYrcWrA59iudooV9yLym0Q/exec";
 const API = (function(){ if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC; try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){} return INVOICE_EXEC; })();
+const DAYPLAN_API = ""; // <-- paste the standalone Day Plan web-app /exec here (blank = use the main API)
+const PLAN_API = (DAYPLAN_API && DAYPLAN_API.indexOf('script.google.com')>=0) ? DAYPLAN_API : API;
 const POLL_BOARD=8000, POLL_REPORTS=15000, CACHE_KEY='lingel_contractors_cache_v5';
 const SUP=(function(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; } })();
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -334,9 +336,9 @@ function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(pl
 function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
 function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
-async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ if(d.plans.length===0 && plans.length>0){ plans.forEach(p=>pushPlan(p)); return true; } plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
-async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
-async function pushPlanDelete(id){ try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
+async function syncPlansFromServer(){ try{ const r=await fetch(PLAN_API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ if(d.plans.length===0 && plans.length>0){ plans.forEach(p=>pushPlan(p)); return true; } plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
+async function pushPlan(entry){ try{ await fetch(PLAN_API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
+async function pushPlanDelete(id){ try{ await fetch(PLAN_API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
 function upsertPlan(entry){ const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
 function planById(id){ return plans.find(p=>p.id===id); }
 function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind); }
