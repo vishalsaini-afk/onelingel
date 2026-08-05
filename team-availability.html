@@ -402,9 +402,9 @@ async function loadBoard(silent){
   }finally{ document.getElementById('refreshB').classList.remove('spin'); }
 }
 async function apiPost(params){ const r=await fetch(API,{method:'POST',body:new URLSearchParams(params)}); const data=await r.json(); if(!data||data.ok===false) throw new Error((data&&data.error)||'Save failed'); return data; }
-async function book(name,team,offer,project){
+async function book(name,team,offer,project,holdBy,city,salesperson){
   const key=name+'|'+team; pending.set(key,{status:'booked',offer,project,by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Booking…');
-  try{ await apiPost({action:'book',name,team,offer,project,by:SUP});
+  try{ await apiPost({action:'book',name,team,offer,project,by:SUP,holdBy:holdBy||'',city:city||'',salesperson:salesperson||''});
     const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; }
     pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
   }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); }
@@ -462,7 +462,7 @@ function openBook(name,team){
     if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
     const entry={ id:'c|'+name+'|'+team+'|'+date, kind:'team', date, team:name, team:String(team), offer, project, city, salesperson:sales, holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() };
     upsertPlan(entry); rememberSalesperson(sales); closeModal();
-    if(date===TODAY()){ book(name,team,offer,project); }
+    if(date===TODAY()){ book(name,team,offer,project,holdBy,city,sales); }
     else { renderBoard(); setDot('dot','syncTxt','ok','Planned '+esc(name)+' Team '+team+' for tomorrow'); }
     if(view==='plan') renderPlan();
   };
