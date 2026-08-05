@@ -189,7 +189,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 @media print{
   @page{margin:12mm}
   body{background:#fff;color:#111}
-  .top,.hdr,.vtabs,#boardView,#reportsView,.foot-note,.planbar,.sync,.noprint,.modal{display:none!important}
+  .top,.hdr,.vtabs,#boardView,.foot-note,.planbar,.sync,.noprint,.modal{display:none!important}
   #planView{display:block!important}
   .wrap{max-width:none;padding:0;min-height:0}
   .preporthd{border-bottom:2px solid #111}.prt{color:#111}.prs{color:#555}
@@ -220,7 +220,6 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div class="vtabs">
     <button class="vtab on" data-view="board">Board</button>
     <button class="vtab" data-view="plan">📋 Day Plan</button>
-    <button class="vtab" data-view="reports">📊 Reports</button>
   </div>
 
   <div id="boardView">
@@ -251,26 +250,6 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
       <div class="sync"><span class="dot" id="dotS"></span><span id="syncS">Tap a slot to plan · up to 4 per supervisor/day</span></div>
       <div id="supGrid" class="grid"></div>
     </div>
-  </div>
-
-  <div id="reportsView" hidden>
-    <div class="cards">
-      <div class="kc a"><div class="n" id="kActive">–</div><div class="l">Active Installations</div></div>
-      <div class="kc o"><div class="n" id="kOcc">–</div><div class="l">Teams Occupied</div><div class="subv" id="kOccSub"></div></div>
-      <div class="kc c"><div class="n" id="kEng">–</div><div class="l">teams Engaged</div></div>
-      <div class="kc t"><div class="n" id="kTot">–</div><div class="l">Total Bookings</div></div>
-    </div>
-    <div class="rtabs">
-      <button class="rtab on" data-rtab="active">Active</button>
-      <button class="rtab" data-rtab="util">Utilization</button>
-      <button class="rtab" data-rtab="offer">By Offer</button>
-    </div>
-    <div class="tools">
-      <div class="search" id="offerSearch" style="visibility:hidden"><span class="mag">🔍</span><input id="qr" placeholder="Search offer / project / team…" autocomplete="off"></div>
-      <button class="rf" id="refreshR" title="Refresh">⟳</button>
-    </div>
-    <div class="sync"><span class="dot" id="dotR"></span><span id="syncR">Loading…</span></div>
-    <div id="reportBody"></div>
   </div>
 
   <div id="planView" hidden>
@@ -306,7 +285,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 <script>
 const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbyU_cHRuQH8aiS8SIKynGIeXoTukfp16SgA9OfKnf83Me7bW2hT8kULPUFw-JB1gEhnTw/exec";
 const API = (function(){ if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC; try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){} return INVOICE_EXEC; })();
-const POLL_BOARD=8000, POLL_REPORTS=15000, CACHE_KEY='lingel_teams_cache_v5';
+const POLL_BOARD=8000, CACHE_KEY='lingel_teams_cache_v5';
 const SUP=(function(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; } })();
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 document.getElementById('who').innerHTML = SUP ? '<span>Signed in as</span><b>'+esc(SUP)+'</b>' : '<b style="color:var(--muted)">Not signed in</b>';
@@ -411,9 +390,9 @@ async function loadBoard(silent){
   if(!silent) setDot('dot','syncTxt','busy','Syncing…');
   document.getElementById('refreshB').classList.add('spin');
   try{
-    const r=await fetch(API+'?action=teams&t='+Date.now()); const data=await r.json();
+    const r=await fetch(API+'?action=contractors&t='+Date.now()); const data=await r.json();
     if(!data||data.ok===false) throw new Error((data&&data.error)||'Server error');
-    rows=(data.teams||[]).map(normRow).filter(c=>c.name);
+    rows=(data.contractors||data.teams||[]).map(normRow).filter(c=>c.name);
     saveCache(); renderBoard();
     setDot('dot','syncTxt','ok','Live · updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})); firstLoad=false;
   }catch(e){
@@ -660,68 +639,6 @@ document.getElementById('supGrid').addEventListener('click',e=>{
   const chip=e.target.closest('[data-sid]'); if(chip){ const p=planById(chip.getAttribute('data-sid')); if(p) openSupPlan({edit:p}); }
 });
 
-/* ============ REPORTS ============ */
-const OFFER=0,PROJECT=1,team=2,TEAM=3,BY=4,BOOKED=5,RELEASED=6,STATUS=7;
-function isActive(r){ return String(r[STATUS]||'').trim().toLowerCase()==='active'; }
-function parseD(v){ if(!v) return null; const d=new Date(v); return isNaN(d)?null:d; }
-function durMs(r){ const s=parseD(r[BOOKED]); if(!s) return 0; const e=parseD(r[RELEASED])||new Date(); return Math.max(0,e-s); }
-function fmtDur(ms){ const d=ms/86400000; if(d>=1) return (Math.round(d*10)/10)+'d'; const h=ms/3600000; return Math.max(1,Math.round(h))+'h'; }
-function fmtDate(v){ const d=parseD(v); return d?d.toLocaleDateString([], {day:'2-digit',month:'short'}):'—'; }
-function statusPill(r){ const s=String(r[STATUS]||'').trim().toLowerCase(); const cls=s==='active'?'active':(s==='reassigned'?'reassigned':'released'); return '<span class="pill '+cls+'">'+esc(r[STATUS]||'—')+'</span>'; }
-function totalTeams(){ return rows.reduce((s,c)=>s+(c.teamCount||(c.teams?c.teams.length:0)||0),0); }
-function renderSummary(){
-  const active=bookings.filter(isActive);
-  document.getElementById('kActive').textContent=active.length;
-  const tt=totalTeams();
-  document.getElementById('kOcc').textContent=tt?active.length+'/'+tt:active.length;
-  document.getElementById('kOccSub').textContent=tt?Math.round(active.length/tt*100)+'% of teams':'';
-  const eng=new Set(active.map(r=>String(r[team]).trim().toLowerCase())); eng.delete('');
-  document.getElementById('kEng').textContent=eng.size;
-  document.getElementById('kTot').textContent=bookings.length;
-}
-function viewActive(){
-  const list=bookings.filter(isActive).sort((a,b)=>(parseD(a[BOOKED])||0)-(parseD(b[BOOKED])||0));
-  if(!list.length) return '<div class="msg">No active installations right now.</div>';
-  return list.map(r=>'<div class="row act"><div class="rtop"><div class="rname">'+esc(r[team])+' · '+esc(r[TEAM])+'</div><div class="rmeta">'+fmtDur(durMs(r))+' running</div></div><div class="rsub">Offer <b>#'+esc(r[OFFER]||'—')+'</b>'+(r[PROJECT]?' · '+esc(r[PROJECT]):'')+'<br>Booked by '+esc(r[BY]||'—')+' on '+fmtDate(r[BOOKED])+'</div></div>').join('');
-}
-function viewUtil(){
-  const map={};
-  bookings.forEach(r=>{ const k=String(r[team]).trim(); if(!k) return; const m=map[k]||(map[k]={name:k,jobs:0,active:0,ms:0}); m.jobs++; if(isActive(r)) m.active++; m.ms+=durMs(r); });
-  const list=Object.values(map).sort((a,b)=>b.active-a.active||b.ms-a.ms||b.jobs-a.jobs);
-  if(!list.length) return '<div class="msg">No bookings recorded yet.</div>';
-  const maxMs=Math.max.apply(null,list.map(x=>x.ms).concat([1]));
-  return list.map(m=>'<div class="ut"><div class="uthead"><div class="utname">'+esc(m.name)+'</div><div class="utnums">'+(m.active?'<span class="on">'+m.active+' active</span> · ':'')+m.jobs+' jobs</div></div><div class="bar"><i style="width:'+Math.round(m.ms/maxMs*100)+'%"></i></div><div class="utfoot"><span>Booked time <b>'+fmtDur(m.ms)+'</b></span><span>Completed <b>'+(m.jobs-m.active)+'</b></span></div></div>').join('');
-}
-function lastTs(g){ return Math.max.apply(null,g.rows.map(r=>+(parseD(r[RELEASED])||parseD(r[BOOKED])||0)).concat([0])); }
-function viewOffer(){
-  const groups={};
-  bookings.forEach(r=>{ const off=String(r[OFFER]||'').trim()||'(no offer)'; const g=groups[off]||(groups[off]={offer:off,project:'',rows:[]}); if(!g.project&&r[PROJECT]) g.project=String(r[PROJECT]).trim(); g.rows.push(r); });
-  let list=Object.values(groups);
-  if(rfilter) list=list.filter(g=>g.offer.toLowerCase().includes(rfilter)||(g.project||'').toLowerCase().includes(rfilter)||g.rows.some(r=>String(r[team]).toLowerCase().includes(rfilter)));
-  list.sort((a,b)=>lastTs(b)-lastTs(a));
-  if(!list.length) return '<div class="msg">No matching offers.</div>';
-  return list.map(g=>{ const rowsHtml=g.rows.slice().sort((a,b)=>(parseD(b[BOOKED])||0)-(parseD(a[BOOKED])||0)).map(r=>'<div class="oline"><div class="who2">'+esc(r[team])+' · '+esc(r[TEAM])+statusPill(r)+'</div><div class="when">'+fmtDate(r[BOOKED])+' → '+(r[RELEASED]?fmtDate(r[RELEASED]):'now')+'</div></div>').join('');
-    return '<div class="ogrp"><div class="ohead"><div><div class="ooffer">#'+esc(g.offer)+'</div>'+(g.project?'<div class="oproj">'+esc(g.project)+'</div>':'')+'</div><div class="ocount">'+g.rows.length+' booking'+(g.rows.length>1?'s':'')+'</div></div>'+rowsHtml+'</div>'; }).join('');
-}
-function renderReports(){
-  renderSummary();
-  document.getElementById('offerSearch').style.visibility=(rtab==='offer')?'visible':'hidden';
-  document.getElementById('reportBody').innerHTML = rtab==='active'?viewActive():rtab==='util'?viewUtil():viewOffer();
-}
-async function loadReports(silent){
-  if(!silent){ setDot('dotR','syncR','busy','Syncing…'); document.getElementById('reportBody').innerHTML=Array.from({length:3}).map(()=>'<div class="skel" style="min-height:64px"></div>').join(''); }
-  document.getElementById('refreshR').classList.add('spin');
-  try{
-    const bk=await fetch(API+'?action=bookings&t='+Date.now()).then(r=>r.json());
-    if(!bk||bk.ok===false) throw new Error((bk&&bk.error)||'Server error');
-    bookings=Array.isArray(bk.bookings)?bk.bookings:[]; bookingsLoaded=true; renderReports();
-    setDot('dotR','syncR','ok','Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · '+bookings.length+' rows');
-  }catch(e){ document.getElementById('reportBody').innerHTML='<div class="msg err">Couldn’t load reports.<br><button onclick="loadReports()">Retry</button></div>'; setDot('dotR','syncR','err','Connection failed'); }
-  finally{ document.getElementById('refreshR').classList.remove('spin'); }
-}
-document.querySelectorAll('#reportsView .rtab').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('#reportsView .rtab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); rtab=b.getAttribute('data-rtab'); renderReports(); }));
-document.getElementById('qr').addEventListener('input',e=>{ rfilter=e.target.value.trim().toLowerCase(); if(rtab==='offer') renderReports(); });
-document.getElementById('refreshR').addEventListener('click',()=>loadReports());
 
 /* ============ DAY-PLAN wiring ============ */
 document.getElementById('planReport').addEventListener('click',e=>{ const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
@@ -732,23 +649,21 @@ document.getElementById('refreshP').addEventListener('click',()=>{ document.getE
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
 
 /* ============ VIEW SWITCH + POLL ============ */
-function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:(view==='reports'?POLL_REPORTS:POLL_PLAN); pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else if(view==='reports'){ loadReports(true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
+function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:POLL_PLAN; pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 function switchView(v){
   view=v;
   document.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on', x.getAttribute('data-view')===v));
   document.getElementById('boardView').hidden = v!=='board';
   document.getElementById('planView').hidden = v!=='plan';
-  document.getElementById('reportsView').hidden = v!=='reports';
-  if(v==='reports' && !bookingsLoaded) loadReports(); else if(v==='reports') renderReports();
   if(v==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
   if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
   startPoll();
 }
 document.querySelectorAll('.vtab').forEach(b=>b.addEventListener('click',()=>switchView(b.getAttribute('data-view'))));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!modal.hidden) closeModal(); else if(e.key==='Enter'&&!modal.hidden&&goHandler) goHandler(); });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else if(view==='reports') loadReports(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
-window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else if(view==='reports') loadReports(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
+window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
 
 /* ===== init day-plan ===== */
 loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); renderPlan(); loadSupervisors(); syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); });
