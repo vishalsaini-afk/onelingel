@@ -528,6 +528,7 @@ function saveHold(name,team,holdBy){
   if(!e){ e={ id:id, kind:'team', date:TODAY(), team:name, team:String(team), offer:tm?tm.offer:'', project:tm?tm.project:'', city:'', salesperson:'', holdBy:'', supervisor:'', task:'', by:SUP, at:'' }; }
   e=Object.assign({},e,{ holdBy:holdBy, at:new Date().toISOString() });
   upsertPlan(e); renderBoard(); if(view==='plan') renderPlan();
+  if(tm && tm.status==='booked'){ try{ fetch(API,{method:'POST',body:new URLSearchParams({action:'setHold',name:name,team:String(team),holdBy:holdBy||''})}); }catch(_){ } }
 }
 /* ===== DAY-PLAN report ===== */
 function bySalesperson(list){
