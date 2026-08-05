@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
-<title>Lingel — Team Availability</title>
+<title>Lingel — Contractor Availability</title>
 <meta name="theme-color" content="#13161b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -186,17 +186,6 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .pdel{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:7px;width:28px;height:28px;font-size:13px;cursor:pointer;flex:0 0 auto;margin-left:6px}
 .pdel:active{background:var(--panel-2)}
 .pempty{color:var(--muted);font-size:12.5px;padding:8px 4px;font-style:italic}
-.ptabwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px}
-.ptab{width:100%;border-collapse:collapse;font-size:12.5px}
-.ptab th{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel-2)}
-.ptab td{padding:9px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--text)}
-.ptab tbody tr:last-child td{border-bottom:none}
-.ptab tbody tr:nth-child(odd){background:rgba(255,255,255,.02)}
-.ptab td.sp{font-weight:700;font-family:'Archivo Narrow'}
-.ptab td.ctr{text-align:center;font-family:'JetBrains Mono';color:var(--muted)}
-.ptab .xcol{width:36px;text-align:center}
-.ptab .pdel{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:6px;width:24px;height:24px;font-size:11px;cursor:pointer;padding:0}
-.ptab .pdel:active{background:var(--panel-2)}
 @media print{
   @page{margin:12mm}
   body{background:#fff;color:#111}
@@ -215,11 +204,6 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   .hold{background:#fde68a;color:#7c5b00}
   .tbadge.meas{background:#dbeafe;color:#1e40af}.tbadge.visit{background:#fde9d3;color:#9a4a00}
   .pempty{color:#888}
-  .ptabwrap{border-color:#bbb}
-  .ptab th{color:#111;background:#eee;border-color:#999}
-  .ptab td{color:#111;border-color:#ccc}
-  .ptab tbody tr:nth-child(odd){background:#f6f6f6}
-  .ptab td.ctr{color:#333}
 }
 </style>
 </head>
@@ -230,12 +214,13 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     <div class="who" id="who"></div>
   </div>
   <div class="hdr">
-    <div class="t">Team Availability</div>
+    <div class="t">Contractor Availability</div>
     <div class="s">Tap a team to book, release, or set on leave (NA)</div>
   </div>
   <div class="vtabs">
     <button class="vtab on" data-view="board">Board</button>
     <button class="vtab" data-view="plan">📋 Day Plan</button>
+    <button class="vtab" data-view="reports">📊 Reports</button>
   </div>
 
   <div id="boardView">
@@ -266,6 +251,26 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
       <div class="sync"><span class="dot" id="dotS"></span><span id="syncS">Tap a slot to plan · up to 4 per supervisor/day</span></div>
       <div id="supGrid" class="grid"></div>
     </div>
+  </div>
+
+  <div id="reportsView" hidden>
+    <div class="cards">
+      <div class="kc a"><div class="n" id="kActive">–</div><div class="l">Active Installations</div></div>
+      <div class="kc o"><div class="n" id="kOcc">–</div><div class="l">Teams Occupied</div><div class="subv" id="kOccSub"></div></div>
+      <div class="kc c"><div class="n" id="kEng">–</div><div class="l">Contractors Engaged</div></div>
+      <div class="kc t"><div class="n" id="kTot">–</div><div class="l">Total Bookings</div></div>
+    </div>
+    <div class="rtabs">
+      <button class="rtab on" data-rtab="active">Active</button>
+      <button class="rtab" data-rtab="util">Utilization</button>
+      <button class="rtab" data-rtab="offer">By Offer</button>
+    </div>
+    <div class="tools">
+      <div class="search" id="offerSearch" style="visibility:hidden"><span class="mag">🔍</span><input id="qr" placeholder="Search offer / project / contractor…" autocomplete="off"></div>
+      <button class="rf" id="refreshR" title="Refresh">⟳</button>
+    </div>
+    <div class="sync"><span class="dot" id="dotR"></span><span id="syncR">Loading…</span></div>
+    <div id="reportBody"></div>
   </div>
 
   <div id="planView" hidden>
@@ -299,7 +304,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 </div>
 
 <script>
-const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbyU_cHRuQH8aiS8SIKynGIeXoTukfp16SgA9OfKnf83Me7bW2hT8kULPUFw-JB1gEhnTw/exec";
+const INVOICE_EXEC = "https://script.google.com/macros/s/AKfycbwC8ZPk7oaU2wNdHabrbWfc2DufOUvj10dyefQMUdQ8ivaWMYrcWrA59iudooV9yLym0Q/exec";
 const API = (function(){ if(INVOICE_EXEC && INVOICE_EXEC.indexOf('script.google.com')>=0) return INVOICE_EXEC; try{ var a=localStorage.getItem('lingel_api'); if(a) return a; }catch(e){} return INVOICE_EXEC; })();
 const POLL_BOARD=8000, POLL_REPORTS=15000, CACHE_KEY='lingel_contractors_cache_v5';
 const SUP=(function(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)?s.name:''; }catch(e){ return ''; } })();
@@ -314,7 +319,6 @@ let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 /* ===== DAY-PLAN state ===== */
 const POLL_PLAN=20000;
 const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
-const SUP_SHEET_ID='14kBmSlBJwnFP8Gugf9JH5VCDlxjP3f9PfQ0ruv3J8FQ', SUP_TAB='Lingel Supervisors';
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
 function contractorItems(date){
@@ -335,7 +339,7 @@ function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(pl
 function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
 function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
-async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ if(d.plans.length===0 && plans.length>0){ plans.forEach(p=>pushPlan(p)); return true; } plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
+async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
 async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
 async function pushPlanDelete(id){ try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
 function upsertPlan(entry){ const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
@@ -363,22 +367,10 @@ function toggleSameAsToday(checked){
   }
   renderPlan();
 }
-function parseCsv(t){ const rows=[]; let row=[],cur='',q=false; for(let i=0;i<t.length;i++){ const c=t[i]; if(q){ if(c==='"'){ if(t[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; } else { if(c==='"')q=true; else if(c===','){row.push(cur);cur='';} else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur='';} else if(c!=='\r')cur+=c; } } if(cur.length||row.length){row.push(cur);rows.push(row);} return rows; }
-function namesFromCsv(txt){ if(!txt || /<html/i.test(txt)) return []; const rows=parseCsv(txt).filter(r=>r.some(x=>String(x).trim())); if(!rows.length) return []; const hdr=rows[0].map(x=>String(x).toLowerCase()); let col=0; for(let i=0;i<hdr.length;i++){ if(hdr[i].indexOf('name')>=0){col=i;break;} } const out=[],seen={}; for(let r=1;r<rows.length;r++){ const v=String(rows[r][col]||'').trim(); if(v&&!seen[v.toLowerCase()]){seen[v.toLowerCase()]=1;out.push(v);} } return out; }
-async function fetchSheetSupervisors(){
-  const base='https://docs.google.com/spreadsheets/d/'+SUP_SHEET_ID+'/gviz/tq?tqx=out:csv';
-  const tries=[base+'&sheet='+encodeURIComponent(SUP_TAB), base+'&gid=0'];
-  for(let i=0;i<tries.length;i++){ try{ const txt=await fetch(tries[i]).then(r=>r.text()); const names=namesFromCsv(txt); if(names.length) return names; }catch(e){} }
-  return [];
-}
 async function loadSupervisors(){
   try{ const a=JSON.parse(localStorage.getItem(SUP_KEY)||'[]'); if(Array.isArray(a)) supList=a; }catch(e){}
-  let got=[];
-  try{ const r=await fetch(API+'?action=supervisors&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.supervisors)) got=d.supervisors.map(s=>String(s).trim()).filter(Boolean); }catch(e){}
-  if(!got.length){ got=await fetchSheetSupervisors(); }
-  if(got.length){ supList=got.filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase())); try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){} }
+  try{ const r=await fetch(API+'?action=supervisors&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.supervisors)&&d.supervisors.length){ supList=d.supervisors.map(s=>String(s).trim()).filter(Boolean); try{ localStorage.setItem(SUP_KEY, JSON.stringify(supList)); }catch(e){} } }catch(e){}
   fillDatalist('dlSup', supList);
-  if(view==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
 }
 
 function setDot(id,txtId,kind,txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
@@ -563,37 +555,26 @@ function bySalesperson(list){
   return Object.keys(g).sort((a,b)=>{ const au=a.charAt(0)==='—', bu=b.charAt(0)==='—'; if(au&&!bu) return 1; if(bu&&!au) return -1; return a.toLowerCase().localeCompare(b.toLowerCase()); })
     .map(k=>({ sales:k, items:g[k].sort((x,y)=>x.contractor.toLowerCase().localeCompare(y.contractor.toLowerCase())) }));
 }
-function planContractorTable(date){
-  const items=contractorItems(date).slice().sort((a,b)=>{
-    const sa=(a.salesperson||'').trim(), sb=(b.salesperson||'').trim();
-    if(!sa&&sb) return 1; if(sa&&!sb) return -1;
-    const c=sa.toLowerCase().localeCompare(sb.toLowerCase()); if(c) return c;
-    return a.contractor.toLowerCase().localeCompare(b.contractor.toLowerCase());
-  });
-  if(!items.length) return '<div class="pempty">No contractors planned.</div>';
-  const body=items.map(p=>{
-    const site = p.holdBy ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('#'+esc(p.offer||'—')+(p.project?' '+esc(p.project):''));
-    return '<tr><td class="sp">'+esc(p.salesperson||'—')+'</td><td>'+esc(p.contractor)+'</td><td class="ctr">'+esc(p.team)+'</td><td>'+site+'</td><td>'+esc(p.city||'—')+'</td><td class="noprint xcol"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>';
-  }).join('');
-  return '<div class="ptabwrap"><table class="ptab"><thead><tr><th>Salesperson</th><th>Contractor</th><th>Team</th><th>Site</th><th>City</th><th class="noprint xcol"></th></tr></thead><tbody>'+body+'</tbody></table></div>';
+function contractorRow(p){
+  const site = p.holdBy ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('<b>#'+esc(p.offer||'—')+'</b>'+(p.project?' '+esc(p.project):''));
+  return '<div class="prow"><div class="pmain"><span class="pc">'+esc(p.contractor)+'</span><span class="pt">Team '+esc(p.team)+'</span></div><div class="psite">'+site+(p.city?'<span class="pcity">📍 '+esc(p.city)+'</span>':'')+'</div><button class="pdel noprint" data-id="'+esc(p.id)+'">✕</button></div>';
 }
-function planSupTable(date){
-  const items=planFor(date,'supervisor').slice().sort((a,b)=> a.supervisor.toLowerCase().localeCompare(b.supervisor.toLowerCase()) || String(a.task||'').localeCompare(String(b.task||'')) );
-  if(!items.length) return '<div class="pempty">No supervisors planned.</div>';
-  const body=items.map(p=>{
-    const badge='<span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span>';
-    const site=((p.offer?'#'+esc(p.offer):'')+(p.project?' '+esc(p.project):'')).trim()||'—';
-    return '<tr><td class="sp">'+esc(p.supervisor)+'</td><td>'+badge+'</td><td>'+site+'</td><td>'+esc(p.city||'—')+'</td><td>'+esc(p.salesperson||'—')+'</td><td class="noprint xcol"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>';
-  }).join('');
-  return '<div class="ptabwrap"><table class="ptab"><thead><tr><th>Supervisor</th><th>Task</th><th>Site</th><th>City</th><th>Salesperson</th><th class="noprint xcol"></th></tr></thead><tbody>'+body+'</tbody></table></div>';
+function supRow(p){
+  const badge='<span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span>';
+  const detail=(p.offer?'<b>#'+esc(p.offer)+'</b>':'')+(p.project?' '+esc(p.project):'')+(p.city?'<span class="pcity">📍 '+esc(p.city)+'</span>':'')+(p.salesperson?'<span class="psales">'+esc(p.salesperson)+'</span>':'');
+  return '<div class="prow"><div class="pmain"><span class="pc">'+esc(p.supervisor)+'</span>'+badge+'</div><div class="psite">'+(detail||'<span style="opacity:.5">—</span>')+'</div><button class="pdel noprint" data-id="'+esc(p.id)+'">✕</button></div>';
 }
 function dayBlock(lbl,date,isTomorrow){
-  const cCount=contractorItems(date).length;
-  const sCount=planFor(date,'supervisor').length;
+  const citems=contractorItems(date);
+  const cg=bySalesperson(citems);
+  const sup=planFor(date,'supervisor').sort((a,b)=>a.supervisor.toLowerCase().localeCompare(b.supervisor.toLowerCase()));
+  const cCount=citems.length;
+  const cHtml=cg.length ? cg.map(grp=>'<div class="sgrp"><div class="shead">'+esc(grp.sales)+'</div>'+grp.items.map(contractorRow).join('')+'</div>').join('') : '<div class="pempty">No contractors planned.</div>';
+  const sHtml=sup.length ? sup.map(supRow).join('') : '<div class="pempty">No supervisors planned.</div>';
   const tick=isTomorrow ? '<label class="sameas noprint" title="Copy today\u2019s plan into tomorrow"><input type="checkbox" id="sameAsToday"'+(sameAsTodayOn()?' checked':'')+'> Same as today</label>' : '';
   return '<div class="pday"><div class="pdayhd"><span class="pdlbl">'+lbl+'</span><span class="pdhr">'+tick+'<span class="pddate">'+prettyDate(date)+'</span></span></div>'
-    +'<div class="psec"><div class="psectt">👷 Contractors — by salesperson <span class="cnt">'+cCount+'</span></div>'+planContractorTable(date)+'</div>'
-    +'<div class="psec"><div class="psectt">👔 Supervisors — by name <span class="cnt">'+sCount+'</span></div>'+planSupTable(date)+'</div></div>';
+    +'<div class="psec"><div class="psectt">👷 Contractors <span class="cnt">'+cCount+'</span></div>'+cHtml+'</div>'
+    +'<div class="psec"><div class="psectt">👔 Supervisors <span class="cnt">'+sup.length+'</span></div>'+sHtml+'</div></div>';
 }
 function renderPlan(){
   document.getElementById('planReport').innerHTML=
@@ -738,6 +719,9 @@ async function loadReports(silent){
   }catch(e){ document.getElementById('reportBody').innerHTML='<div class="msg err">Couldn’t load reports.<br><button onclick="loadReports()">Retry</button></div>'; setDot('dotR','syncR','err','Connection failed'); }
   finally{ document.getElementById('refreshR').classList.remove('spin'); }
 }
+document.querySelectorAll('#reportsView .rtab').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('#reportsView .rtab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); rtab=b.getAttribute('data-rtab'); renderReports(); }));
+document.getElementById('qr').addEventListener('input',e=>{ rfilter=e.target.value.trim().toLowerCase(); if(rtab==='offer') renderReports(); });
+document.getElementById('refreshR').addEventListener('click',()=>loadReports());
 
 /* ============ DAY-PLAN wiring ============ */
 document.getElementById('planReport').addEventListener('click',e=>{ const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
@@ -748,21 +732,23 @@ document.getElementById('refreshP').addEventListener('click',()=>{ document.getE
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
 
 /* ============ VIEW SWITCH + POLL ============ */
-function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:POLL_PLAN; pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
+function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:(view==='reports'?POLL_REPORTS:POLL_PLAN); pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else if(view==='reports'){ loadReports(true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 function switchView(v){
   view=v;
   document.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on', x.getAttribute('data-view')===v));
   document.getElementById('boardView').hidden = v!=='board';
   document.getElementById('planView').hidden = v!=='plan';
+  document.getElementById('reportsView').hidden = v!=='reports';
+  if(v==='reports' && !bookingsLoaded) loadReports(); else if(v==='reports') renderReports();
   if(v==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
   if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
   startPoll();
 }
 document.querySelectorAll('.vtab').forEach(b=>b.addEventListener('click',()=>switchView(b.getAttribute('data-view'))));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!modal.hidden) closeModal(); else if(e.key==='Enter'&&!modal.hidden&&goHandler) goHandler(); });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
-window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else if(view==='reports') loadReports(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
+window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else if(view==='reports') loadReports(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
 
 /* ===== init day-plan ===== */
 loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); renderPlan(); loadSupervisors(); syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); });
