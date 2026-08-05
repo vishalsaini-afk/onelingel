@@ -340,7 +340,7 @@ function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(pl
 function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
 function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
-async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
+async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ if(d.plans.length===0 && plans.length>0){ plans.forEach(p=>pushPlan(p)); return true; } plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
 async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
 async function pushPlanDelete(id){ try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
 function upsertPlan(entry){ const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
