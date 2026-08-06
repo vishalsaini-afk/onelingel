@@ -382,8 +382,6 @@ let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 const POLL_PLAN=20000;
 const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
-let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
-function saveTombstones(){ try{ localStorage.setItem('lingel_plan_tombstones_v1', JSON.stringify([...deletedPlanIds].slice(-500))); }catch(e){} }
 function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
 function teamItems(date){
   if(date===TODAY()){
@@ -403,10 +401,10 @@ function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(pl
 function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
 function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
-async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ plans=d.plans.map(normPlan).filter(p=>!deletedPlanIds.has(p.id)); savePlansLocal(); return true; } }catch(e){} return false; }
+async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ plans=d.plans.map(normPlan); savePlansLocal(); return true; } }catch(e){} return false; }
 async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
-async function pushPlanDelete(id){ deletedPlanIds.add(id); saveTombstones(); try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
-function upsertPlan(entry){ if(deletedPlanIds.has(entry.id)){ deletedPlanIds.delete(entry.id); saveTombstones(); } const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
+async function pushPlanDelete(id){ try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
+function upsertPlan(entry){ const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
 function planById(id){ return plans.find(p=>p.id===id); }
 function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind); }
 function swapDate(id,d){ return String(id).replace(/\|[^|]*$/, '|'+d); }
