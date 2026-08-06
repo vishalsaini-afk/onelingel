@@ -624,31 +624,18 @@ function groupBy(list,keyFn,unlabel){
 }
 function planCell(p){ return p.holdBy && !p.held ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('#'+esc(p.offer||'—')); }
 function dayCell(p){ if(p.held){ return '<span class="daypill hold">On hold</span><span class="dd">'+esc(p.heldOn?shortDate(p.heldOn):'')+'</span>'; } const t=dayTag(p.date); return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+t+'</span><span class="dd">'+prettyDate(p.date)+'</span>'; }
-function contractorPivotGroups(){
-  const map={};
-  function ensure(c,t,sales){ const k=(c||'')+'|'+(t||''); if(!map[k]) map[k]={contractor:c||'',team:String(t||''),salesperson:sales||'',td:null,tm:null,held:[]}; if(sales&&!map[k].salesperson) map[k].salesperson=sales; return map[k]; }
-  teamItems(TODAY()).forEach(it=>{ const r=ensure(it.contractor,it.team,it.salesperson); r.td={offer:it.offer,project:it.project,city:it.city}; if(it.salesperson) r.salesperson=it.salesperson; });
-  planFor(TOMORROW(),'team').forEach(p=>{ const r=ensure(p.contractor,p.team,p.salesperson); r.tm={offer:p.offer,project:p.project,city:p.city,id:p.id}; if(p.salesperson) r.salesperson=p.salesperson; });
-  rows.forEach(rw=>{ (rw.held||[]).forEach(h=>{ const r=ensure(rw.name,h.team,h.salesperson); r.held.push({offer:h.offer,project:h.project,city:h.city,holdBy:h.holdBy,heldOn:h.heldOn}); if(h.salesperson&&!r.salesperson) r.salesperson=h.salesperson; }); });
-  const list=Object.keys(map).map(k=>map[k]).filter(r=>r.td||r.tm||r.held.length);
-  return groupBy(list, p=>p.salesperson, 'Unassigned');
+function whenCell(p){
+  if(p.held) return '<span class="daypill hold">On hold</span><span class="dd">'+(p.holdBy?esc(p.holdBy):'')+(p.heldOn?' · '+esc(shortDate(p.heldOn)):'')+'</span>';
+  return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+dayTag(p.date)+'</span><span class="dd">'+prettyDate(p.date)+'</span>';
 }
-function siteText(cell){ return cell ? ('#'+esc(cell.offer||'—')+(cell.project?' · '+esc(cell.project):'')+(cell.city?' <span class="ccity">'+esc(cell.city)+'</span>':'')) : '<span class="free">—</span>'; }
-function sitePlain(cell){ return cell ? ('#'+(cell.offer||'—')+(cell.project?' '+cell.project:'')) : '—'; }
-function heldPlain(list){ return list.map(x=>'#'+(x.offer||'—')+(x.project?' '+x.project:'')+(x.heldOn?' ('+shortDate(x.heldOn)+')':'')).join(', '); }
 function contractorTable(){
-  const groups=contractorPivotGroups();
+  const groups=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
   if(!groups.length) return '<div class="pempty">No contractor teams planned.</div>';
-  const th='<th>Contractor</th><th>Team</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th>';
-  let h='<div class="ptabwrap"><table class="ptab pivot"><thead><tr>'+th+'</tr></thead>';
+  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th>When</th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
-    h+='<tbody><tr class="grp"><td colspan="4">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
-    grp.items.sort((a,b)=>((a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase())) || (a.team>b.team?1:-1));
-    grp.items.forEach(r=>{
-      const tmCell=siteText(r.tm)+(r.tm&&r.tm.id?'<button class="pdel noprint" data-id="'+esc(r.tm.id)+'" title="Remove tomorrow plan">✕</button>':'');
-      h+='<tr><td class="cn">'+esc(r.contractor||'—')+'</td><td>Team '+esc(r.team||'—')+'</td><td class="dcell">'+siteText(r.td)+'</td><td class="dcell">'+tmCell+'</td></tr>';
-      if(r.held.length) h+='<tr class="heldrow"><td></td><td></td><td colspan="2" class="heldcell">⏸ On hold: '+r.held.map(x=>'#'+esc(x.offer||'—')+(x.project?' · '+esc(x.project):'')+(x.heldOn?' ('+esc(shortDate(x.heldOn))+')':'')).join(' · ')+'</td></tr>';
-    });
+    h+='<tbody><tr class="grp"><td colspan="6">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
+    grp.items.sort((a,b)=>(itemRank(a)-itemRank(b)) || (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()));
+    grp.items.forEach(p=>{ h+='<tr'+(p.held?' class="heldrow"':'')+'><td>#'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td><td class="dcell">'+whenCell(p)+'</td><td class="xcol noprint">'+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</td></tr>'; });
     h+='</tbody>';
   });
   return h+'</table></div>';
@@ -657,11 +644,11 @@ function supTable(){
   const list=[]; planFor(TODAY(),'supervisor').forEach(p=>list.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>list.push(p));
   const groups=groupBy(list, p=>p.supervisor, 'Unnamed');
   if(!groups.length) return '<div class="pempty">No supervisors planned.</div>';
-  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Task</th><th>Offer No.</th><th>Client</th><th>City</th><th>Salesperson</th><th>Plan</th><th class="xcol noprint"></th></tr></thead>';
+  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Salesperson</th><th>Purpose</th><th>When</th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">👔 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
     grp.items.sort((a,b)=>(a.date<b.date?-1:(a.date>b.date?1:0)));
-    grp.items.forEach(p=>{ h+='<tr><td><span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span></td><td>'+(p.offer?'#'+esc(p.offer):'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td>'+(p.salesperson?esc(p.salesperson):'—')+'</td><td class="dcell">'+dayCell(p)+'</td><td class="xcol noprint"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>'; });
+    grp.items.forEach(p=>{ h+='<tr><td>'+(p.offer?'#'+esc(p.offer):'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td>'+(p.salesperson?esc(p.salesperson):'—')+'</td><td><span class="tbadge '+(p.task==='Measurement'?'meas':'visit')+'">'+esc(p.task||'—')+'</span></td><td class="dcell">'+dayCell(p)+'</td><td class="xcol noprint"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>'; });
     h+='</tbody>';
   });
   return h+'</table></div>';
@@ -675,21 +662,18 @@ function renderPlan(){
 }
 function planText(){
   let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?'  ('+SUP+')':'')+'\n';
-  out+='\n*👷 CONTRACTOR TEAMS*  ('+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+')\n';
-  const cg=contractorPivotGroups();
+  out+='\n*👷 CONTRACTOR TEAMS*\n';
+  const cg=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
   if(!cg.length) out+='  (none)\n';
-  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase())).forEach(function(r){
-    out+='  • '+(r.contractor||'—')+' · Team '+(r.team||'—')+'\n';
-    out+='      Today: '+sitePlain(r.td)+'\n';
-    out+='      Tomorrow: '+sitePlain(r.tm)+'\n';
-    if(r.held.length) out+='      ⏸ On hold: '+heldPlain(r.held)+'\n';
-  }); });
+  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(function(p){
+    const when=p.held?('⏸ On hold'+(p.holdBy?' · '+p.holdBy:'')+(p.heldOn?' · '+shortDate(p.heldOn):'')):(itemTag(p)+' '+itemDateLabel(p));
+    out+='  • #'+(p.offer||'—')+' | '+(p.project||'—')+(p.city?' | '+p.city:'')+' | '+(p.contractor||'—')+' | '+when+'\n'; }); });
   out+='\n*👔 SUPERVISORS*\n';
   const sl=[]; planFor(TODAY(),'supervisor').forEach(p=>sl.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>sl.push(p));
   const sg=groupBy(sl, p=>p.supervisor, 'Unnamed');
   if(!sg.length) out+='  (none)\n';
   sg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.date<b.date?-1:1)).forEach(function(p){
-    out+='  • '+(p.task||'—')+(p.offer?' | #'+p.offer:'')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+(p.salesperson?' | '+p.salesperson:'')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
+    out+='  • #'+(p.offer||'—')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+(p.salesperson?' | '+p.salesperson:'')+' | '+(p.task||'—')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
   return out;
 }
 /* ===== PDF export + WhatsApp share ===== */
@@ -711,15 +695,15 @@ async function buildPlanPdf(){
   doc.text(prettyDate(TODAY())+'   ->   '+prettyDate(TOMORROW())+(SUP?'      ·      '+SUP:''), M, 63);
   doc.setTextColor(17);
   const grpStyle={fontStyle:'bold', fillColor:[238,238,232], textColor:20};
-  // Contractors (Today / Tomorrow columns)
-  const cbody=[]; contractorPivotGroups().forEach(grp=>{
-    cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:4, styles:grpStyle}]);
-    grp.items.slice().sort((a,b)=>(a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase())).forEach(r=>{
-      cbody.push([ r.contractor||'—', 'Team '+(r.team||'—'), sitePlain(r.td), sitePlain(r.tm) ]);
-      if(r.held.length) cbody.push(['','',{content:'On hold: '+heldPlain(r.held), colSpan:2, styles:{textColor:[150,110,20],fillColor:[255,250,240],fontStyle:'italic'}}]);
+  // Contractors — Offer / Customer / City / Contractor / When, grouped by salesperson
+  const cbody=[]; groupBy(allContractorItems(),p=>p.salesperson,'Unassigned').forEach(grp=>{
+    cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:5, styles:grpStyle}]);
+    grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(p=>{
+      const when=p.held?('On hold'+(p.holdBy?' · '+p.holdBy:'')+(p.heldOn?' · '+shortDate(p.heldOn):'')):(itemTag(p)+' · '+itemDateLabel(p));
+      cbody.push([ '#'+(p.offer||'—'), p.project||'—', p.city||'—', p.contractor||'—', when ]);
     });
   });
-  doc.autoTable({ startY:80, head:[['Contractor','Team','Today · '+prettyDate(TODAY()),'Tomorrow · '+prettyDate(TOMORROW())]], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:4,styles:{textColor:120,fontStyle:'italic'}}]],
+  doc.autoTable({ startY:80, head:[['Offer No.','Customer','City','Contractor','When']], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:5,styles:{textColor:120,fontStyle:'italic'}}]],
     theme:'grid', styles:{fontSize:8.5,cellPadding:4,lineColor:[220,220,220]}, headStyles:{fillColor:[25,25,25],textColor:255,fontSize:8.5}, margin:{left:M,right:M} });
   // Supervisors
   let y=doc.lastAutoTable.finalY+22; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Supervisors', M, y);
@@ -727,9 +711,9 @@ async function buildPlanPdf(){
   const sbody=[]; groupBy(sl,p=>p.supervisor,'Unnamed').forEach(grp=>{
     sbody.push([{content:'Supervisor: '+grp.key+'  ('+grp.items.length+')', colSpan:6, styles:grpStyle}]);
     grp.items.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(p=>sbody.push([
-      p.task||'—', p.offer?('#'+p.offer):'—', p.project||'—', p.city||'—', p.salesperson||'—', dayTag(p.date)+' · '+prettyDate(p.date) ]));
+      p.offer?('#'+p.offer):'—', p.project||'—', p.city||'—', p.salesperson||'—', p.task||'—', dayTag(p.date)+' · '+prettyDate(p.date) ]));
   });
-  doc.autoTable({ startY:y+8, head:[['Task','Offer No.','Client','City','Salesperson','Plan']], body:sbody.length?sbody:[[{content:'No supervisors planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
+  doc.autoTable({ startY:y+8, head:[['Offer No.','Customer','City','Salesperson','Purpose','When']], body:sbody.length?sbody:[[{content:'No supervisors planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
     theme:'grid', styles:{fontSize:8.5,cellPadding:4,lineColor:[220,220,220]}, headStyles:{fillColor:[25,25,25],textColor:255,fontSize:8.5}, margin:{left:M,right:M} });
   return doc;
 }
