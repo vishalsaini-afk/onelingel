@@ -217,6 +217,12 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab .daypill.tm{background:rgba(91,155,213,.18);color:#a9cdf0}
 .ptab .daypill.hold{background:rgba(240,166,58,.18);color:var(--amber)}
 .ptab tr.heldrow td{background:rgba(240,166,58,.05)}
+.ptab.pivot td.dcell{white-space:normal;line-height:1.35}
+.ptab .dayh .thd{display:block;font-family:'JetBrains Mono';font-size:9px;color:var(--muted);font-weight:400;margin-top:2px;text-transform:none;letter-spacing:0}
+.ptab .free{color:var(--muted);opacity:.55}
+.ptab .ccity{color:var(--muted);font-size:10.5px}
+.ptab .dcell .pdel{margin-left:6px;width:22px;height:22px}
+.ptab tr.heldrow .heldcell{color:var(--amber);font-size:11px}
 .ptab .dd{color:var(--muted);font-size:11px;white-space:nowrap}
 .ptab .dcell{white-space:nowrap}
 .ptab td.xcol{width:38px;text-align:center;padding:6px}
@@ -240,6 +246,10 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   .ptab .daypill.tm{background:#dbeafe;color:#1e40af}
   .ptab .daypill.hold{background:#fef3c7;color:#92600a}
   .ptab tr.heldrow td{background:#fffdf5}
+  .ptab .dayh .thd{color:#666}
+  .ptab .free{color:#999}
+  .ptab .ccity{color:#666}
+  .ptab tr.heldrow .heldcell{color:#92600a}
   .ptab .dd{color:#555}
   .psec{break-inside:auto}
   .ptab tr{break-inside:avoid;page-break-inside:avoid}
@@ -614,14 +624,31 @@ function groupBy(list,keyFn,unlabel){
 }
 function planCell(p){ return p.holdBy && !p.held ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('#'+esc(p.offer||'—')); }
 function dayCell(p){ if(p.held){ return '<span class="daypill hold">On hold</span><span class="dd">'+esc(p.heldOn?shortDate(p.heldOn):'')+'</span>'; } const t=dayTag(p.date); return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+t+'</span><span class="dd">'+prettyDate(p.date)+'</span>'; }
+function contractorPivotGroups(){
+  const map={};
+  function ensure(c,t,sales){ const k=(c||'')+'|'+(t||''); if(!map[k]) map[k]={contractor:c||'',team:String(t||''),salesperson:sales||'',td:null,tm:null,held:[]}; if(sales&&!map[k].salesperson) map[k].salesperson=sales; return map[k]; }
+  teamItems(TODAY()).forEach(it=>{ const r=ensure(it.contractor,it.team,it.salesperson); r.td={offer:it.offer,project:it.project,city:it.city}; if(it.salesperson) r.salesperson=it.salesperson; });
+  planFor(TOMORROW(),'team').forEach(p=>{ const r=ensure(p.contractor,p.team,p.salesperson); r.tm={offer:p.offer,project:p.project,city:p.city,id:p.id}; if(p.salesperson) r.salesperson=p.salesperson; });
+  rows.forEach(rw=>{ (rw.held||[]).forEach(h=>{ const r=ensure(rw.name,h.team,h.salesperson); r.held.push({offer:h.offer,project:h.project,city:h.city,holdBy:h.holdBy,heldOn:h.heldOn}); if(h.salesperson&&!r.salesperson) r.salesperson=h.salesperson; }); });
+  const list=Object.keys(map).map(k=>map[k]).filter(r=>r.td||r.tm||r.held.length);
+  return groupBy(list, p=>p.salesperson, 'Unassigned');
+}
+function siteText(cell){ return cell ? ('#'+esc(cell.offer||'—')+(cell.project?' · '+esc(cell.project):'')+(cell.city?' <span class="ccity">'+esc(cell.city)+'</span>':'')) : '<span class="free">—</span>'; }
+function sitePlain(cell){ return cell ? ('#'+(cell.offer||'—')+(cell.project?' '+cell.project:'')) : '—'; }
+function heldPlain(list){ return list.map(x=>'#'+(x.offer||'—')+(x.project?' '+x.project:'')+(x.heldOn?' ('+shortDate(x.heldOn)+')':'')).join(', '); }
 function contractorTable(){
-  const groups=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
+  const groups=contractorPivotGroups();
   if(!groups.length) return '<div class="pempty">No contractor teams planned.</div>';
-  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Client</th><th>City</th><th>Contractor</th><th>Team</th><th>Plan</th><th class="xcol noprint"></th></tr></thead>';
+  const th='<th>Contractor</th><th>Team</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th>';
+  let h='<div class="ptabwrap"><table class="ptab pivot"><thead><tr>'+th+'</tr></thead>';
   groups.forEach(grp=>{
-    h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
-    grp.items.sort((a,b)=>(itemRank(a)-itemRank(b)) || (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()));
-    grp.items.forEach(p=>{ h+='<tr'+(p.held?' class="heldrow"':'')+'><td>'+planCell(p)+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td><td>Team '+esc(p.team||'—')+'</td><td class="dcell">'+dayCell(p)+'</td><td class="xcol noprint">'+(p.held?'':'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>')+'</td></tr>'; });
+    h+='<tbody><tr class="grp"><td colspan="4">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
+    grp.items.sort((a,b)=>((a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase())) || (a.team>b.team?1:-1));
+    grp.items.forEach(r=>{
+      const tmCell=siteText(r.tm)+(r.tm&&r.tm.id?'<button class="pdel noprint" data-id="'+esc(r.tm.id)+'" title="Remove tomorrow plan">✕</button>':'');
+      h+='<tr><td class="cn">'+esc(r.contractor||'—')+'</td><td>Team '+esc(r.team||'—')+'</td><td class="dcell">'+siteText(r.td)+'</td><td class="dcell">'+tmCell+'</td></tr>';
+      if(r.held.length) h+='<tr class="heldrow"><td></td><td></td><td colspan="2" class="heldcell">⏸ On hold: '+r.held.map(x=>'#'+esc(x.offer||'—')+(x.project?' · '+esc(x.project):'')+(x.heldOn?' ('+esc(shortDate(x.heldOn))+')':'')).join(' · ')+'</td></tr>';
+    });
     h+='</tbody>';
   });
   return h+'</table></div>';
@@ -648,11 +675,15 @@ function renderPlan(){
 }
 function planText(){
   let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?'  ('+SUP+')':'')+'\n';
-  out+='\n*👷 CONTRACTOR TEAMS*\n';
-  const cg=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
+  out+='\n*👷 CONTRACTOR TEAMS*  ('+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+')\n';
+  const cg=contractorPivotGroups();
   if(!cg.length) out+='  (none)\n';
-  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(function(p){
-    out+='  • '+(p.held?('⏸ '+(p.offer?'#'+p.offer:'—')):(p.holdBy?('HOLD: '+p.holdBy):('#'+(p.offer||'—'))))+' | '+(p.project||'—')+(p.city?' | '+p.city:'')+' | '+(p.contractor||'—')+' Team '+(p.team||'—')+' | '+itemTag(p)+' '+itemDateLabel(p)+'\n'; }); });
+  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase())).forEach(function(r){
+    out+='  • '+(r.contractor||'—')+' · Team '+(r.team||'—')+'\n';
+    out+='      Today: '+sitePlain(r.td)+'\n';
+    out+='      Tomorrow: '+sitePlain(r.tm)+'\n';
+    if(r.held.length) out+='      ⏸ On hold: '+heldPlain(r.held)+'\n';
+  }); });
   out+='\n*👔 SUPERVISORS*\n';
   const sl=[]; planFor(TODAY(),'supervisor').forEach(p=>sl.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>sl.push(p));
   const sg=groupBy(sl, p=>p.supervisor, 'Unnamed');
@@ -680,13 +711,15 @@ async function buildPlanPdf(){
   doc.text(prettyDate(TODAY())+'   ->   '+prettyDate(TOMORROW())+(SUP?'      ·      '+SUP:''), M, 63);
   doc.setTextColor(17);
   const grpStyle={fontStyle:'bold', fillColor:[238,238,232], textColor:20};
-  // Contractors
-  const cbody=[]; groupBy(allContractorItems(),p=>p.salesperson,'Unassigned').forEach(grp=>{
-    cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:6, styles:grpStyle}]);
-    grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(p=>cbody.push([
-      (p.held?'On hold · ':'')+(p.holdBy&&!p.held?('HOLD · '+p.holdBy):('#'+(p.offer||'—'))), p.project||'—', p.city||'—', p.contractor||'—', 'Team '+(p.team||'—'), itemTag(p)+' · '+itemDateLabel(p) ]));
+  // Contractors (Today / Tomorrow columns)
+  const cbody=[]; contractorPivotGroups().forEach(grp=>{
+    cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:4, styles:grpStyle}]);
+    grp.items.slice().sort((a,b)=>(a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase())).forEach(r=>{
+      cbody.push([ r.contractor||'—', 'Team '+(r.team||'—'), sitePlain(r.td), sitePlain(r.tm) ]);
+      if(r.held.length) cbody.push(['','',{content:'On hold: '+heldPlain(r.held), colSpan:2, styles:{textColor:[150,110,20],fillColor:[255,250,240],fontStyle:'italic'}}]);
+    });
   });
-  doc.autoTable({ startY:80, head:[['Offer No.','Client','City','Contractor','Team','Plan']], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
+  doc.autoTable({ startY:80, head:[['Contractor','Team','Today · '+prettyDate(TODAY()),'Tomorrow · '+prettyDate(TOMORROW())]], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:4,styles:{textColor:120,fontStyle:'italic'}}]],
     theme:'grid', styles:{fontSize:8.5,cellPadding:4,lineColor:[220,220,220]}, headStyles:{fillColor:[25,25,25],textColor:255,fontSize:8.5}, margin:{left:M,right:M} });
   // Supervisors
   let y=doc.lastAutoTable.finalY+22; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Supervisors', M, y);
