@@ -61,15 +61,21 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .team.avail .ts{color:#86efac}.team:not(.avail):not(.na) .ts{color:#fda4a4}.team.na .ts{color:var(--amber)}
 .team .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .held{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
-.heldhd{font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.heldhd{font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber);display:flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.heldhd .hchev{display:inline-block;transition:transform .15s;font-size:11px}
+.held.open .heldhd .hchev{transform:rotate(90deg)}
 .heldhd .hcnt{font-family:'JetBrains Mono';font-size:9.5px;background:rgba(240,166,58,.15);color:var(--amber);border-radius:20px;padding:1px 7px}
-.hitem{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:10px;padding:8px 10px;margin-bottom:7px}
+.held .hitem{display:none}
+.held.open .hitem{display:flex;margin-top:8px}
+.hitem{align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:10px;padding:9px 10px}
 .hinfo{flex:1;min-width:0}
 .hoffer{font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hmeta{font-size:10.5px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hbtn{border:none;border-radius:9px;padding:9px 11px;font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;flex:0 0 auto;-webkit-tap-highlight-color:transparent;transition:transform .08s}
+.hrow2{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow2 .hk{font-family:'JetBrains Mono';font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);opacity:.75;margin-right:3px}
+.hacts{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+.hbtn{border:none;border-radius:9px;padding:9px 11px;font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .08s}
 .hbtn.hresume{background:var(--hivis);color:#111}
-.hbtn.hcancel{background:transparent;border:1px solid var(--line);color:var(--muted);width:34px;padding:9px 0}
+.hbtn.hcancel{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .hbtn:active{transform:scale(.94)}
 .team.busy{opacity:.5;pointer-events:none}
 .thead{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
@@ -209,6 +215,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab .daypill{display:inline-block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:6px;margin-right:6px}
 .ptab .daypill.td{background:rgba(74,222,128,.18);color:#4ade80}
 .ptab .daypill.tm{background:rgba(91,155,213,.18);color:#a9cdf0}
+.ptab .daypill.hold{background:rgba(240,166,58,.18);color:var(--amber)}
+.ptab tr.heldrow td{background:rgba(240,166,58,.05)}
 .ptab .dd{color:var(--muted);font-size:11px;white-space:nowrap}
 .ptab .dcell{white-space:nowrap}
 .ptab td.xcol{width:38px;text-align:center;padding:6px}
@@ -230,6 +238,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   .ptab tr.grp .gcnt{background:#fff;color:#555;border-color:#ccc}
   .ptab .daypill.td{background:#dcfce7;color:#166534}
   .ptab .daypill.tm{background:#dbeafe;color:#1e40af}
+  .ptab .daypill.hold{background:#fef3c7;color:#92600a}
+  .ptab tr.heldrow td{background:#fffdf5}
   .ptab .dd{color:#555}
   .psec{break-inside:auto}
   .ptab tr{break-inside:avoid;page-break-inside:avoid}
@@ -325,6 +335,7 @@ document.getElementById('who').innerHTML = SUP ? '<span>Signed in as</span><b>'+
 
 let view='board', rows=[], bookings=[];
 const pending=new Map();
+const heldOpen=new Set();
 let filter='', rfilter='', rtab='active';
 let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 
@@ -421,10 +432,15 @@ function renderBoard(){
   g.innerHTML=list.map(r=>{ let chips=''; for(let t=1;t<=r.teams.length;t++) chips+=teamChip(r,String(t));
     let heldHtml='';
     if(r.held && r.held.length){
-      heldHtml='<div class="held"><div class="heldhd">⏸ On hold · needs work <span class="hcnt">'+r.held.length+'</span></div>'+
-        r.held.map(h=>'<div class="hitem"><div class="hinfo"><div class="hoffer">#'+esc(h.offer||'—')+(h.project?' · '+esc(h.project):'')+'</div><div class="hmeta">'+esc(h.holdBy||'Hold')+(h.city?' · 📍 '+esc(h.city):'')+(h.heldOn?' · held '+esc(shortDate(h.heldOn)):'')+'</div></div>'+
-          '<button class="hbtn hresume" data-hname="'+esc(r.name)+'" data-hoffer="'+esc(h.offer)+'" data-hheld="'+esc(h.heldOn)+'">▶ Resume</button>'+
-          '<button class="hbtn hcancel" data-hname="'+esc(r.name)+'" data-hoffer="'+esc(h.offer)+'" data-hheld="'+esc(h.heldOn)+'" title="Remove held site">✕</button></div>').join('')+'</div>';
+      const open=heldOpen.has(r.name);
+      heldHtml='<div class="held'+(open?' open':'')+'"><div class="heldhd" data-hname="'+esc(r.name)+'"><span class="hchev">▸</span> ⏸ On hold · needs work <span class="hcnt">'+r.held.length+'</span></div>'+
+        r.held.map(h=>'<div class="hitem"><div class="hinfo">'+
+            '<div class="hoffer">#'+esc(h.offer||'—')+(h.project?' · '+esc(h.project):'')+'</div>'+
+            '<div class="hrow2"><span class="hk">Salesperson</span> '+esc(h.salesperson||'—')+'</div>'+
+            '<div class="hrow2">📅 '+esc(h.heldOn?shortDate(h.heldOn):'—')+(h.holdBy?' · '+esc(h.holdBy):'')+'</div>'+
+          '</div>'+
+          '<div class="hacts"><button class="hbtn hresume" data-hname="'+esc(r.name)+'" data-hoffer="'+esc(h.offer)+'" data-hheld="'+esc(h.heldOn)+'">▶ Resume</button>'+
+          '<button class="hbtn hcancel" data-hname="'+esc(r.name)+'" data-hoffer="'+esc(h.offer)+'" data-hheld="'+esc(h.heldOn)+'" title="Remove held site">✕</button></div></div>').join('')+'</div>';
     }
     return '<div class="card"><div class="nm">'+esc(r.name)+'</div>'+(r.role?'<div class="role">'+esc(r.role)+'</div>':'')+'<div class="teams">'+chips+'</div>'+heldHtml+'</div>'; }).join('');
 }
@@ -582,26 +598,30 @@ function deletePlanEntry(id){
 }
 /* ===== DAY-PLAN report (tabular) ===== */
 function dayTag(date){ return date===TODAY() ? 'Today' : (date===TOMORROW() ? 'Tomorrow' : 'Plan'); }
+function itemTag(p){ return p.held ? 'On hold' : dayTag(p.date); }
+function itemDateLabel(p){ return p.held ? (p.heldOn?shortDate(p.heldOn):'') : prettyDate(p.date); }
+function itemRank(p){ return p.held ? 2 : (p.date===TODAY()?0:1); }
 function allContractorItems(){
   const out=[];
   teamItems(TODAY()).forEach(it=>out.push(Object.assign({date:TODAY()},it)));
   planFor(TOMORROW(),'team').forEach(p=>out.push(p));
+  rows.forEach(r=>{ (r.held||[]).forEach(h=>out.push({ held:true, contractor:r.name, team:h.team, offer:h.offer, project:h.project, city:h.city, salesperson:h.salesperson, holdBy:h.holdBy, heldOn:h.heldOn })); });
   return out;
 }
 function groupBy(list,keyFn,unlabel){
   const g={}; list.forEach(p=>{ const k=(keyFn(p)||'').trim()|| ('— '+unlabel+' —'); (g[k]||(g[k]=[])).push(p); });
   return Object.keys(g).sort((a,b)=>{ const au=a.charAt(0)==='—', bu=b.charAt(0)==='—'; if(au&&!bu) return 1; if(bu&&!au) return -1; return a.toLowerCase().localeCompare(b.toLowerCase()); }).map(k=>({key:k, items:g[k]}));
 }
-function planCell(p){ return p.holdBy ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('#'+esc(p.offer||'—')); }
-function dayCell(p){ const t=dayTag(p.date); return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+t+'</span><span class="dd">'+prettyDate(p.date)+'</span>'; }
+function planCell(p){ return p.holdBy && !p.held ? '<span class="hold">HOLD · '+esc(p.holdBy)+'</span>' : ('#'+esc(p.offer||'—')); }
+function dayCell(p){ if(p.held){ return '<span class="daypill hold">On hold</span><span class="dd">'+esc(p.heldOn?shortDate(p.heldOn):'')+'</span>'; } const t=dayTag(p.date); return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+t+'</span><span class="dd">'+prettyDate(p.date)+'</span>'; }
 function contractorTable(){
   const groups=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
   if(!groups.length) return '<div class="pempty">No contractor teams planned.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Client</th><th>City</th><th>Contractor</th><th>Team</th><th>Plan</th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
-    grp.items.sort((a,b)=>(a.date===b.date? (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()) : (a.date<b.date?-1:1)));
-    grp.items.forEach(p=>{ h+='<tr><td>'+planCell(p)+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td><td>Team '+esc(p.team||'—')+'</td><td class="dcell">'+dayCell(p)+'</td><td class="xcol noprint"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>'; });
+    grp.items.sort((a,b)=>(itemRank(a)-itemRank(b)) || (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()));
+    grp.items.forEach(p=>{ h+='<tr'+(p.held?' class="heldrow"':'')+'><td>'+planCell(p)+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td><td>Team '+esc(p.team||'—')+'</td><td class="dcell">'+dayCell(p)+'</td><td class="xcol noprint">'+(p.held?'':'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>')+'</td></tr>'; });
     h+='</tbody>';
   });
   return h+'</table></div>';
@@ -631,8 +651,8 @@ function planText(){
   out+='\n*👷 CONTRACTOR TEAMS*\n';
   const cg=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
   if(!cg.length) out+='  (none)\n';
-  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.date<b.date?-1:1)).forEach(function(p){
-    out+='  • '+(p.holdBy?('HOLD: '+p.holdBy):('#'+(p.offer||'—')))+' | '+(p.project||'—')+(p.city?' | '+p.city:'')+' | '+(p.contractor||'—')+' Team '+(p.team||'—')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
+  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(function(p){
+    out+='  • '+(p.held?('⏸ '+(p.offer?'#'+p.offer:'—')):(p.holdBy?('HOLD: '+p.holdBy):('#'+(p.offer||'—'))))+' | '+(p.project||'—')+(p.city?' | '+p.city:'')+' | '+(p.contractor||'—')+' Team '+(p.team||'—')+' | '+itemTag(p)+' '+itemDateLabel(p)+'\n'; }); });
   out+='\n*👔 SUPERVISORS*\n';
   const sl=[]; planFor(TODAY(),'supervisor').forEach(p=>sl.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>sl.push(p));
   const sg=groupBy(sl, p=>p.supervisor, 'Unnamed');
@@ -663,8 +683,8 @@ async function buildPlanPdf(){
   // Contractors
   const cbody=[]; groupBy(allContractorItems(),p=>p.salesperson,'Unassigned').forEach(grp=>{
     cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:6, styles:grpStyle}]);
-    grp.items.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(p=>cbody.push([
-      p.holdBy?('HOLD · '+p.holdBy):('#'+(p.offer||'—')), p.project||'—', p.city||'—', p.contractor||'—', 'Team '+(p.team||'—'), dayTag(p.date)+' · '+prettyDate(p.date) ]));
+    grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(p=>cbody.push([
+      (p.held?'On hold · ':'')+(p.holdBy&&!p.held?('HOLD · '+p.holdBy):('#'+(p.offer||'—'))), p.project||'—', p.city||'—', p.contractor||'—', 'Team '+(p.team||'—'), itemTag(p)+' · '+itemDateLabel(p) ]));
   });
   doc.autoTable({ startY:80, head:[['Offer No.','Client','City','Contractor','Team','Plan']], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
     theme:'grid', styles:{fontSize:8.5,cellPadding:4,lineColor:[220,220,220]}, headStyles:{fillColor:[25,25,25],textColor:255,fontSize:8.5}, margin:{left:M,right:M} });
@@ -731,6 +751,7 @@ function openLeave(name,team,tm){
   goHandler=()=>{ closeModal(); setNA(name,team,true); };
 }
 document.getElementById('grid').addEventListener('click',e=>{
+  const hh=e.target.closest('.heldhd'); if(hh){ const nm=hh.getAttribute('data-hname'); if(heldOpen.has(nm)) heldOpen.delete(nm); else heldOpen.add(nm); renderBoard(); return; }
   const rb=e.target.closest('.hresume'); if(rb){ resumeSite(rb.getAttribute('data-hname'), rb.getAttribute('data-hoffer'), rb.getAttribute('data-hheld')); return; }
   const cb=e.target.closest('.hcancel'); if(cb){ if(confirm('Remove this held site from '+cb.getAttribute('data-hname')+'? It will no longer show as pending work.')) cancelHeld(cb.getAttribute('data-hname'), cb.getAttribute('data-hoffer'), cb.getAttribute('data-hheld')); return; }
   const btn=e.target.closest('.team'); if(!btn) return;
