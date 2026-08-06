@@ -620,6 +620,16 @@ function allContractorItems(){
   rows.forEach(r=>{ (r.held||[]).forEach(h=>out.push({ held:true, contractor:r.name, team:h.team, offer:h.offer, project:h.project, city:h.city, salesperson:h.salesperson, holdBy:h.holdBy, heldOn:h.heldOn })); });
   return out;
 }
+function mergedContractorItems(){
+  const map={}, order=[];
+  const key=p=>(p.contractor||'')+'|'+(p.team||'')+'|'+(p.offer||'')+'|'+(p.project||'');
+  function ensure(p){ const k=key(p); if(!map[k]){ map[k]={contractor:p.contractor||'',team:p.team||'',offer:p.offer||'',project:p.project||'',city:p.city||'',salesperson:p.salesperson||'',held:false,today:false,tomorrow:false,todayId:null,tomorrowId:null}; order.push(k);} const r=map[k]; if(p.city&&!r.city) r.city=p.city; if(p.salesperson&&!r.salesperson) r.salesperson=p.salesperson; return r; }
+  teamItems(TODAY()).forEach(it=>{ const r=ensure(it); r.today=true; r.todayId=it.id; });
+  planFor(TOMORROW(),'team').forEach(p=>{ const r=ensure(p); r.tomorrow=true; r.tomorrowId=p.id; });
+  const held=[];
+  rows.forEach(rw=>{ (rw.held||[]).forEach(h=>held.push({ held:true, contractor:rw.name, team:h.team, offer:h.offer, project:h.project, city:h.city, salesperson:h.salesperson, holdBy:h.holdBy, heldOn:h.heldOn })); });
+  return order.map(k=>map[k]).concat(held);
+}
 function groupBy(list,keyFn,unlabel){
   const g={}; list.forEach(p=>{ const k=(keyFn(p)||'').trim()|| ('— '+unlabel+' —'); (g[k]||(g[k]=[])).push(p); });
   return Object.keys(g).sort((a,b)=>{ const au=a.charAt(0)==='—', bu=b.charAt(0)==='—'; if(au&&!bu) return 1; if(bu&&!au) return -1; return a.toLowerCase().localeCompare(b.toLowerCase()); }).map(k=>({key:k, items:g[k]}));
@@ -630,19 +640,28 @@ function whenCell(p){
   if(p.held) return '<span class="daypill hold">On hold</span><span class="dd">'+(p.holdBy?esc(p.holdBy):'')+(p.heldOn?' · '+esc(shortDate(p.heldOn)):'')+'</span>';
   return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+dayTag(p.date)+'</span><span class="dd">'+prettyDate(p.date)+'</span>';
 }
+function contractorPlanRows(){
+  const map={};
+  function ensure(c,t,offer){ const k=(c||'')+'|'+(t||'')+'|'+(offer||''); if(!map[k]) map[k]={contractor:c||'',team:String(t||''),offer:offer||'',project:'',city:'',salesperson:'',today:false,tomorrow:false,held:false,holdBy:'',heldOn:'',id:''}; return map[k]; }
+  teamItems(TODAY()).forEach(it=>{ const r=ensure(it.contractor,it.team,it.offer); r.today=true; r.project=r.project||it.project; r.city=r.city||it.city; r.salesperson=r.salesperson||it.salesperson; });
+  planFor(TOMORROW(),'team').forEach(p=>{ const r=ensure(p.contractor,p.team,p.offer); r.tomorrow=true; r.project=r.project||p.project; r.city=r.city||p.city; r.salesperson=r.salesperson||p.salesperson; r.id=p.id||r.id; });
+  const out=Object.keys(map).map(k=>map[k]);
+  rows.forEach(rw=>{ (rw.held||[]).forEach(h=>out.push({contractor:rw.name,team:String(h.team||''),offer:h.offer||'',project:h.project||'',city:h.city||'',salesperson:h.salesperson||'',today:false,tomorrow:false,held:true,holdBy:h.holdBy||'',heldOn:h.heldOn||'',id:''})); });
+  return out;
+}
+function rowRank(p){ return p.held?2:(p.today?0:1); }
 function contractorTable(){
-  const groups=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
+  const groups=groupBy(contractorPlanRows(), p=>p.salesperson, 'Unassigned');
   if(!groups.length) return '<div class="pempty">No contractor teams planned.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
-    grp.items.sort((a,b)=>(itemRank(a)-itemRank(b)) || (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()));
+    grp.items.sort((a,b)=>(rowRank(a)-rowRank(b)) || (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()));
     grp.items.forEach(p=>{
       const base='<td>#'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td>';
       let dayCells;
       if(p.held) dayCells='<td colspan="2" class="heldcell">⏸ On hold · '+esc(p.holdBy||'—')+(p.heldOn?' · '+esc(shortDate(p.heldOn)):'')+'</td>';
-      else if(p.date===TODAY()) dayCells='<td class="dc"><span class="daypill td">✓</span></td><td class="dc"><span class="free">—</span></td>';
-      else dayCells='<td class="dc"><span class="free">—</span></td><td class="dc"><span class="daypill tm">✓</span></td>';
+      else dayCells='<td class="dc">'+(p.today?'<span class="daypill td">✓</span>':'<span class="free">—</span>')+'</td><td class="dc">'+(p.tomorrow?'<span class="daypill tm">✓</span>':'<span class="free">—</span>')+'</td>';
       h+='<tr'+(p.held?' class="heldrow"':'')+'>'+base+dayCells+'<td class="xcol noprint">'+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</td></tr>';
     });
     h+='</tbody>';
@@ -672,10 +691,12 @@ function renderPlan(){
 function planText(){
   let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?'  ('+SUP+')':'')+'\n';
   out+='\n*👷 CONTRACTOR TEAMS*\n';
-  const cg=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
+  const cg=groupBy(contractorPlanRows(), p=>p.salesperson, 'Unassigned');
   if(!cg.length) out+='  (none)\n';
-  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(function(p){
-    const when=p.held?('⏸ On hold'+(p.holdBy?' · '+p.holdBy:'')+(p.heldOn?' · '+shortDate(p.heldOn):'')):(itemTag(p)+' '+itemDateLabel(p));
+  cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(rowRank(a)-rowRank(b))).forEach(function(p){
+    let when;
+    if(p.held) when='⏸ On hold'+(p.holdBy?' · '+p.holdBy:'')+(p.heldOn?' · '+shortDate(p.heldOn):'');
+    else { const w=[]; if(p.today) w.push('Today '+prettyDate(TODAY())); if(p.tomorrow) w.push('Tomorrow '+prettyDate(TOMORROW())); when=w.join(' + '); }
     out+='  • #'+(p.offer||'—')+' | '+(p.project||'—')+(p.city?' | '+p.city:'')+' | '+(p.contractor||'—')+' | '+when+'\n'; }); });
   out+='\n*👔 SUPERVISORS*\n';
   const sl=[]; planFor(TODAY(),'supervisor').forEach(p=>sl.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>sl.push(p));
@@ -705,11 +726,11 @@ async function buildPlanPdf(){
   doc.setTextColor(17);
   const grpStyle={fontStyle:'bold', fillColor:[238,238,232], textColor:20};
   // Contractors — Offer / Customer / City / Contractor / Today / Tomorrow, grouped by salesperson
-  const cbody=[]; groupBy(allContractorItems(),p=>p.salesperson,'Unassigned').forEach(grp=>{
+  const cbody=[]; groupBy(contractorPlanRows(),p=>p.salesperson,'Unassigned').forEach(grp=>{
     cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:6, styles:grpStyle}]);
-    grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(p=>{
+    grp.items.slice().sort((a,b)=>(rowRank(a)-rowRank(b))).forEach(p=>{
       if(p.held){ cbody.push([ '#'+(p.offer||'—'), p.project||'—', p.city||'—', p.contractor||'—', {content:'On hold · '+(p.holdBy||'—')+(p.heldOn?' · '+shortDate(p.heldOn):''), colSpan:2, styles:{textColor:[150,110,20],fillColor:[255,250,240],fontStyle:'italic'}} ]); }
-      else { cbody.push([ '#'+(p.offer||'—'), p.project||'—', p.city||'—', p.contractor||'—', {content:p.date===TODAY()?'•':'', styles:{halign:'center',fontStyle:'bold',textColor:[20,120,60]}}, {content:p.date===TOMORROW()?'•':'', styles:{halign:'center',fontStyle:'bold',textColor:[30,80,150]}} ]); }
+      else { cbody.push([ '#'+(p.offer||'—'), p.project||'—', p.city||'—', p.contractor||'—', {content:p.today?'•':'', styles:{halign:'center',fontStyle:'bold',textColor:[20,120,60]}}, {content:p.tomorrow?'•':'', styles:{halign:'center',fontStyle:'bold',textColor:[30,80,150]}} ]); }
     });
   });
   doc.autoTable({ startY:80, head:[['Offer No.','Customer','City','Contractor','Today · '+prettyDate(TODAY()),'Tomorrow · '+prettyDate(TOMORROW())]], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
