@@ -218,6 +218,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab .daypill.hold{background:rgba(240,166,58,.18);color:var(--amber)}
 .ptab tr.heldrow td{background:rgba(240,166,58,.05)}
 .ptab.pivot td.dcell{white-space:normal;line-height:1.35}
+.ptab td.dc{text-align:center}
+.ptab td.dc .daypill{padding:2px 9px}
 .ptab .dayh .thd{display:block;font-family:'JetBrains Mono';font-size:9px;color:var(--muted);font-weight:400;margin-top:2px;text-transform:none;letter-spacing:0}
 .ptab .free{color:var(--muted);opacity:.55}
 .ptab .ccity{color:var(--muted);font-size:10.5px}
@@ -631,11 +633,18 @@ function whenCell(p){
 function contractorTable(){
   const groups=groupBy(allContractorItems(), p=>p.salesperson, 'Unassigned');
   if(!groups.length) return '<div class="pempty">No contractor teams planned.</div>';
-  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th>When</th><th class="xcol noprint"></th></tr></thead>';
+  let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
-    h+='<tbody><tr class="grp"><td colspan="6">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
+    h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
     grp.items.sort((a,b)=>(itemRank(a)-itemRank(b)) || (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()));
-    grp.items.forEach(p=>{ h+='<tr'+(p.held?' class="heldrow"':'')+'><td>#'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td><td class="dcell">'+whenCell(p)+'</td><td class="xcol noprint">'+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</td></tr>'; });
+    grp.items.forEach(p=>{
+      const base='<td>#'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td>';
+      let dayCells;
+      if(p.held) dayCells='<td colspan="2" class="heldcell">⏸ On hold · '+esc(p.holdBy||'—')+(p.heldOn?' · '+esc(shortDate(p.heldOn)):'')+'</td>';
+      else if(p.date===TODAY()) dayCells='<td class="dc"><span class="daypill td">✓</span></td><td class="dc"><span class="free">—</span></td>';
+      else dayCells='<td class="dc"><span class="free">—</span></td><td class="dc"><span class="daypill tm">✓</span></td>';
+      h+='<tr'+(p.held?' class="heldrow"':'')+'>'+base+dayCells+'<td class="xcol noprint">'+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</td></tr>';
+    });
     h+='</tbody>';
   });
   return h+'</table></div>';
@@ -695,15 +704,15 @@ async function buildPlanPdf(){
   doc.text(prettyDate(TODAY())+'   ->   '+prettyDate(TOMORROW())+(SUP?'      ·      '+SUP:''), M, 63);
   doc.setTextColor(17);
   const grpStyle={fontStyle:'bold', fillColor:[238,238,232], textColor:20};
-  // Contractors — Offer / Customer / City / Contractor / When, grouped by salesperson
+  // Contractors — Offer / Customer / City / Contractor / Today / Tomorrow, grouped by salesperson
   const cbody=[]; groupBy(allContractorItems(),p=>p.salesperson,'Unassigned').forEach(grp=>{
-    cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:5, styles:grpStyle}]);
+    cbody.push([{content:'Salesperson: '+grp.key+'  ('+grp.items.length+')', colSpan:6, styles:grpStyle}]);
     grp.items.slice().sort((a,b)=>(itemRank(a)-itemRank(b))).forEach(p=>{
-      const when=p.held?('On hold'+(p.holdBy?' · '+p.holdBy:'')+(p.heldOn?' · '+shortDate(p.heldOn):'')):(itemTag(p)+' · '+itemDateLabel(p));
-      cbody.push([ '#'+(p.offer||'—'), p.project||'—', p.city||'—', p.contractor||'—', when ]);
+      if(p.held){ cbody.push([ '#'+(p.offer||'—'), p.project||'—', p.city||'—', p.contractor||'—', {content:'On hold · '+(p.holdBy||'—')+(p.heldOn?' · '+shortDate(p.heldOn):''), colSpan:2, styles:{textColor:[150,110,20],fillColor:[255,250,240],fontStyle:'italic'}} ]); }
+      else { cbody.push([ '#'+(p.offer||'—'), p.project||'—', p.city||'—', p.contractor||'—', {content:p.date===TODAY()?'•':'', styles:{halign:'center',fontStyle:'bold',textColor:[20,120,60]}}, {content:p.date===TOMORROW()?'•':'', styles:{halign:'center',fontStyle:'bold',textColor:[30,80,150]}} ]); }
     });
   });
-  doc.autoTable({ startY:80, head:[['Offer No.','Customer','City','Contractor','When']], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:5,styles:{textColor:120,fontStyle:'italic'}}]],
+  doc.autoTable({ startY:80, head:[['Offer No.','Customer','City','Contractor','Today · '+prettyDate(TODAY()),'Tomorrow · '+prettyDate(TOMORROW())]], body:cbody.length?cbody:[[{content:'No contractor teams planned.',colSpan:6,styles:{textColor:120,fontStyle:'italic'}}]],
     theme:'grid', styles:{fontSize:8.5,cellPadding:4,lineColor:[220,220,220]}, headStyles:{fillColor:[25,25,25],textColor:255,fontSize:8.5}, margin:{left:M,right:M} });
   // Supervisors
   let y=doc.lastAutoTable.finalY+22; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Supervisors', M, y);
