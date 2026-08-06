@@ -60,6 +60,17 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .team .ts{font-family:Archivo;font-weight:700;font-size:13px;margin-top:3px}
 .team.avail .ts{color:#86efac}.team:not(.avail):not(.na) .ts{color:#fda4a4}.team.na .ts{color:var(--amber)}
 .team .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.held{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.heldhd{font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.heldhd .hcnt{font-family:'JetBrains Mono';font-size:9.5px;background:rgba(240,166,58,.15);color:var(--amber);border-radius:20px;padding:1px 7px}
+.hitem{display:flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:10px;padding:8px 10px;margin-bottom:7px}
+.hinfo{flex:1;min-width:0}
+.hoffer{font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hmeta{font-size:10.5px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono';white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbtn{border:none;border-radius:9px;padding:9px 11px;font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;flex:0 0 auto;-webkit-tap-highlight-color:transparent;transition:transform .08s}
+.hbtn.hresume{background:var(--hivis);color:#111}
+.hbtn.hcancel{background:transparent;border:1px solid var(--line);color:var(--muted);width:34px;padding:9px 0}
+.hbtn:active{transform:scale(.94)}
 .team.busy{opacity:.5;pointer-events:none}
 .thead{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
 .swwrap{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
@@ -377,7 +388,9 @@ async function loadSupervisors(){
 function setDot(id,txtId,kind,txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
 function normStatus(v){ const s=String(v||'').toLowerCase(); return s==='booked'?'booked':s==='na'?'na':'available'; }
 function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:String(t.offer||'').trim(), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'' }; }
-function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams }; }
+function normHeld(h){ h=h||{}; return { offer:String(h.offer||'').trim(), project:String(h.project||'').trim(), team:String(h.team||'').trim(), city:String(h.city||'').trim(), salesperson:String(h.salesperson||'').trim(), holdBy:String(h.holdBy||'').trim(), heldOn:String(h.heldOn||'') }; }
+function shortDate(v){ const d=new Date(v); return isNaN(d)?'' : d.toLocaleDateString([], {day:'2-digit',month:'short'}); }
+function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams, held:Array.isArray(c.held)?c.held.map(normHeld):[] }; }
 function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
 function loadCache(){ try{ var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); return Array.isArray(c)?c.map(normRow):null; }catch(e){ return null; } }
 function teamOf(r,t){ return r.teams[Number(t)-1]; }
@@ -395,7 +408,7 @@ function counts(){
 function teamChip(r,t){
   const tm=dispTeam(r,t), busy=pending.has(r.name+'|'+t)?' busy':'';
   let cls, label, sub;
-  if(tm.status==='booked'){ cls=''; const pe=planById('c|'+r.name+'|'+t+'|'+TODAY()); if(pe&&pe.holdBy){ label='Held'; sub='hold · '+esc(pe.holdBy); } else { label='Booked'; sub=tm.offer?('#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')):'booked'; } }
+  if(tm.status==='booked'){ cls=''; label='Booked'; sub=tm.offer?('#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')):'booked'; }
   else if(tm.status==='na'){ cls=' na'; label='On leave'; sub='tap to manage'; }
   else { cls=' avail'; label='Available'; sub='tap to book'; }
   return '<div class="team'+cls+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'"><div class="tl">Team '+t+'</div><div class="ts">'+label+'</div><div class="to">'+sub+'</div></div>';
@@ -406,7 +419,14 @@ function renderBoard(){
   if(!rows.length){ g.innerHTML='<div class="msg">No teams found in the sheet.<br><span style="font-size:12px">Add names to the <b>teams</b> tab, then refresh.</span></div>'; return; }
   if(!list.length){ g.innerHTML='<div class="msg">No team matches “'+esc(filter)+'”.</div>'; return; }
   g.innerHTML=list.map(r=>{ let chips=''; for(let t=1;t<=r.teams.length;t++) chips+=teamChip(r,String(t));
-    return '<div class="card"><div class="nm">'+esc(r.name)+'</div>'+(r.role?'<div class="role">'+esc(r.role)+'</div>':'')+'<div class="teams">'+chips+'</div></div>'; }).join('');
+    let heldHtml='';
+    if(r.held && r.held.length){
+      heldHtml='<div class="held"><div class="heldhd">⏸ On hold · needs work <span class="hcnt">'+r.held.length+'</span></div>'+
+        r.held.map(h=>'<div class="hitem"><div class="hinfo"><div class="hoffer">#'+esc(h.offer||'—')+(h.project?' · '+esc(h.project):'')+'</div><div class="hmeta">'+esc(h.holdBy||'Hold')+(h.city?' · 📍 '+esc(h.city):'')+(h.heldOn?' · held '+esc(shortDate(h.heldOn)):'')+'</div></div>'+
+          '<button class="hbtn hresume" data-hname="'+esc(r.name)+'" data-hoffer="'+esc(h.offer)+'" data-hheld="'+esc(h.heldOn)+'">▶ Resume</button>'+
+          '<button class="hbtn hcancel" data-hname="'+esc(r.name)+'" data-hoffer="'+esc(h.offer)+'" data-hheld="'+esc(h.heldOn)+'" title="Remove held site">✕</button></div>').join('')+'</div>';
+    }
+    return '<div class="card"><div class="nm">'+esc(r.name)+'</div>'+(r.role?'<div class="role">'+esc(r.role)+'</div>':'')+'<div class="teams">'+chips+'</div>'+heldHtml+'</div>'; }).join('');
 }
 async function loadBoard(silent){
   if(!silent) setDot('dot','syncTxt','busy','Syncing…');
@@ -446,9 +466,26 @@ async function setNA(name,team,na){
     pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok',esc(name)+' Team '+team+(na?' → on leave':' → available'));
   }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Update failed')+' — try again'); }
 }
-
-/* modal */
-const modal=document.getElementById('modal'); let goHandler=null;
+async function holdSite(name,team,holdBy){
+  const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Putting on hold…');
+  try{ await apiPost({action:'holdSite',name,team,holdBy:holdBy||'Hold',by:SUP}); pending.delete(key); await loadBoard(true); setDot('dot','syncTxt','ok',esc(name)+' Team '+team+' on hold · crew freed'); }
+  catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Hold failed')+' — try again'); }
+}
+async function holdNewSite(name,team,offer,project,holdBy,city,salesperson){
+  setDot('dot','syncTxt','busy','Adding held site…');
+  try{ await apiPost({action:'book',name,team,offer,project,by:SUP,holdBy:holdBy||'Hold',city:city||'',salesperson:salesperson||''}); await loadBoard(true); setDot('dot','syncTxt','ok','Held site added to '+esc(name)); }
+  catch(e){ setDot('dot','syncTxt','err',(e.message||'Failed')+' — try again'); }
+}
+async function resumeSite(name,offer,heldOn){
+  setDot('dot','syncTxt','busy','Resuming…');
+  try{ const d=await apiPost({action:'resumeSite',name,offer:offer||'',heldOn:heldOn||'',by:SUP}); await loadBoard(true); setDot('dot','syncTxt','ok','Resumed '+esc(name)+' → Team '+(d.team||'')); }
+  catch(e){ setDot('dot','syncTxt','err',(e.message||'Resume failed')); }
+}
+async function cancelHeld(name,offer,heldOn){
+  setDot('dot','syncTxt','busy','Removing…');
+  try{ await apiPost({action:'cancelHeld',name,offer:offer||'',heldOn:heldOn||''}); await loadBoard(true); setDot('dot','syncTxt','ok','Held site removed'); }
+  catch(e){ setDot('dot','syncTxt','err',(e.message||'Failed')); }
+}
 function closeModal(){ modal.hidden=true; goHandler=null; }
 function showMErr(m){ document.getElementById('mErr').textContent=m||''; }
 document.getElementById('mCancel').addEventListener('click',closeModal);
@@ -484,7 +521,7 @@ function openBook(name,team){
     if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
     const entry={ id:'c|'+name+'|'+team+'|'+date, kind:'team', date, contractor:name, team:String(team), offer, project, city, salesperson:sales, holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() };
     upsertPlan(entry); rememberSalesperson(sales); closeModal();
-    if(date===TODAY()){ book(name,team,offer,project,holdBy,city,sales); }
+    if(date===TODAY()){ if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales); }
     else { renderBoard(); setDot('dot','syncTxt','ok','Planned '+esc(name)+' Team '+team+' for tomorrow'); }
     if(view==='plan') renderPlan();
   };
@@ -542,15 +579,6 @@ function deletePlanEntry(id){
   if(parts[0]==='c' && parts[3]===TODAY()){ const r=rows.find(x=>x.name===parts[1]); if(r){ const t=teamOf(r,parts[2]); if(t && t.status==='booked'){ release(parts[1],parts[2]); renderPlan(); return; } } }
   const e=planById(id); if(e){ plans=plans.filter(p=>p.id!==id); savePlansLocal(); pushPlanDelete(id); }
   renderBoard(); renderPlan();
-}
-function saveHold(name,team,holdBy){
-  const r=rows.find(x=>x.name===name); const tm=r?teamOf(r,team):null;
-  const id='c|'+name+'|'+team+'|'+TODAY();
-  let e=planById(id);
-  if(!e){ e={ id:id, kind:'team', date:TODAY(), contractor:name, team:String(team), offer:tm?tm.offer:'', project:tm?tm.project:'', city:'', salesperson:'', holdBy:'', supervisor:'', task:'', by:SUP, at:'' }; }
-  e=Object.assign({},e,{ holdBy:holdBy, at:new Date().toISOString() });
-  upsertPlan(e); renderBoard(); if(view==='plan') renderPlan();
-  if(tm && tm.status==='booked'){ try{ fetch(API,{method:'POST',body:new URLSearchParams({action:'setHold',name:name,team:String(team),holdBy:holdBy||''})}); }catch(_){ } }
 }
 /* ===== DAY-PLAN report (tabular) ===== */
 function dayTag(date){ return date===TODAY() ? 'Today' : (date===TOMORROW() ? 'Tomorrow' : 'Plan'); }
@@ -670,14 +698,13 @@ async function sharePlanPdf(){
 }
 function openRelease(name,team,tm){
   setBox('rel');
-  document.getElementById('mTtl').textContent='Release '+name;
-  document.getElementById('mSub').textContent='Team '+team+' · free this team';
-  const curHold=(planById('c|'+name+'|'+team+'|'+TODAY())||{}).holdBy||'';
+  document.getElementById('mTtl').textContent='Manage '+name;
+  document.getElementById('mSub').textContent='Team '+team+' · release or put on hold';
   document.getElementById('mBody').innerHTML=dutyRow(true)+'<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
-    +'<div class="fd"><label>Hold by</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],curHold)+'</div>';
-  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release'; go.className='mbtn danger'; modal.hidden=false;
+    +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
   wireDutySwitch(name,team);
-  document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('#mBody #segHold button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); const v=b.getAttribute('data-val'); saveHold(name,team,v); showMErr(''); setDot('dot','syncTxt','ok',v?('On hold · '+v):'Hold cleared'); });
+  document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ const v=b.getAttribute('data-val'); closeModal(); holdSite(name,team,v); });
   goHandler=()=>{ closeModal(); release(name,team); };
 }
 function openNAModal(name,team){
@@ -704,6 +731,8 @@ function openLeave(name,team,tm){
   goHandler=()=>{ closeModal(); setNA(name,team,true); };
 }
 document.getElementById('grid').addEventListener('click',e=>{
+  const rb=e.target.closest('.hresume'); if(rb){ resumeSite(rb.getAttribute('data-hname'), rb.getAttribute('data-hoffer'), rb.getAttribute('data-hheld')); return; }
+  const cb=e.target.closest('.hcancel'); if(cb){ if(confirm('Remove this held site from '+cb.getAttribute('data-hname')+'? It will no longer show as pending work.')) cancelHeld(cb.getAttribute('data-hname'), cb.getAttribute('data-hoffer'), cb.getAttribute('data-hheld')); return; }
   const btn=e.target.closest('.team'); if(!btn) return;
   const name=btn.getAttribute('data-name'), team=btn.getAttribute('data-team');
   if(pending.has(name+'|'+team)) return;
