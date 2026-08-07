@@ -112,6 +112,28 @@
   .sigcard .sl{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
   .sigpad{width:100%;height:120px;background:#fff;border:1px dashed #c4c1b6;border-radius:8px;touch-action:none;display:block}
   .sigclr{margin-top:8px;border:none;background:var(--panel-2);color:#cfd6e0;font-family:'Archivo Narrow';font-weight:700;font-size:11px;text-transform:uppercase;border-radius:6px;padding:6px 11px;cursor:pointer}
+  /* collapsible section */
+  .collapsebar{cursor:pointer;user-select:none;-webkit-user-select:none;display:flex;align-items:center;justify-content:space-between}
+  .collapse-ind{font-size:13px;color:var(--muted);transition:transform .18s ease}
+  .collapsebar.collapsed .collapse-ind{transform:rotate(0deg)}
+  .collapsebar:not(.collapsed) .collapse-ind{transform:rotate(90deg)}
+  .checklist.collapsed{display:none}
+  /* signature tiles (tap to open) */
+  .sigtile{position:relative;width:100%;height:120px;background:#fff;border:1px dashed #c4c1b6;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
+  .sigtile .sigimg{max-width:100%;max-height:100%;object-fit:contain;display:none}
+  .sigtile.filled .sigimg{display:block}
+  .sigtile.filled .sigtap{display:none}
+  .sigtap{font-family:'JetBrains Mono';font-size:11px;letter-spacing:.05em;color:#8a8578;text-transform:uppercase}
+  /* signature modal */
+  .sig-overlay{position:fixed;inset:0;background:rgba(12,14,18,.92);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+  .sig-overlay .sig-title{font-family:'JetBrains Mono';font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#e2f14d;margin-bottom:12px;text-align:center}
+  .sig-overlay canvas{width:100%;max-width:640px;height:52vh;background:#fff;border-radius:10px;touch-action:none;display:block}
+  .sig-overlay .sig-hint{font-family:'JetBrains Mono';font-size:10px;color:#8a8f99;margin-top:10px}
+  .sig-overlay .sig-tools{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+  .sig-overlay .sig-btn{border:none;border-radius:8px;padding:12px 22px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+  .sig-overlay .sig-btn.clr{background:var(--panel-2);color:#cfd6e0}
+  .sig-overlay .sig-btn.cancel{background:#3a2020;color:#f0c4c4}
+  .sig-overlay .sig-btn.save{background:#e2f14d;color:#0f1216}
   .navrow{display:flex;gap:7px;margin-top:6px}
   .minibtn{border:none;background:var(--panel-2);color:#cfd6e0;font-family:'Archivo Narrow';font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-radius:7px;padding:7px 11px;cursor:pointer}
   .minibtn.on{background:var(--ok);color:#fff}
@@ -239,8 +261,8 @@
     </div>
   </div>
 
-  <div class="logbar"><h3>Site Checklist</h3></div>
-  <div id="checklist" class="checklist"></div>
+  <div class="logbar collapsebar collapsed" id="checklistBar"><h3>Site Checklist</h3><span class="collapse-ind">▸</span></div>
+  <div id="checklist" class="checklist collapsed"></div>
   <div class="logbar"><h3>Openings</h3><div class="tally" id="tally"></div>
     <div class="possearch"><span class="si">🔍</span><input id="posSearch" type="search" placeholder="Search positions — ref, room, type, size…" autocomplete="off"><button type="button" class="sx" id="posSearchClear">✕</button></div>
   </div>
@@ -248,9 +270,9 @@
   <button class="btn addop-btn" id="addOp">+ Add Opening</button>
   <div class="logbar"><h3>Sign-off</h3></div>
   <div class="signs">
-    <div class="sigcard"><div class="sl">Company Supervisor</div><canvas data-sig="supervisor" class="sigpad"></canvas><button class="sigclr" data-sigclear="supervisor">Clear</button></div>
-    <div class="sigcard"><div class="sl">Salesperson (re-check)</div><canvas data-sig="sales" class="sigpad"></canvas><button class="sigclr" data-sigclear="sales">Clear</button></div>
-    <div class="sigcard"><div class="sl">Customer / Supervisor</div><canvas data-sig="customer" class="sigpad"></canvas><button class="sigclr" data-sigclear="customer">Clear</button></div>
+    <div class="sigcard"><div class="sl">Company Supervisor</div><div class="sigtile" data-sigopen="supervisor"><img class="sigimg" data-sigimg="supervisor" alt=""><span class="sigtap">✍ Tap to sign</span></div></div>
+    <div class="sigcard"><div class="sl">Salesperson (re-check)</div><div class="sigtile" data-sigopen="sales"><img class="sigimg" data-sigimg="sales" alt=""><span class="sigtap">✍ Tap to sign</span></div></div>
+    <div class="sigcard"><div class="sl">Customer / Supervisor</div><div class="sigtile" data-sigopen="customer"><img class="sigimg" data-sigimg="customer" alt=""><span class="sigtap">✍ Tap to sign</span></div></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -343,7 +365,10 @@ async function loadAll(){let meta=null;try{meta=await idbGet("kv","meta");}catch
   try{const c=await idbGet("kv","checklist");if(c)checklist=c;}catch(e){}
   try{const s=await idbGet("kv","signatures");if(s)sigs=s;}catch(e){}
   for(const o of openings){if(o.videoId){try{const v=await idbGet("videos",o.videoId);if(v)vidCache[o.videoId]=URL.createObjectURL(v);}catch(e){}}}
-  syncUnit();render();renderChecklist();setupSignatures();updateNavBtn();}
+  syncUnit();render();renderChecklist();setupSignatures();setupChecklistToggle();updateNavBtn();}
+function setupChecklistToggle(){
+  const bar=$("#checklistBar"),box=$("#checklist");if(!bar||!box)return;
+  bar.onclick=()=>{const open=bar.classList.toggle("collapsed")===false;box.classList.toggle("collapsed",!open);};}
 
 const TOL=6;
 function tripleVal(a){const vals=[(a||[])[0],(a||[])[1],(a||[])[2]].map(num);
@@ -873,7 +898,7 @@ $("#restoreFile").addEventListener("change",async ev=>{const f=ev.target.files[0
 $("#clearAll").onclick=async()=>{if(!confirm("Clear the whole sheet and all openings? This cannot be undone."))return;
   try{await idbClear("openings");await idbClear("photos");await idbDel("kv","meta");await idbDel("kv","checklist");await idbDel("kv","signatures");}catch(e){}
   openings=[];checklist={};sigs={supervisor:"",sales:"",customer:""};for(const k in imgCache)delete imgCache[k];["m_no","m_client","m_phone","m_site","m_movein","m_sales","m_color","m_profile","m_by"].forEach(id=>$("#"+id).value="");geo.lat=geo.lng=null;updateNavBtn();
-  $("#m_date").value=new Date().toISOString().slice(0,10);render();renderChecklist();document.querySelectorAll('canvas[data-sig]').forEach(cv=>cv.getContext("2d").clearRect(0,0,cv.width,cv.height));toast("Everything cleared");};
+  $("#m_date").value=new Date().toISOString().slice(0,10);render();renderChecklist();refreshSigTiles();toast("Everything cleared");};
 
 /* ---- checklist ---- */
 function ckSave(){idbPut("kv",checklist,"checklist").catch(()=>{});}
@@ -907,9 +932,36 @@ function crispPen(cv,getSrc,onCommit,lw){
   const up=()=>{if(!drawing)return;drawing=false;const n=pts.length;if(n>=2){const b=pts[n-2],c=pts[n-1];const m1={x:(b.x+c.x)/2,y:(b.y+c.y)/2};ctx.beginPath();ctx.moveTo(m1.x,m1.y);ctx.lineTo(c.x,c.y);ctx.stroke();}onCommit(cv.toDataURL("image/png"));};
   cv.onpointerup=up;cv.onpointerleave=up;cv.onpointercancel=up;
 }
+const SIG_TITLES={supervisor:"Company Supervisor",sales:"Salesperson (re-check)",customer:"Customer / Supervisor"};
+function refreshSigTiles(){
+  document.querySelectorAll('.sigtile').forEach(t=>{const key=t.dataset.sigopen;const img=t.querySelector('.sigimg');const data=sigs[key]||"";
+    if(data){img.src=data;t.classList.add("filled");}else{img.removeAttribute("src");t.classList.remove("filled");}});}
 function setupSignatures(){
-  document.querySelectorAll('canvas[data-sig]').forEach(cv=>{const key=cv.dataset.sig;crispPen(cv,()=>sigs[key]||null,data=>{sigs[key]=data;sigSave();},2.2);});
-  document.querySelectorAll('[data-sigclear]').forEach(b=>{b.onclick=()=>{const key=b.dataset.sigclear;const cv=document.querySelector('canvas[data-sig="'+key+'"]');if(cv)cv.getContext("2d").clearRect(0,0,cv.width,cv.height);sigs[key]="";sigSave();};});}
+  document.querySelectorAll('[data-sigopen]').forEach(t=>{t.onclick=()=>openSigPad(t.dataset.sigopen);});
+  refreshSigTiles();}
+// full-screen signature pad (tap to open) — nothing captured while scrolling the page
+function openSigPad(key){
+  const ov=document.createElement("div");ov.className="sig-overlay";
+  ov.innerHTML=`<div class="sig-title">${esc(SIG_TITLES[key]||"Signature")}</div>`+
+    `<canvas></canvas>`+
+    `<div class="sig-hint">Sign inside the box</div>`+
+    `<div class="sig-tools">`+
+      `<button class="sig-btn clr">Clear</button>`+
+      `<button class="sig-btn cancel">Cancel</button>`+
+      `<button class="sig-btn save">Save</button>`+
+    `</div>`;
+  document.body.appendChild(ov);
+  const cv=ov.querySelector("canvas");
+  let committed=sigs[key]||null,dirty=false;
+  // lay out at real size before wiring the pen so the canvas backing store matches
+  requestAnimationFrame(()=>{
+    crispPen(cv,()=>sigs[key]||null,data=>{committed=data;dirty=true;},2.6);
+  });
+  const close=()=>{ov.remove();};
+  ov.querySelector(".clr").onclick=()=>{const ctx=cv.getContext("2d");ctx.clearRect(0,0,cv.width,cv.height);committed="";dirty=true;};
+  ov.querySelector(".cancel").onclick=close;
+  ov.querySelector(".save").onclick=()=>{if(dirty){sigs[key]=committed||"";sigSave();refreshSigTiles();}close();};
+}
 function setupSketches(){
   document.querySelectorAll('[data-sketchedit]').forEach(b=>{b.onclick=()=>{const o=getOp(b.dataset.sketchedit);if(o)openSketchEditor(o);};});
   document.querySelectorAll('[data-sketchclear]').forEach(b=>{b.onclick=async()=>{const o=getOp(b.dataset.sketchclear);if(!o)return;if(!confirm("Clear this sketch?"))return;if(o.sketchId){delete imgCache[o.sketchId];try{await idbDel("photos",o.sketchId);}catch(e){}o.sketchId="";}o.sketchData=null;await saveOp(o);render();};});}
