@@ -130,7 +130,12 @@
   .langtog .lt.on{background:#222732;color:#fff}
   #translateAll.on{background:#222732;color:#fff;border-color:#222732}
   .annot-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .annot-overlay canvas{max-width:96vw;max-height:78vh;border-radius:8px;touch-action:none;background:#111}
+  .annot-overlay canvas{max-width:96vw;max-height:60vh;border-radius:8px;touch-action:none;background:#111}
+  .annot-tools{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:10px;max-width:96vw}
+  .annot-t{border:none;background:#20252e;color:#dfe4ec;font-family:'Archivo Narrow';font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.03em;padding:9px 12px;border-radius:8px;cursor:pointer}
+  .annot-t.on{background:var(--hivis);color:#231a06}
+  .annot-t.del{background:#3a1c1a;color:#ffb3ad}
+  .annot-hint{color:#9aa3af;font-family:'Archivo Narrow';font-size:12px;margin-top:8px;text-align:center;max-width:92vw}
   .annot-bar{display:flex;gap:10px;margin-top:12px}
   .annot-bar button{border:none;border-radius:8px;padding:10px 18px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;cursor:pointer}
   .annot-save{background:var(--hivis);color:#111} .annot-cancel{background:#333;color:#ccc}
@@ -956,36 +961,144 @@ document.getElementById("translateAll").onclick=()=>{
   toast(translateOn?"🌐 Live: speak Hindi → English text (needs internet)":"Live translation off");
 };
 
-/* ---- photo annotation (freehand draw on site photos) ---- */
-let _annotOid=null,_annotPhId=null,_annotPen="#ff2222";
+/* ---- photo annotation: freehand + arrow + circle + text/number, with move/reshape ---- */
 function openAnnot(oid,phId){
-  _annotOid=oid;_annotPhId=phId;_annotPen="#ff2222";
   const src=imgCache[phId];if(!src)return;
+  const PEN_W=3, TXT_SIZE=22, HANDLE_R=15, SEG_HIT=12;
+  let shapes=[];          // {type:"path"|"arrow"|"circle"|"text", ...}  coords in DISPLAY space
+  let color="#ff2222", mode="select", sel=-1, temp=null, creA=null, drag=null;
+
   const ov=document.createElement("div");ov.className="annot-overlay";ov.id="annotOv";
-  ov.innerHTML=`<canvas id="annotCv"></canvas>
+  ov.innerHTML=`
+    <div class="annot-tools">
+      <button type="button" class="annot-t on" data-t="select">✋ Move</button>
+      <button type="button" class="annot-t" data-t="draw">✏️ Freehand</button>
+      <button type="button" class="annot-t" data-t="arrow">➔ Arrow</button>
+      <button type="button" class="annot-t" data-t="circle">◯ Circle</button>
+      <button type="button" class="annot-t" data-t="text">🅣 Text/№</button>
+      <button type="button" class="annot-t" data-t="undo">↶ Undo</button>
+      <button type="button" class="annot-t del" data-t="delete">🗑 Delete</button>
+    </div>
+    <canvas id="annotCv"></canvas>
     <div class="annot-colors"><button style="background:#ff2222" class="on" data-ac="#ff2222"></button><button style="background:#ffe033" data-ac="#ffe033"></button><button style="background:#22cc55" data-ac="#22cc55"></button><button style="background:#2288ff" data-ac="#2288ff"></button><button style="background:#fff" data-ac="#ffffff"></button></div>
+    <div class="annot-hint" id="annotHint"></div>
     <div class="annot-bar"><button class="annot-cancel" id="annotCancel">✕ Cancel</button><button class="annot-save" id="annotSave">✓ Save</button></div>`;
   document.body.appendChild(ov);
-  const cv=document.getElementById("annotCv"),ctx=cv.getContext("2d");
-  const img=new Image();img.onload=()=>{
-    const maxW=window.innerWidth*0.94,maxH=window.innerHeight*0.76;
+  const cv=ov.querySelector("#annotCv"),ctx=cv.getContext("2d"),hint=ov.querySelector("#annotHint");
+  const img=new Image();
+
+  const clone=s=>JSON.parse(JSON.stringify(s));
+  const dist=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
+  function distSeg(px,py,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1;const L=dx*dx+dy*dy;let t=L?((px-x1)*dx+(py-y1)*dy)/L:0;t=Math.max(0,Math.min(1,t));return dist(px,py,x1+t*dx,y1+t*dy);}
+
+  function drawShape(c,s,k){
+    c.lineCap="round";c.lineJoin="round";c.strokeStyle=s.color;c.fillStyle=s.color;
+    if(s.type==="path"){c.lineWidth=s.w*k;c.beginPath();c.moveTo(s.pts[0][0]*k,s.pts[0][1]*k);for(let i=1;i<s.pts.length;i++)c.lineTo(s.pts[i][0]*k,s.pts[i][1]*k);c.stroke();}
+    else if(s.type==="arrow"){const x1=s.x1*k,y1=s.y1*k,x2=s.x2*k,y2=s.y2*k,w=s.w*k;c.lineWidth=w;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();const ang=Math.atan2(y2-y1,x2-x1),hl=Math.max(12*k,w*4.5),ha=Math.PI/7;c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-hl*Math.cos(ang-ha),y2-hl*Math.sin(ang-ha));c.lineTo(x2-hl*Math.cos(ang+ha),y2-hl*Math.sin(ang+ha));c.closePath();c.fill();}
+    else if(s.type==="circle"){c.lineWidth=s.w*k;c.beginPath();c.ellipse(s.cx*k,s.cy*k,Math.abs(s.rx)*k,Math.abs(s.ry)*k,0,0,Math.PI*2);c.stroke();}
+    else if(s.type==="text"){c.textBaseline="top";c.font="bold "+(s.size*k)+"px Arial, Helvetica, sans-serif";c.fillText(s.text,s.x*k,s.y*k);}
+  }
+  function handlePoints(s){
+    if(s.type==="arrow")return[[s.x1,s.y1],[s.x2,s.y2]];
+    if(s.type==="circle")return[[s.cx-s.rx,s.cy-s.ry],[s.cx+s.rx,s.cy-s.ry],[s.cx+s.rx,s.cy+s.ry],[s.cx-s.rx,s.cy+s.ry]];
+    if(s.type==="text")return[[s.x,s.y]];
+    return[];
+  }
+  function paint(c,k){c.clearRect(0,0,c.canvas.width,c.canvas.height);c.drawImage(img,0,0,c.canvas.width,c.canvas.height);shapes.forEach(s=>drawShape(c,s,k));if(temp)drawShape(c,temp,k);}
+  function redraw(){
+    paint(ctx,1);
+    if(sel>=0&&shapes[sel]){handlePoints(shapes[sel]).forEach(p=>{ctx.beginPath();ctx.arc(p[0],p[1],7,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle="#e2f14d";ctx.stroke();});}
+  }
+  function textW(s){ctx.font="bold "+s.size+"px Arial, Helvetica, sans-serif";return ctx.measureText(s.text).width;}
+  function hitShape(s,px,py){
+    if(s.type==="path"){for(let i=1;i<s.pts.length;i++)if(distSeg(px,py,s.pts[i-1][0],s.pts[i-1][1],s.pts[i][0],s.pts[i][1])<SEG_HIT)return true;return false;}
+    if(s.type==="arrow")return distSeg(px,py,s.x1,s.y1,s.x2,s.y2)<14;
+    if(s.type==="circle"){if(s.rx<=0||s.ry<=0)return false;const v=((px-s.cx)/s.rx)**2+((py-s.cy)/s.ry)**2;return v<=1.25;}
+    if(s.type==="text"){const w=textW(s);return px>=s.x-4&&px<=s.x+w+4&&py>=s.y-4&&py<=s.y+s.size+4;}
+    return false;
+  }
+  function applyMove(s,o,dx,dy){
+    if(s.type==="path")s.pts=o.pts.map(p=>[p[0]+dx,p[1]+dy]);
+    else if(s.type==="arrow"){s.x1=o.x1+dx;s.y1=o.y1+dy;s.x2=o.x2+dx;s.y2=o.y2+dy;}
+    else if(s.type==="circle"){s.cx=o.cx+dx;s.cy=o.cy+dy;}
+    else if(s.type==="text"){s.x=o.x+dx;s.y=o.y+dy;}
+  }
+  function applyHandle(s,o,hi,px,py){
+    if(s.type==="arrow"){if(hi===0){s.x1=px;s.y1=py;}else{s.x2=px;s.y2=py;}}
+    else if(s.type==="text"){s.x=px;s.y=py;}
+    else if(s.type==="circle"){const corners=[[o.cx-o.rx,o.cy-o.ry],[o.cx+o.rx,o.cy-o.ry],[o.cx+o.rx,o.cy+o.ry],[o.cx-o.rx,o.cy+o.ry]];const opp=corners[(hi+2)%4];const x0=Math.min(opp[0],px),y0=Math.min(opp[1],py),x1=Math.max(opp[0],px),y1=Math.max(opp[1],py);s.cx=(x0+x1)/2;s.cy=(y0+y1)/2;s.rx=(x1-x0)/2;s.ry=(y1-y0)/2;}
+  }
+  function setMode(m){mode=m;if(m!=="select")sel=-1;
+    ov.querySelectorAll(".annot-t[data-t]").forEach(b=>b.classList.toggle("on",b.dataset.t===m));
+    hint.textContent=(m==="draw")?"Freehand: drag to draw. Add several strokes; tap ✋ Move to adjust.":
+      (m==="arrow")?"Arrow: drag from the tail to the tip. Tap ✋ Move to reposition.":
+      (m==="circle")?"Circle: drag to size it around the spot. Tap ✋ Move to adjust.":
+      (m==="text")?"Text/№: tap where you want the label, then type the measurement.":
+      "Move: tap a mark to select · drag to move · drag a yellow dot to reshape · double-tap text to edit.";
+    redraw();
+  }
+
+  const pt=e=>{const r=cv.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(cv.width/r.width),y:(t.clientY-r.top)*(cv.height/r.height)};};
+
+  cv.onpointerdown=e=>{
+    cv.setPointerCapture&&cv.setPointerCapture(e.pointerId);
+    const p=pt(e);
+    if(mode==="draw"){temp={type:"path",pts:[[p.x,p.y]],color,w:PEN_W};e.preventDefault();return;}
+    if(mode==="arrow"){temp={type:"arrow",x1:p.x,y1:p.y,x2:p.x,y2:p.y,color,w:PEN_W};e.preventDefault();return;}
+    if(mode==="circle"){creA=[p.x,p.y];temp={type:"circle",cx:p.x,cy:p.y,rx:0,ry:0,color,w:PEN_W};e.preventDefault();return;}
+    if(mode==="text"){const t=prompt("Text / number:","");if(t!==null&&t.trim()!==""){shapes.push({type:"text",x:p.x,y:p.y,text:t,color,size:TXT_SIZE});sel=shapes.length-1;}redraw();e.preventDefault();return;}
+    // select mode — try a handle on the current selection first
+    if(sel>=0&&shapes[sel]){const hs=handlePoints(shapes[sel]);for(let i=0;i<hs.length;i++)if(dist(p.x,p.y,hs[i][0],hs[i][1])<=HANDLE_R){drag={kind:"handle",hi:i,orig:clone(shapes[sel])};e.preventDefault();return;}}
+    let hit=-1;for(let i=shapes.length-1;i>=0;i--)if(hitShape(shapes[i],p.x,p.y)){hit=i;break;}
+    if(hit>=0){sel=hit;drag={kind:"move",from:[p.x,p.y],orig:clone(shapes[hit])};redraw();e.preventDefault();return;}
+    sel=-1;redraw();
+  };
+  cv.onpointermove=e=>{
+    const p=pt(e);
+    if(temp){
+      if(temp.type==="path")temp.pts.push([p.x,p.y]);
+      else if(temp.type==="arrow"){temp.x2=p.x;temp.y2=p.y;}
+      else if(temp.type==="circle"){const ax=creA[0],ay=creA[1];temp.cx=(ax+p.x)/2;temp.cy=(ay+p.y)/2;temp.rx=Math.abs(p.x-ax)/2;temp.ry=Math.abs(p.y-ay)/2;}
+      redraw();e.preventDefault();return;
+    }
+    if(!drag)return;const s=shapes[sel];if(!s){drag=null;return;}
+    if(drag.kind==="move"){applyMove(s,drag.orig,p.x-drag.from[0],p.y-drag.from[1]);}
+    else if(drag.kind==="handle"){applyHandle(s,drag.orig,drag.hi,p.x,p.y);}
+    redraw();e.preventDefault();
+  };
+  const endPtr=()=>{
+    if(temp){
+      if(temp.type==="path"){if(temp.pts.length>2){shapes.push(temp);}}
+      else if(temp.type==="arrow"){if(dist(temp.x1,temp.y1,temp.x2,temp.y2)>6){shapes.push(temp);sel=shapes.length-1;}}
+      else if(temp.type==="circle"){if(temp.rx>4&&temp.ry>4){shapes.push(temp);sel=shapes.length-1;}}
+      temp=null;creA=null;redraw();return;
+    }
+    drag=null;
+  };
+  cv.onpointerup=endPtr;cv.onpointercancel=endPtr;
+  cv.ondblclick=e=>{const p=pt(e);for(let i=shapes.length-1;i>=0;i--){const s=shapes[i];if(s.type==="text"&&hitShape(s,p.x,p.y)){const t=prompt("Edit text:",s.text);if(t!==null){s.text=t;redraw();}return;}}};
+
+  img.onload=()=>{
+    const maxW=window.innerWidth*0.94,maxH=window.innerHeight*0.6;
     let w=img.width,h=img.height;if(w>maxW){h*=maxW/w;w=maxW;}if(h>maxH){w*=maxH/h;h=maxH;}
     cv.width=Math.round(w);cv.height=Math.round(h);cv.style.width=w+"px";cv.style.height=h+"px";
-    ctx.drawImage(img,0,0,cv.width,cv.height);
-    ctx.lineWidth=3;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle=_annotPen;
-    let drawing=false,pts=[];
-    const pt=e=>{const r=cv.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(cv.width/r.width),y:(t.clientY-r.top)*(cv.height/r.height)};};
-    cv.onpointerdown=e=>{drawing=true;ctx.strokeStyle=_annotPen;pts=[pt(e)];e.preventDefault();};
-    cv.onpointermove=e=>{if(!drawing)return;const p=pt(e);pts.push(p);const n=pts.length;
-      if(n>=3){const a=pts[n-3],b=pts[n-2],c=pts[n-1];ctx.beginPath();ctx.moveTo((a.x+b.x)/2,(a.y+b.y)/2);ctx.quadraticCurveTo(b.x,b.y,(b.x+c.x)/2,(b.y+c.y)/2);ctx.stroke();}
-      else if(n===2){ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);ctx.lineTo(pts[1].x,pts[1].y);ctx.stroke();}
-      e.preventDefault();};
-    cv.onpointerup=cv.onpointerleave=()=>{drawing=false;};
+    setMode("select");
   };img.src=src;
-  ov.querySelectorAll("[data-ac]").forEach(b=>{b.onclick=()=>{_annotPen=b.dataset.ac;ov.querySelectorAll("[data-ac]").forEach(x=>x.classList.remove("on"));b.classList.add("on");};});
-  document.getElementById("annotCancel").onclick=()=>ov.remove();
-  document.getElementById("annotSave").onclick=async()=>{
-    const data=cv.toDataURL("image/jpeg",0.88);imgCache[_annotPhId]=data;await savePhoto(_annotPhId,data);ov.remove();render();toast("✓ Annotation saved");};
+
+  ov.querySelectorAll("[data-ac]").forEach(b=>{b.onclick=()=>{color=b.dataset.ac;ov.querySelectorAll("[data-ac]").forEach(x=>x.classList.remove("on"));b.classList.add("on");if(sel>=0&&shapes[sel]){shapes[sel].color=color;redraw();}};});
+  ov.querySelectorAll(".annot-t[data-t]").forEach(b=>{b.onclick=()=>{const t=b.dataset.t;
+    if(t==="undo"){shapes.pop();sel=-1;redraw();return;}
+    if(t==="delete"){if(sel>=0){shapes.splice(sel,1);sel=-1;redraw();}else toast("Tap a mark first, then Delete");return;}
+    setMode(t);
+  };});
+  ov.querySelector("#annotCancel").onclick=()=>ov.remove();
+  ov.querySelector("#annotSave").onclick=async()=>{
+    const nw=img.naturalWidth||cv.width,nh=img.naturalHeight||cv.height,scale=nw/cv.width;
+    const oc=document.createElement("canvas");oc.width=nw;oc.height=nh;
+    sel=-1;temp=null;paint(oc.getContext("2d"),scale);
+    const data=oc.toDataURL("image/jpeg",0.9);
+    imgCache[phId]=data;await savePhoto(phId,data);ov.remove();render();toast("✓ Annotation saved");
+  };
 }
 /* ---- vector sketch editor: rectangles (4 movable corners → any angle), lines, text ---- */
 const SVGNS="http://www.w3.org/2000/svg";
