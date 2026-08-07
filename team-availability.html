@@ -752,10 +752,9 @@ function openRelease(name,team,tm){
   setBox('rel');
   document.getElementById('mTtl').textContent='Manage '+name;
   document.getElementById('mSub').textContent='Team '+team+' · release or put on hold';
-  document.getElementById('mBody').innerHTML=dutyRow(true)+'<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
+  document.getElementById('mBody').innerHTML='<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
     +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
-  wireDutySwitch(name,team);
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ const v=b.getAttribute('data-val'); closeModal(); holdSite(name,team,v); });
   goHandler=()=>{ closeModal(); release(name,team); };
 }
