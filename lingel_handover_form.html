@@ -256,6 +256,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
   <button class="btns" onclick="doWA()">WhatsApp text</button>
   <button class="btns" onclick="sendSignoff()" style="border-color:var(--hivis);color:var(--hivis)">🔗 Send to customer for sign-off</button>
+  <button class="btns" onclick="setBackend()" title="Set the Apps Script /exec URL this app talks to">⚙ Backend</button>
   <button class="btns" onclick="doReset()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">Reset</button>
 </div>
 
@@ -1303,6 +1304,24 @@ function soToken(){
   try{ const a=new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,"0")).join(""); }
   catch(e){ return (Date.now().toString(16)+Math.random().toString(16).slice(2)).replace(/[^a-f0-9]/g,"").slice(0,32); }
 }
+function setBackend(){
+  const cur = localStorage.getItem('lingel_api') || '(not set)';
+  const v = prompt(
+    'Backend Apps Script /exec URL this app talks to.\n\n'+
+    'This must be your FIELD SUITE deployment (handover/sign-off), the one whose\n'+
+    '?ping=1 shows version "signoff-v2" — NOT your invoice/day-plan backend.\n\n'+
+    'Current:\n'+cur+'\n\nPaste the correct /exec URL (or Cancel to keep):', 
+    (cur==='(not set)'?'':cur));
+  if(v && v.trim()){
+    localStorage.setItem('lingel_api', v.trim());
+    if(typeof HO_API!=='undefined') HO_API = v.trim();
+    toast('✓ Backend set — verifying…');
+    fetch(v.trim()+(v.indexOf('?')>-1?'&':'?')+'ping=1')
+      .then(r=>r.json())
+      .then(d=>{ toast(d && d.version==='signoff-v2' ? '✓ Backend OK (signoff-v2 live)' : '⚠ Reached it, but sign routes are NOT live here — redeploy a new version'); })
+      .catch(()=>toast('⚠ Saved, but could not reach that URL'));
+  }
+}
 function soBase(){
   let b = localStorage.getItem("lingel_sign_base") || "";
   if(!b){
@@ -1352,7 +1371,7 @@ async function sendSignoff(){
     if(!d.ok) throw new Error(d.error||'server refused');
   }catch(e){ toast('\u26a0 Couldn\u2019t create link \u2014 '+((e&&e.message)||'check connection')); return; }
 
-  const link = base + (base.indexOf('?')>-1?'&':'?') + 't=' + token;
+  const link = base + (base.indexOf('?')>-1?'&':'?') + 't=' + token + '&api=' + encodeURIComponent(api);
   try{
     const arr = JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]');
     arr.push({token, orderNo:order, customer, created:Date.now()});
