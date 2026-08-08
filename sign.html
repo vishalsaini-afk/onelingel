@@ -207,27 +207,53 @@ function buildSignedPDF(sigDataUrl){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:"pt",format:"a4",orientation:"portrait",compress:true});
   const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight();
-  const M=40, CW=PW-M*2; let y=M;
-  const INK="#1a1a1a",SUB="#6b6b6b",LINE="#d8d8d8",HI="#e2f14d",DARK="#111",OK="#1f9d55",BAD="#d64545",NA="#999";
+  const M=44, CW=PW-M*2; let y=M;
+  const INK="#1c1c1c",SUB="#77716a",LINE="#e2ded5",DARK="#111",HI="#e2f14d",OK="#1f9d55",BAD="#d64545",NA="#9a948b",GOLD="#f5b301";
   const d=DATA;
-  function need(h){ if(y+h>PH-M-24){footer();doc.addPage();y=M;head(true);} }
-  function footer(){const n=doc.internal.getNumberOfPages();doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB);
-    doc.text("Lingel Windows & Doors  ·  Customer Handover (Signed)",M,PH-22);doc.text("Page "+n,PW-M,PH-22,{align:"right"});
-    doc.setDrawColor(LINE).setLineWidth(.5).line(M,PH-32,PW-M,PH-32);}
-  function head(cont){doc.setFillColor(DARK).rect(0,0,PW,58,"F");doc.setFillColor(HI).rect(0,58,PW,3,"F");
-    doc.setFont("helvetica","bold").setFontSize(17).setTextColor("#fff").text("LINGEL",M,32);
-    doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#c9c9c9").text("WINDOWS & DOORS TECHNOLOGY",M,45);
-    doc.setFont("helvetica","bold").setFontSize(12).setTextColor("#fff").text("CUSTOMER HANDOVER"+(cont?" (contd.)":""),PW-M,30,{align:"right"});
-    doc.setFont("helvetica","normal").setFontSize(8).setTextColor(HI).text(d.formNo||("Order "+(d.orderNo||"")),PW-M,44,{align:"right"});y=78;}
-  function title(t){need(30);doc.setFillColor("#f2f2f2").rect(M,y,CW,20,"F");doc.setFillColor(HI).rect(M,y,3,20,"F");
-    doc.setFont("helvetica","bold").setFontSize(9.5).setTextColor(INK).text(t.toUpperCase(),M+10,y+13.5);y+=30;}
-  function fields(pairs){const rowH=17,colW=CW/2;for(let i=0;i<pairs.length;i+=2){need(rowH);
-    for(let c=0;c<2&&i+c<pairs.length;c++){const[l,v]=pairs[i+c];const x=M+c*colW;
-      doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text(String(l).toUpperCase(),x,y+6);
-      doc.setFont("helvetica","bold").setFontSize(9.5).setTextColor(INK);
-      doc.text(doc.splitTextToSize(v||"—",colW-14)[0],x,y+15);}y+=rowH;}y+=6;}
+  const BOTTOM=PH-46;
+  function need(h){ if(y+h>BOTTOM){footer();doc.addPage();y=M;head(true);} }
+  function footer(){const n=doc.internal.getNumberOfPages();
+    doc.setDrawColor(LINE).setLineWidth(.5).line(M,PH-34,PW-M,PH-34);
+    doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB);
+    doc.text("Lingel Windows & Doors  ·  Customer Handover (Signed)",M,PH-22);
+    doc.text("Page "+n,PW-M,PH-22,{align:"right"});}
+  function head(cont){doc.setFillColor(DARK).rect(0,0,PW,64,"F");doc.setFillColor(HI).rect(0,64,PW,3.5,"F");
+    doc.setFont("helvetica","bold").setFontSize(19).setTextColor("#fff").text("LINGEL",M,34);
+    doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#cfcfcf").text("WINDOWS & DOORS TECHNOLOGY",M,48);
+    doc.setFont("helvetica","bold").setFontSize(12).setTextColor("#fff").text("CUSTOMER HANDOVER"+(cont?" (CONTD.)":""),PW-M,32,{align:"right"});
+    doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(HI).text(d.formNo||("Order "+(d.orderNo||"")),PW-M,48,{align:"right"});
+    y=88;}
+  function title(t){need(40);
+    doc.setFillColor("#f4f2ec").rect(M,y,CW,24,"F");doc.setFillColor(HI).rect(M,y,4,24,"F");
+    doc.setFont("helvetica","bold").setFontSize(10.5).setTextColor(INK).text(t.toUpperCase(),M+12,y+16);
+    y+=24+14;}
+  const colW=CW/2;
+  function fields(pairs){
+    pairs=pairs.filter(p=>p);
+    for(let i=0;i<pairs.length;i+=2){
+      const cells=[pairs[i],pairs[i+1]].filter(Boolean);
+      const wrapped=cells.map(c=>doc.splitTextToSize(String(c[1]==null||c[1]===""?"—":c[1]),colW-18).slice(0,2));
+      const rowH=Math.max(26,...wrapped.map(w=>w.length*13+13));
+      need(rowH);
+      cells.forEach((c,ci)=>{const x=M+ci*colW;
+        doc.setFont("helvetica","normal").setFontSize(8).setTextColor(SUB).text(String(c[0]).toUpperCase(),x,y+9);
+        doc.setFont("helvetica","bold").setFontSize(10.5).setTextColor(INK).text(wrapped[ci],x,y+22);});
+      y+=rowH;
+      doc.setDrawColor(LINE).setLineWidth(.4).line(M,y,M+CW,y);
+    }
+    y+=14;
+  }
+  // real 5-point star (vector) — renders identically everywhere
+  function star(cx,cy,R,filled){
+    const inner=R*0.44,pts=[];
+    for(let i=0;i<10;i++){const a=(-90+i*36)*Math.PI/180,rad=(i%2===0)?R:inner;pts.push([cx+rad*Math.cos(a),cy+rad*Math.sin(a)]);}
+    const deltas=[];for(let i=1;i<pts.length;i++)deltas.push([pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]]);
+    if(filled){doc.setFillColor(GOLD);doc.lines(deltas,pts[0][0],pts[0][1],[1,1],"F",true);}
+    else{doc.setDrawColor("#cfc9bd");doc.setLineWidth(.9);doc.lines(deltas,pts[0][0],pts[0][1],[1,1],"S",true);}
+  }
 
   head(false);
+
   title("Customer & Order Details");
   fields([
     ["Customer",d.customer],["Order / Offer No.",d.orderNo],
@@ -239,71 +265,87 @@ function buildSignedPDF(sigDataUrl){
 
   // snags
   const snags=d.snags||[];
+  title("Snag List / Pending Items"+(snags.length?" ("+snags.length+")":""));
   if(snags.length){
-    title("Snag List / Pending Items ("+snags.length+")");
-    const nW=20,pW=76,lW=76,prW=54,dW=CW-nW-pW-lW-prW,hH=18;need(hH);
-    doc.setFillColor(DARK).rect(M,y,CW,hH,"F");doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor("#fff");
-    doc.text("#",M+7,y+12);doc.text("POSITION",M+nW,y+12);doc.text("ISSUE / DEFECT",M+nW+pW,y+12);
-    doc.text("LOCATION",M+nW+pW+dW,y+12);doc.text("PRIORITY",M+nW+pW+dW+lW,y+12);y+=hH;
+    const nW=24,pW=84,prW=64,lW=88,dW=CW-nW-pW-lW-prW,hH=22,PAD=6;
+    need(hH);
+    doc.setFillColor(DARK).rect(M,y,CW,hH,"F");doc.setFont("helvetica","bold").setFontSize(8).setTextColor("#fff");
+    doc.text("#",M+PAD,y+14);doc.text("POSITION",M+nW,y+14);doc.text("ISSUE / DEFECT",M+nW+pW,y+14);
+    doc.text("LOCATION",M+nW+pW+dW,y+14);doc.text("PRIORITY",M+nW+pW+dW+lW,y+14);y+=hH;
     snags.forEach((s,i)=>{
-      const pos=doc.splitTextToSize(String(s.pos||"—"),pW-6),des=doc.splitTextToSize(String(s.desc||"—"),dW-6),loc=doc.splitTextToSize(String(s.loc||"—"),lW-6);
-      const h=Math.max(16,pos.length*10+6,des.length*10+6,loc.length*10+6);need(h);
-      if(i%2)doc.setFillColor("#f7f7f7").rect(M,y,CW,h,"F");
-      doc.setFont("helvetica","normal").setFontSize(8).setTextColor(INK);
-      doc.text(String(i+1),M+7,y+11);doc.text(pos,M+nW,y+11);doc.text(des,M+nW+pW,y+11);
-      doc.setTextColor(SUB).text(loc,M+nW+pW+dW,y+11);
-      const pr=s.priority||"Medium",pc=(pr==="High"||pr==="Critical")?BAD:(pr==="Low"?OK:"#b8860b");
-      doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(pc).text(String(pr).toUpperCase(),M+nW+pW+dW+lW,y+11);
-      doc.setDrawColor(LINE).setLineWidth(.3).line(M,y+h,M+CW,y+h);y+=h;});
-    y+=10;
-  } else { title("Snag List / Pending Items");need(16);doc.setFont("helvetica","normal").setFontSize(9).setTextColor(OK).text("No snags or pending items recorded.",M,y+4);y+=20; }
+      const pos=doc.splitTextToSize(String(s.pos||"—"),pW-PAD),des=doc.splitTextToSize(String(s.desc||"—"),dW-PAD),loc=doc.splitTextToSize(String(s.loc||"—"),lW-PAD);
+      const h=Math.max(24,pos.length*12+12,des.length*12+12,loc.length*12+12);need(h);
+      if(i%2)doc.setFillColor("#f8f6f1").rect(M,y,CW,h,"F");
+      doc.setFont("helvetica","normal").setFontSize(9).setTextColor(INK);
+      doc.text(String(i+1),M+PAD,y+15);doc.text(pos,M+nW,y+15);doc.text(des,M+nW+pW,y+15);
+      doc.setTextColor(SUB).text(loc,M+nW+pW+dW,y+15);
+      const pr=s.priority||"Medium",pc=(pr==="High"||pr==="Critical")?BAD:(pr==="Low"?OK:"#c08a00");
+      doc.setFont("helvetica","bold").setFontSize(8).setTextColor(pc).text(String(pr).toUpperCase(),M+nW+pW+dW+lW,y+15);
+      doc.setDrawColor(LINE).setLineWidth(.4).line(M,y+h,M+CW,y+h);y+=h;});
+    y+=16;
+  } else { need(22);doc.setFont("helvetica","bold").setFontSize(10).setTextColor(OK).text("No snags or pending items — all clear.",M,y+6);y+=26; }
 
   // checklist
   const cl=d.checklist||[];
   if(cl.length){
     title("Handover Checklist");
-    const rowH=18,numW=22,statW=54,remW=120,descW=CW-numW-statW-remW;need(rowH);
-    doc.setFillColor("#fafafa").rect(M,y,CW,rowH,"F");doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(SUB);
-    doc.text("#",M+8,y+12);doc.text("CHECK ITEM",M+numW,y+12);doc.text("STATUS",M+numW+descW,y+12);doc.text("REMARKS",M+numW+descW+statW,y+12);y+=rowH;
+    const PAD=6,numW=26,statW=64,remW=132,descW=CW-numW-statW-remW,hH=22;
+    need(hH);
+    doc.setFillColor("#f4f2ec").rect(M,y,CW,hH,"F");doc.setFont("helvetica","bold").setFontSize(8).setTextColor(SUB);
+    doc.text("#",M+PAD,y+14);doc.text("CHECK ITEM",M+numW,y+14);doc.text("STATUS",M+numW+descW,y+14);doc.text("REMARKS",M+numW+descW+statW,y+14);y+=hH;
     cl.forEach((c,i)=>{
-      const lines=doc.splitTextToSize(c.q||"",descW-6),rem=(c.rem||"").trim(),remL=rem?doc.splitTextToSize(rem,remW-6):[""];
-      const h=Math.max(rowH,lines.length*10+7,remL.length*10+7);need(h);
-      doc.setDrawColor(LINE).setLineWidth(.4).line(M,y,M+CW,y);
-      doc.setFont("helvetica","normal").setFontSize(8).setTextColor(INK);
-      doc.text(String(i+1),M+8,y+12);doc.text(lines,M+numW,y+11);
+      const lines=doc.splitTextToSize(c.q||"",descW-PAD),rem=(c.rem||"").trim(),remL=rem?doc.splitTextToSize(rem,remW-PAD):[""];
+      const h=Math.max(24,lines.length*12+12,remL.length*12+12);need(h);
+      if(i%2)doc.setFillColor("#faf9f5").rect(M,y,CW,h,"F");
+      doc.setFont("helvetica","normal").setFontSize(9).setTextColor(INK);
+      doc.text(String(i+1),M+PAD,y+15);doc.text(lines,M+numW,y+15);
       const col=c.a==="Yes"?OK:c.a==="No"?BAD:NA,lab=c.a==="Yes"?"PASS":c.a==="No"?"FAIL":(c.a||"—");
-      doc.setFont("helvetica","bold").setFontSize(8).setTextColor(col).text(lab,M+numW+descW,y+11);
-      if(rem){doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text(remL,M+numW+descW+statW,y+11);}
-      y+=h;});
-    doc.setDrawColor(LINE).line(M,y,M+CW,y);y+=10;
-    doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor(INK).text("Passed: "+(d.clYes||0)+"    Failed: "+(d.clNo||0)+"    N/A: "+(d.clNa||0),M,y+2);y+=18;
+      doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor(col).text(lab,M+numW+descW,y+15);
+      if(rem){doc.setFont("helvetica","normal").setFontSize(8).setTextColor(SUB).text(remL,M+numW+descW+statW,y+15);}
+      doc.setDrawColor(LINE).setLineWidth(.4).line(M,y+h,M+CW,y+h);y+=h;});
+    y+=8;
+    doc.setFont("helvetica","bold").setFontSize(9).setTextColor(INK).text("Passed "+(d.clYes||0)+"     Failed "+(d.clNo||0)+"     N/A "+(d.clNa||0),M,y+4);y+=22;
   }
 
-  // keys + review
-  need(60);title("Keys & Customer Satisfaction");
-  const pairs=[["Keys Handed Over",d.keysGiven||"—"],["Mesh",d.mesh||"—"]];
-  if(d.mesh==="Hold"&&d.meshNote)pairs.push(["Mesh Note",d.meshNote]);
-  pairs.push(["No. of Keys",d.keyCount],["Key Remarks",d.keyRemarks]);
+  // keys
+  title("Keys & Handover");
+  fields([
+    ["Keys Handed Over",d.keysGiven],["No. of Keys",d.keyCount],
+    ["Mesh (Mosquito Net)",d.mesh],["Key Remarks",d.keyRemarks],
+    (d.mesh==="Hold"&&d.meshNote)?["Mesh Note",d.meshNote]:null
+  ]);
+
+  // customer satisfaction (real stars)
+  title("Customer Satisfaction");
   const rlabels={1:"Poor",2:"Fair",3:"Good",4:"Very good",5:"Excellent"};
-  pairs.push(["Customer Rating", stars>0?(rlabels[stars]+"  ("+stars+"/5)"):"Not rated"]);
-  fields(pairs);
-  if(stars>0){need(20);let sx=M;doc.setFontSize(13);for(let i=1;i<=5;i++){doc.setTextColor(i<=stars?"#c9a227":LINE).text("★",sx,y+6);sx+=16;}y+=22;}
+  need(52);
+  doc.setFont("helvetica","normal").setFontSize(8).setTextColor(SUB).text("CUSTOMER RATING",M,y+6);
+  const R=11, gap=30, sy=y+30; let sx=M+R;
+  for(let i=1;i<=5;i++){ star(sx,sy,R,i<=stars); sx+=gap; }
+  if(stars>0){ doc.setFont("helvetica","bold").setFontSize(13).setTextColor(INK).text(rlabels[stars]+"  ("+stars+"/5)", M+5*gap+R, sy+5); }
+  else { doc.setFont("helvetica","italic").setFontSize(11).setTextColor(SUB).text("Not rated", M+5*gap+R, sy+5); }
+  y=sy+R+18;
   const rev=($("#review").value||"").trim();
-  if(rev){need(30);doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text("CUSTOMER REVIEW",M,y+2);y+=10;
-    doc.setFont("helvetica","italic").setFontSize(9.5).setTextColor(INK);const rl=doc.splitTextToSize('"'+rev+'"',CW);need(rl.length*11);doc.text(rl,M,y+4);y+=rl.length*11+10;}
+  if(rev){need(40);
+    doc.setFont("helvetica","normal").setFontSize(8).setTextColor(SUB).text("CUSTOMER REVIEW",M,y+4);y+=14;
+    doc.setFont("helvetica","italic").setFontSize(11).setTextColor(INK);
+    const rl=doc.splitTextToSize('"'+rev+'"',CW-8);need(rl.length*14+6);doc.text(rl,M+4,y+4);y+=rl.length*14+12;}
 
   // signatures
-  need(130);title("Acknowledgement");
-  const sigW=(CW-20)/2,sigH=68,sigY=y;
+  need(150);
+  title("Acknowledgement");
+  const sigW=(CW-24)/2,sigH=84,sigY=y;
   const custName=($("#signName").value||d.customer||"Customer").trim();
-  const blocks=[["Customer",sigDataUrl,custName],["Site Engineer",d.engineerSig||"",d.engineer||""]];
-  blocks.forEach((b,idx)=>{const x=M+idx*(sigW+20);
-    doc.setDrawColor(LINE).setLineWidth(.6).rect(x,sigY,sigW,sigH,"S");
-    if(b[1]){try{doc.addImage(b[1],"PNG",x+6,sigY+6,sigW-12,sigH-24);}catch(e){}}
-    doc.setDrawColor("#333").setLineWidth(.5).line(x+10,sigY+sigH-16,x+sigW-10,sigY+sigH-16);
-    doc.setFont("helvetica","bold").setFontSize(8).setTextColor(INK).text(b[0]+(b[2]?"  —  "+b[2]:""),x+10,sigY+sigH-5);});
-  y=sigY+sigH+14;
-  need(16);doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB);
+  [["Customer Signature",sigDataUrl,custName],["Site Engineer / Supervisor",d.engineerSig||"",d.engineer||""]].forEach((b,idx)=>{
+    const x=M+idx*(sigW+24);
+    doc.setDrawColor(LINE).setLineWidth(.8).roundedRect(x,sigY,sigW,sigH,4,4,"S");
+    if(b[1]){try{doc.addImage(b[1],"PNG",x+8,sigY+8,sigW-16,sigH-30);}catch(e){}}
+    doc.setDrawColor("#555").setLineWidth(.5).line(x+12,sigY+sigH-20,x+sigW-12,sigY+sigH-20);
+    doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor(INK).text(b[0],x+12,sigY+sigH-8);
+    if(b[2]){doc.setFont("helvetica","normal").setFontSize(8).setTextColor(SUB).text(b[2],x+sigW-12,sigY+sigH-8,{align:"right"});}
+  });
+  y=sigY+sigH+18;
+  need(16);doc.setFont("helvetica","normal").setFontSize(8).setTextColor(SUB);
   doc.text("Digitally signed by the customer on "+new Date().toLocaleString(),M,y+2);y+=14;
 
   footer();
