@@ -1,350 +1,1516 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Lingel — Handover Sign-off</title>
-<!-- =====================================================================
-     ONE-TIME SETUP: paste your hub Apps Script /exec URL between the quotes
-     below (the same URL your field apps use). Then host this file anywhere
-     (e.g. your Netlify site) as sign.html. Nothing else to configure.
-     ===================================================================== -->
-<script>const API = "https://script.google.com/macros/s/AKfycbyU_cHRuQH8aiS8SIKynGIeXoTukfp16SgA9OfKnf83Me7bW2hT8kULPUFw-JB1gEhnTw/exec";</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
+<title>Lingel — Customer Handover Form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{--ink:#1a1a1a;--sub:#6b6b6b;--line:#e2e0d8;--hivis:#111;--accent:#c9a227;--ok:#1f9d55;--bad:#d64545;--paper:#faf9f5}
-  *{box-sizing:border-box}
-  body{margin:0;background:#ece9e1;font-family:'Segoe UI',system-ui,sans-serif;color:var(--ink)}
-  .wrap{max-width:560px;margin:0 auto;background:var(--paper);min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.08)}
-  .hdr{background:#111;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-end}
-  .hdr .lg{font-weight:800;font-size:19px;letter-spacing:.5px}
-  .hdr .lg small{display:block;font-weight:400;font-size:9px;color:#c9c9c9;letter-spacing:1px}
-  .hdr .rt{font-size:11px;color:#e2f14d;font-weight:700;text-align:right}
-  .hivisbar{height:3px;background:#e2f14d}
-  .pad{padding:18px 20px}
-  h2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);margin:22px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
-  h2:first-child{margin-top:6px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
-  .f .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub)}
-  .f .v{font-size:14px;font-weight:600;margin-top:1px;word-break:break-word}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
-  th{text-align:left;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--sub);border-bottom:1px solid var(--line);padding:5px 4px}
-  td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
-  .pass{color:var(--ok);font-weight:700}.fail{color:var(--bad);font-weight:700}.na{color:var(--sub);font-weight:700}
-  .pri-High,.pri-Critical{color:var(--bad);font-weight:700}.pri-Medium{color:#b8860b;font-weight:700}.pri-Low{color:var(--ok);font-weight:700}
-  .clean{color:var(--ok);font-weight:600;font-size:13px}
-  .stars{display:flex;gap:6px;font-size:34px;line-height:1;user-select:none}
-  .star{cursor:pointer;color:#d8d4c8;transition:color .1s}
-  .star.on{color:var(--accent)}
-  textarea,input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;background:#fff}
-  textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px}
-  .sigwrap{border:1px dashed #b9b4a6;border-radius:10px;background:#fff;position:relative}
-  canvas{display:block;width:100%;height:190px;touch-action:none;border-radius:10px}
-  .sighint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#c3bfb2;font-size:13px;pointer-events:none}
-  .row{display:flex;gap:10px;align-items:center;margin-top:10px}
-  .clr{background:none;border:none;color:var(--sub);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;padding:6px 0}
-  .submit{width:100%;margin-top:22px;background:#111;color:#fff;border:none;border-radius:10px;padding:16px;font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;cursor:pointer}
-  .submit:disabled{opacity:.45;cursor:not-allowed}
-  .note{font-size:11px;color:var(--sub);margin-top:10px;text-align:center;line-height:1.5}
-  .msg{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 28px;gap:14px}
-  .msg .ic{font-size:52px}
-  .msg h1{font-size:22px;margin:0}
-  .msg p{color:var(--sub);font-size:15px;margin:0;line-height:1.6}
-  .msg a.btn{margin-top:8px;background:#111;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700}
-  .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:#111;border-radius:50%;animation:sp 1s linear infinite}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .ack{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.5px;color:#444;line-height:1.55;margin-top:6px}
+:root{
+  --bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--paper:#f5f3eb;--paper-line:#d8d4c8;
+  --text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;
+  --hivis:#e2f14d;--ok:#4ade80;--warn:#fbbf24;--danger:#ef4444;
+  --shadow:0 2px 12px rgba(0,0,0,.35);--shadow-sm:0 1px 4px rgba(0,0,0,.22);
+  --r:12px;--rs:8px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'Spline Sans','Segoe UI',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+.wrap{max-width:800px;margin:0 auto;padding:14px}
+input,textarea{font-family:'Spline Sans',sans-serif;border:1px solid var(--line);border-radius:var(--rs);padding:9px 11px;font-size:14px;background:var(--panel);color:var(--text);width:100%}
+input:focus,textarea:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+input::placeholder,textarea::placeholder{color:var(--muted)}
+.hdr{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--line);padding-bottom:14px;margin-bottom:12px}
+.hdr img{width:48px;height:48px;border-radius:50%;object-fit:cover}
+.homelogo{display:block;line-height:0;text-decoration:none}
+.homelink{text-decoration:none;color:inherit}
+.homelink.hb{color:var(--hivis);font-weight:700}
+.homelink.hb:hover{text-decoration:underline}
+.hdr .co{font-family:'Archivo';font-weight:900;font-size:17px;letter-spacing:.3px;text-transform:uppercase;color:var(--hivis)}
+.hdr .co small{display:block;font-family:'JetBrains Mono';font-weight:400;font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.sec{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--hivis);border-radius:var(--r);padding:18px 20px;margin-bottom:12px;box-shadow:var(--shadow-sm)}
+.slbl{font-family:'Archivo';font-weight:700;font-size:12px;color:var(--hivis);letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+.gr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.fd{display:flex;flex-direction:column;gap:5px}
+.s2{grid-column:span 2}
+.lbl{font-family:'JetBrains Mono';font-size:10.5px;color:var(--muted);font-weight:400;letter-spacing:.06em;text-transform:uppercase}
+.nt{display:inline-block;font-size:9px;background:rgba(226,241,77,.15);color:var(--hivis);padding:2px 7px;border-radius:var(--rs);font-family:'Archivo Narrow';font-weight:700;margin-left:4px;vertical-align:middle;text-transform:uppercase;letter-spacing:.05em}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-family:'JetBrains Mono';font-size:9.5px;color:var(--muted);font-weight:400;letter-spacing:.08em;text-transform:uppercase;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle;color:var(--text)}
+.tbl tr:last-child td{border-bottom:none}
+.sgrp{display:flex;gap:14px}
+.sopt{display:flex;align-items:center;gap:5px;cursor:pointer}
+.sopt input{width:auto;accent-color:var(--hivis)}
+.sopt span{font-size:12px;color:var(--muted)}
+.iinp{border:none;border-bottom:1px solid var(--line);border-radius:0;background:transparent;font-size:12px;padding:3px 0;color:var(--text)}
+.iinp:focus{outline:none;border-bottom:1px solid var(--hivis)}
+.star{font-size:28px;cursor:pointer;color:var(--muted);line-height:1;transition:.15s}
+.star.on{color:var(--hivis)}
+.sigcv{border:1px dashed var(--line);border-radius:var(--rs);width:100%;height:110px;cursor:crosshair;touch-action:none;display:block;background:#ffffff}
+.signl{border:none;border-bottom:1px solid var(--line);border-radius:0;background:transparent;font-size:13px;padding:5px 0;color:var(--text)}
+.clr{font-family:'Archivo Narrow';font-size:11px;color:var(--hivis);cursor:pointer;border:none;background:none;padding:3px 0;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.btnp{background:var(--hivis);color:#111;border:none;border-radius:var(--rs);padding:11px 20px;font-family:'Archivo Narrow';font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.btns{background:transparent;border:1px solid var(--line);border-radius:var(--rs);padding:10px 16px;font-family:'Archivo Narrow';font-size:13px;font-weight:700;color:var(--text);cursor:pointer;text-transform:uppercase;letter-spacing:.03em}
+.btns:hover{background:var(--panel-2)}
+.pbar{height:4px;background:var(--line);border-radius:2px;margin-bottom:14px;overflow:hidden}
+.pfll{height:100%;background:var(--hivis);border-radius:2px;transition:width .3s;width:0%}
+.lb{padding:6px 13px;border-radius:var(--rs);font-family:'Archivo Narrow';font-size:12px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--muted);text-transform:uppercase}
+.lb.active{background:var(--hivis);color:#111;border-color:var(--hivis)}
+.phgr{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.phth{position:relative}
+.phth img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--rs);border:1px solid var(--line);display:block}
+.phrm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:12px;line-height:1}
+.snaglist{display:flex;flex-direction:column;gap:10px}
+.snag-item{position:relative;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--rs);padding:12px}
+.snag-rm{position:absolute;top:8px;right:8px;background:transparent;border:none;color:var(--danger);font-size:14px;cursor:pointer;line-height:1}
+.snag-pos{font-family:'JetBrains Mono';font-size:10px;color:var(--hivis);background:rgba(226,241,77,.12);border:1px solid var(--line);padding:2px 8px;border-radius:12px}
+.snag-item input,.snag-item select{width:100%}
+.snag-row{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.snag-row input{flex:1;min-width:120px}
+.snag-row select{width:auto;min-width:96px;flex:none}
+.snag-photo{width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--line);flex:none}
+#posPicker{display:none;flex-wrap:wrap;gap:6px;margin:2px 0 12px}
+.poschip{font-family:'JetBrains Mono';font-size:11px;padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:var(--panel-2);color:var(--text);cursor:pointer}
+.poschip.on{background:var(--hivis);color:#111;border-color:var(--hivis);font-weight:700}
+.emP{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-top:12px;display:none}
+.emtxt{font-size:11px;background:var(--panel);border:1px solid var(--line);border-radius:var(--rs);padding:12px;margin:10px 0;font-family:'JetBrains Mono',monospace;width:100%;resize:vertical;line-height:1.6;color:var(--text)}
+.sfbadge{display:inline-flex;align-items:center;gap:5px;background:rgba(74,222,128,.12);color:var(--ok);font-family:'Archivo Narrow';font-size:12px;font-weight:700;padding:5px 12px;border-radius:var(--rs);margin-bottom:10px;text-transform:uppercase}
+.sfmeta{font-size:12px;color:var(--muted);margin-bottom:3px;line-height:1.5}
+.sfmeta b{color:var(--text);font-weight:600}
+.sfproof{font-size:11px;color:var(--muted);margin-top:6px;opacity:.7}
+.tst{display:none;background:rgba(74,222,128,.1);color:var(--ok);border:1px solid rgba(74,222,128,.3);border-radius:var(--rs);padding:10px 14px;font-size:13px;margin-top:12px}
+.logbar{display:flex;align-items:center;gap:10px;padding:9px 0}
+.logbar h3{font-family:'Archivo';font-weight:900;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--text);margin:0}
+@media (max-width:560px){.gr,.g3{grid-template-columns:1fr}.s2{grid-column:span 1}}
+@media print{.acts,.clr,.pbar,.lb,.phrm,.emP,.langbar,.tst{display:none!important}body{background:#fff;color:#111}.sec{break-inside:avoid;border-color:#ddd;border-left-color:var(--hivis)}input,textarea{border-color:#ddd;color:#111;background:#fff}.hdr .co{color:#111}.slbl{color:#333}.tbl th,.lbl,.sopt span,.sfmeta,.sfproof{color:#555}.tbl td{color:#111;border-color:#ddd}.tbl th{border-color:#ddd}}
+
 </style>
 </head>
 <body>
-<div id="app" class="wrap"><div class="msg"><div class="spin"></div><p>Loading your handover…</p></div></div>
+  <div id="luPct">0%</div>
+</div></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div class="wrap">
+
+<div class="langbar" style="display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px;">
+  <button class="lb active" id="lb-en" onclick="setLang('en')">EN</button>
+  <button class="lb" id="lb-hi" onclick="setLang('hi')">हिं</button>
+</div>
+
+<div class="hdr">
+  <a href="index.html" title="Back to hub" class="homelogo"><img src="data:image/png;base64,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" alt="Lingel"></a>
+  <div>
+    <a class="homelink" href="index.html" title="Back to hub"><span class="co">Lingel Windows &amp; Doors<small>Technologies Pvt. Ltd.</small></span></a>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;font-family:'Archivo Narrow'"><span class="nopdf"><a class="homelink hb" href="index.html" title="Back to hub">⌂ Home</a> · </span><span data-t="formTitle">Customer Handover Form</span></div>
+  </div>
+  <div style="margin-left:auto;text-align:right;">
+    <div style="font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase" data-t="formNo">Form no.</div>
+    <div style="font-family:'Archivo';font-size:16px;font-weight:900;color:var(--hivis)">CHF-<span id="fdate">—</span></div>
+  </div>
+</div>
+
+<div class="pbar"><div class="pfll" id="pfll"></div></div>
+
+<div class="sec">
+  <div class="slbl" data-t="custDetails">Customer details</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+    <button class="btns" type="button" onclick="document.getElementById('quotePdfInp').click()">📄 Import quotation → auto-fill</button>
+    <input type="file" id="quotePdfInp" accept="application/pdf,.pdf" hidden onchange="if(this.files[0]){importQuotation(this.files[0],true);this.value='';}">
+    <span style="font-size:11px;color:var(--muted)">Auto-fills customer & order no., loads all positions for the snag list</span>
+  </div>
+  <div class="gr">
+    <div class="fd"><div class="lbl" data-t="orderNo">Order no.</div><input type="text" id="ord" placeholder="LW-2025-0041" oninput="prog()"></div>
+    <div class="fd"><div class="lbl" data-t="handoverDate">Date of handover</div><input type="date" id="hdate" oninput="setFn();prog()"></div>
+    <div class="fd s2"><div class="lbl" data-t="custName">Customer name</div><input type="text" id="cname" placeholder="Full name" oninput="prog()"></div>
+    <div class="fd s2"><div class="lbl" data-t="addrSite">Address / site</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="caddr" placeholder="Installation site address" style="flex:1">
+        <button class="btns" type="button" onclick="pinLocation()" style="white-space:nowrap;padding:9px 12px">📍 Pin</button>
+      </div>
+      <div id="geoNote" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <div class="fd"><div class="lbl" data-t="contactNo">Contact number</div><input type="tel" id="cph" placeholder="+91 XXXXX XXXXX"></div>
+    <div class="fd"><div class="lbl" data-t="emailLbl">Email</div><input type="email" id="ceml" placeholder="customer@email.com"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="prodDetails">Product / service details</div>
+  <div class="gr">
+    <div class="fd s2"><div class="lbl" data-t="prodDelivered">Product / service delivered</div><input type="text" id="prod" placeholder="e.g. Aluminium Sliding Windows, UPVC Casement Doors" oninput="prog()"></div>
+    <div class="fd"><div class="lbl" data-t="quantity">Quantity (units)</div><input type="number" id="qty" placeholder="No. of units" min="1"></div>
+    <div class="fd"><div class="lbl" data-t="installDate">Delivery / installation date</div><input type="date" id="idate"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="checklist">Handover checklist</div>
+  <table class="tbl">
+    <thead><tr>
+      <th style="width:26px">#</th><th data-t="itemAct">Item / Activity</th>
+      <th style="width:150px" data-t="statusH">Status</th><th data-t="remarksH">Remarks</th>
+    </tr></thead>
+    <tbody id="clbody"></tbody>
+  </table>
+</div>
+
+
+
+<div class="sec">
+  <div class="slbl">Snag List / Pending Items</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Record any defects, damages, or pending work items</div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <button class="btns" onclick="document.getElementById('snagPdfInp').click()">📄 Import quotation</button>
+    <input type="file" id="snagPdfInp" accept="application/pdf,.pdf" hidden>
+    <button class="btns" onclick="togglePicker()">▤ Tap positions (<span id="posCount">0</span>)</button>
+    <button class="btns" onclick="addSnag()">+ Add manually</button>
+  </div>
+  <div id="posPicker"></div>
+  <div class="snaglist" id="snagList"></div>
+</div>
+
+<div class="sec">
+  <div class="slbl">Balance Material at Site</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Document any leftover materials, spare parts, or items remaining at site</div>
+  <div id="balanceList" class="snaglist"></div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btns" onclick="addBalance()">+ Add item</button>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="keyTitle">Key Handover</div>
+  <div class="gr">
+    <div class="fd">
+      <div class="lbl" data-t="keysGiven">Keys handed over to customer</div>
+      <div class="sgrp">
+        <label class="sopt"><input type="radio" name="keysHo" value="Yes" onchange="prog()"><span data-t="yesL">Yes</span></label>
+        <label class="sopt"><input type="radio" name="keysHo" value="No" onchange="prog()"><span data-t="noL">No</span></label>
+        <label class="sopt"><input type="radio" name="keysHo" value="NA" onchange="prog()"><span data-t="naL">NA</span></label>
+      </div>
+    </div>
+    <div class="fd"><div class="lbl" data-t="keyCount">No. of keys handed over</div><input type="number" id="keyqty" min="0" placeholder="e.g. 12" oninput="prog()"></div>
+    <div class="fd s2"><div class="lbl" data-t="keyRemarks">Key remarks (type / set details)</div><input type="text" id="keyrem" placeholder="e.g. 4 window keys + 2 door keys, 1 spare set with client"></div>
+    <div class="fd">
+      <div class="lbl" data-t="meshLbl">Mesh (mosquito net)</div>
+      <div class="sgrp">
+        <label class="sopt"><input type="radio" name="meshHo" value="Installed" onchange="prog();meshNoteToggle()"><span data-t="meshInstalled">Installed</span></label>
+        <label class="sopt"><input type="radio" name="meshHo" value="Hold" onchange="prog();meshNoteToggle()"><span data-t="meshHold">Hold</span></label>
+      </div>
+      <div id="meshNote" data-t="meshNote" style="display:none;margin-top:8px;padding:9px 11px;border:1px solid #d9a441;border-left:4px solid #d9a441;background:rgba(217,164,65,.10);border-radius:8px;font-size:12.5px;line-height:1.45;color:#8a6d1f">Mesh on hold — installation may take 2–3 weeks after the customer's go-ahead.</div>
+    </div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="selfieTitle">Selfie with customer <span class="nt">new</span></div>
+  <div id="selfieArea"></div>
+  <input type="file" id="selfinp" accept="image/*" capture="user" style="display:none" onchange="captureSelfie(this)">
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="custSat">Customer satisfaction <span class="nt">new</span></div>
+  <div style="display:flex;align-items:center;gap:4px" id="stars"></div>
+  <div style="font-size:13px;color:var(--muted);margin-top:6px" id="rlbl"></div>
+  <div class="fd" style="margin-top:14px">
+    <div class="lbl" data-t="feedbackLbl">Feedback / comments from customer</div>
+    <textarea id="fb" rows="2" placeholder="Any concerns, compliments, or pending issues..." style="resize:vertical"></textarea>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl">Site Engineer details <span class="nt">new</span></div>
+  <div class="gr">
+    <div class="fd"><div class="lbl">Site Engineer name</div><input type="text" id="tname" placeholder="Full name"></div>
+    <div class="fd"><div class="lbl" data-t="contactNo">Contact no.</div><input type="tel" id="tph" placeholder="+91 XXXXX XXXXX"></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="slbl" data-t="sigs">Signatures</div>
+  <div class="gr">
+    <div class="fd">
+      <div class="lbl" style="margin-bottom:6px" data-t="custSig">Customer signature</div>
+      <canvas class="sigcv" id="sc"></canvas>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input class="signl" type="text" placeholder="Full name">
+        <button class="clr" onclick="clrSig('sc')" data-t="clearBtn">Clear</button>
+      </div>
+    </div>
+    <div class="fd">
+      <div class="lbl" style="margin-bottom:6px">Site Engineer signature</div>
+      <canvas class="sigcv" id="st"></canvas>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+        <input class="signl" type="text" placeholder="Full name">
+        <button class="clr" onclick="clrSig('st')" data-t="clearBtn">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="acts">
+  <button class="btnp" onclick="downloadPDF()">⤓ Download PDF</button>
+  <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
+  <button class="btns" onclick="doWA()">WhatsApp text</button>
+  <button class="btns" onclick="sendSignoff()" style="border-color:var(--hivis);color:var(--hivis)">🔗 Send to customer for sign-off</button>
+  <button class="btns" onclick="doReset()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">Reset</button>
+</div>
+
+
+
+<div class="tst" id="tst"><span id="tmsg"></span></div>
+
+</div>
 <script>
-const $ = s => document.querySelector(s);
-const APP = $("#app");
-const params = new URLSearchParams(location.search);
-const TOKEN = (params.get("t") || params.get("token") || "").trim();
-let DATA = null, stars = 0;
 
-function esc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
-
-function screen(icon,title,body,btn){
-  APP.innerHTML = `<div class="msg"><div class="ic">${icon}</div><h1>${esc(title)}</h1><p>${body}</p>${btn||""}</div>`;
-}
-
-async function post(action, extra){
-  const body = new URLSearchParams(Object.assign({action}, extra||{}));
-  const r = await fetch(API, {method:"POST", body});
-  return r.json();
-}
-
-async function load(){
-  if(!API || API.indexOf("PASTE_") === 0){
-    return screen("⚙️","Not configured yet","This sign-off page hasn't been set up. Please contact Lingel.");
+const CL=[
+  {orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:0},{orig:1,hint:1},
+  {orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0},{orig:0,hint:0}
+];
+const T={
+  en:{
+    formTitle:"Customer Handover Form",formNo:"Form no.",custDetails:"Customer details",
+    orderNo:"Order no.",handoverDate:"Date of handover",custName:"Customer name",
+    addrSite:"Address / site",contactNo:"Contact number",emailLbl:"Email",
+    prodDetails:"Product / service details",prodDelivered:"Product / service delivered",
+    quantity:"Quantity (units)",installDate:"Delivery / installation date",
+    checklist:"Handover checklist",
+    keyTitle:"Key Handover",keysGiven:"Keys handed over to customer",keyCount:"No. of keys handed over",
+    meshLbl:"Mesh (mosquito net)",meshInstalled:"Installed",meshHold:"Hold",
+    meshNote:"Mesh on hold — installation may take 2–3 weeks after the customer's go-ahead.",
+    keyRemarks:"Key remarks (type / set details)",yesL:"Yes",noL:"No",naL:"NA",
+    itemAct:"Item / Activity",statusH:"Status",remarksH:"Remarks",
+    photoDocs:"Photo documentation",photoHint:"Capture each installed window / door",
+    addPhoto:"+ Add photo",locationLbl:"Location / window no.",
+    selfieTitle:"Selfie with customer",
+    selfieHint:"A joint photo with the customer confirms who received the handover — date, time, and order number are stamped automatically",
+    takeSelfieBtn:"Take selfie with customer",selfieOk:"Proof photo captured",
+    selfieRetakeBtn:"Retake",selfieCustomerLbl:"Customer",selfieTimeLbl:"Captured",selfieOrdLbl:"Order",
+    selfieWatermark:"Lingel branding and timestamp auto-stamped on photo",
+    custSat:"Customer satisfaction",feedbackLbl:"Feedback / comments from customer",
+    techDetails:"Technician / installer details",techName:"Technician name",empId:"Employee ID",
+    sigs:"Signatures",custSig:"Customer signature",techSig:"Technician signature",clearBtn:"Clear",
+    printPdf:"Print / Save PDF",sendEmail:"Email to customer",whatsappBtn:"WhatsApp",resetBtn:"Reset",
+    emailPreview:"Email preview",emailNote:"Review and edit, then open in your mail app. Attach the printed PDF if needed.",
+    openMailApp:"Open in mail app",copyTxt:"Copy text",closeBtn:"Close",notRated:"Not rated",
+    rl:["","Very dissatisfied","Dissatisfied","Neutral","Satisfied","Very satisfied"],
+    ci:["Product delivered as per order","Product inspected with customer","Demonstration / training given",
+      "Service / maintenance procedure explained","Pendency from installation team",
+      "All windows / doors open and close smoothly","Locking mechanism tested and functional",
+      "Weather sealing and gaskets intact",
+      "Hardware (handles, hinges, stays) all functional","All glass intact"],
+    ch:["","","","","If yes — describe in remarks","","","","",""]
+  },
+  hi:{
+    formTitle:"ग्राहक हस्तांतरण फॉर्म",formNo:"फॉर्म संख्या",custDetails:"ग्राहक विवरण",
+    orderNo:"ऑर्डर संख्या",handoverDate:"हस्तांतरण की तारीख",custName:"ग्राहक का नाम",
+    addrSite:"पता / साइट",contactNo:"संपर्क नंबर",emailLbl:"ईमेल",
+    prodDetails:"उत्पाद / सेवा विवरण",prodDelivered:"दी गई वस्तु / सेवा",
+    quantity:"मात्रा (इकाइयाँ)",installDate:"डिलीवरी / स्थापना तारीख",
+    checklist:"हस्तांतरण जाँच सूची",
+    keyTitle:"चाबी हस्तांतरण",keysGiven:"ग्राहक को चाबियाँ सौंपी गईं",keyCount:"सौंपी गई चाबियों की संख्या",
+    meshLbl:"जाली (मच्छरदानी)",meshInstalled:"लगाई गई",meshHold:"होल्ड",
+    meshNote:"जाली होल्ड पर — ग्राहक की सहमति के बाद इंस्टॉलेशन में 2–3 सप्ताह लग सकते हैं।",
+    keyRemarks:"चाबी टिप्पणी (प्रकार / सेट विवरण)",yesL:"हाँ",noL:"नहीं",naL:"लागू नहीं",
+    itemAct:"मद / गतिविधि",statusH:"स्थिति",remarksH:"टिप्पणी",
+    photoDocs:"फोटो दस्तावेज़ीकरण",photoHint:"प्रत्येक स्थापित खिड़की / दरवाज़े की फोटो लें",
+    addPhoto:"+ फोटो जोड़ें",locationLbl:"स्थान / खिड़की संख्या",
+    selfieTitle:"ग्राहक के साथ सेल्फी",
+    selfieHint:"ग्राहक के साथ फोटो यह प्रमाणित करती है कि हस्तांतरण किसने प्राप्त किया — तारीख, समय और ऑर्डर नंबर स्वचालित रूप से अंकित होते हैं",
+    takeSelfieBtn:"ग्राहक के साथ सेल्फी लें",selfieOk:"प्रमाण फोटो ली गई",
+    selfieRetakeBtn:"फिर से लें",selfieCustomerLbl:"ग्राहक",selfieTimeLbl:"समय",selfieOrdLbl:"ऑर्डर",
+    selfieWatermark:"लिंगेल ब्रांडिंग और समय-मुद्रा स्वचालित रूप से फोटो पर अंकित है",
+    custSat:"ग्राहक संतुष्टि",feedbackLbl:"ग्राहक की प्रतिक्रिया / टिप्पणी",
+    techDetails:"तकनीशियन विवरण",techName:"तकनीशियन का नाम",empId:"कर्मचारी पहचान",
+    sigs:"हस्ताक्षर",custSig:"ग्राहक हस्ताक्षर",techSig:"तकनीशियन हस्ताक्षर",clearBtn:"साफ़ करें",
+    printPdf:"प्रिंट / PDF सहेजें",sendEmail:"ग्राहक को ईमेल करें",whatsappBtn:"WhatsApp",resetBtn:"रीसेट करें",
+    emailPreview:"ईमेल पूर्वावलोकन",emailNote:"संदेश देखें और संपादित करें, फिर मेल ऐप में खोलें।",
+    openMailApp:"मेल ऐप में खोलें",copyTxt:"टेक्स्ट कॉपी करें",closeBtn:"बंद करें",notRated:"रेटिंग नहीं दी",
+    rl:["","बहुत असंतुष्ट","असंतुष्ट","तटस्थ","संतुष्ट","बहुत संतुष्ट"],
+    ci:["आदेश के अनुसार उत्पाद दिया गया","ग्राहक के साथ उत्पाद की जाँच की गई",
+      "प्रदर्शन / प्रशिक्षण दिया गया","सेवा / रखरखाव प्रक्रिया समझाई गई",
+      "स्थापना टीम से लंबित कार्य","सभी खिड़कियाँ / दरवाज़े सुचारू रूप से खुलते-बंद होते हैं",
+      "लॉकिंग तंत्र परीक्षण किया गया और कार्यात्मक है","मौसम सीलिंग और गास्केट सही हैं",
+      "हार्डवेयर (हैंडल, टिका, स्टे) सभी कार्यात्मक हैं","सभी शीशे सही सलामत हैं"],
+    ch:["","","","","यदि हाँ — टिप्पणी में विवरण दें","","","","",""]
   }
-  if(!TOKEN){
-    return screen("🔗","Invalid link","This sign-off link is missing its code. Please ask Lingel to resend it.");
-  }
-  let res;
-  try{ res = await post("signGet", {token:TOKEN}); }
-  catch(e){ return screen("📶","Connection problem","Couldn't reach the server. Please check your internet and reopen the link."); }
+};
 
-  if(!res.ok){
-    if(res.state === "used")    return screen("✅","Already signed","This handover has already been signed and saved. Thank you!", res.url?`<a class="btn" href="${esc(res.url)}" target="_blank">View handover</a>`:"");
-    if(res.state === "expired") return screen("⌛","Link expired","This sign-off link is no longer valid. Please ask Lingel to send a fresh one.");
-    return screen("❓","Link not found","We couldn't find this sign-off. Please ask Lingel to resend the link.");
-  }
+let lang='en',CR=0,photos=[];
+let selfieComposed=null,selfieName='',selfieTs='',selfieOrd='';
 
-  try{ DATA = JSON.parse(res.payload || "{}"); }catch(e){ DATA = {}; }
-  DATA.orderNo  = DATA.orderNo  || res.orderNo  || "";
-  DATA.customer = DATA.customer || res.customer || "";
-  render();
+function setLang(l){
+  lang=l;syncPhLabels();
+  ['en','hi'].forEach(k=>document.getElementById('lb-'+k).classList.toggle('active',k===l));
+  applyLang();renderPhotos();
+  selfieComposed?renderSelfie():renderSelfieBtn();
+}
+function applyLang(){
+  const t=T[lang];
+  document.querySelectorAll('[data-t]').forEach(el=>{
+    const k=el.getAttribute('data-t');
+    if(t[k]===undefined)return;
+    const nt=el.querySelector('.nt');
+    if(nt){el.childNodes[0].nodeValue=t[k]+' ';}else{el.textContent=t[k];}
+  });
+  document.querySelectorAll('[data-t-i]').forEach(el=>{el.textContent=t.ci[+el.getAttribute('data-t-i')];});
+  document.querySelectorAll('[data-t-h]').forEach(el=>{el.textContent=t.ch[+el.getAttribute('data-t-h')]||'';});
+  document.getElementById('rlbl').textContent=CR>0?t.rl[CR]:t.notRated;
+}
+function buildCL(){
+  const t=T[lang];
+  document.getElementById('clbody').innerHTML=CL.map((it,i)=>`
+    <tr id="clr${i+1}">
+      <td style="font-size:11px;color:var(--txt3);">${i+1}</td>
+      <td style="font-size:13px;"><span data-t-i="${i}">${t.ci[i]}</span>${it.orig?'':" <span class='nt'>new</span>"}${it.hint?`<div style="font-size:11px;color:var(--txt3);margin-top:1px;" data-t-h="${i}">${t.ch[i]}</div>`:''}</td>
+      <td><div class="sgrp">${['Yes','No','NA'].map(s=>`<label class="sopt"><input type="radio" name="cl${i+1}" value="${s}" onchange="prog()"><span>${s}</span></label>`).join('')}</div></td>
+      <td><input class="iinp" type="text" placeholder="—"></td>
+    </tr>`).join('');
+}
+function buildStars(){
+  const c=document.getElementById('stars');c.innerHTML='';
+  for(let i=1;i<=5;i++){const s=document.createElement('span');s.className='star';s.textContent='★';s.onclick=()=>setR(i);s.onmouseenter=()=>hi(i);s.onmouseleave=()=>hi(CR);c.appendChild(s);}
+}
+/* setR moved below */
+function hi(n){document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<n));}
+function setFn(){const v=document.getElementById('hdate').value;if(!v)return;const p=v.split('-');document.getElementById('fdate').textContent=p[0].slice(2)+p[1]+p[2];}
+function prog(){const f=['ord','hdate','cname','prod'].filter(id=>document.getElementById(id)?.value?.trim()).length;const r=Math.min(document.querySelectorAll('input[type=radio]:checked').length,6);document.getElementById('pfll').style.width=Math.round((f+r)/10*100)+'%';}
+
+function meshNoteToggle(){
+  const hold=document.querySelector('input[name="meshHo"]:checked')?.value==='Hold';
+  const n=document.getElementById('meshNote');
+  if(n) n.style.display=hold?'block':'none';
 }
 
-function fld(k,v){ return `<div class="f"><div class="k">${esc(k)}</div><div class="v">${esc(v||"—")}</div></div>`; }
+function setupSig(id){
+  const cv=document.getElementById(id);if(!cv)return;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=(cv.offsetWidth||300)*dpr;cv.height=(cv.offsetHeight||100)*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.strokeStyle='#1a1a1a';ctx.lineWidth=1.6;ctx.lineCap='round';ctx.lineJoin='round';
+  let draw=false,lx=0,ly=0;
+  const xy=e=>{const r=cv.getBoundingClientRect(),s=e.touches?e.touches[0]:e;return[s.clientX-r.left,s.clientY-r.top];};
+  cv.onmousedown=e=>{draw=true;[lx,ly]=xy(e);};
+  cv.onmousemove=e=>{if(!draw)return;const[x,y]=xy(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(x,y);ctx.stroke();[lx,ly]=[x,y];};
+  cv.onmouseup=cv.onmouseleave=()=>draw=false;
+  cv.ontouchstart=e=>{e.preventDefault();draw=true;[lx,ly]=xy(e);};
+  cv.ontouchmove=e=>{e.preventDefault();if(!draw)return;const[x,y]=xy(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(x,y);ctx.stroke();[lx,ly]=[x,y];};
+  cv.ontouchend=()=>draw=false;
+}
+function clrSig(id){const cv=document.getElementById(id),ctx=cv.getContext('2d');ctx.clearRect(0,0,cv.width,cv.height);}
 
-function render(){
-  const d = DATA;
-  const cl = d.checklist || [];
-  const clRows = cl.map((c,i)=>{
-    const a = c.a||"";
-    const cls = a==="Yes"?"pass":a==="No"?"fail":"na";
-    const lab = a==="Yes"?"Pass":a==="No"?"Fail":(a||"—");
-    return `<tr><td>${i+1}</td><td>${esc(c.q)}</td><td class="${cls}">${lab}</td><td style="color:#6b6b6b">${esc(c.rem||"")}</td></tr>`;
-  }).join("");
-  const snags = d.snags || [];
-  const snagRows = snags.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.pos||"—")}</td><td>${esc(s.desc||"—")}</td><td>${esc(s.loc||"")}</td><td class="pri-${esc(s.priority||"Medium")}">${esc(s.priority||"")}</td></tr>`).join("");
-
-  APP.innerHTML = `
-    <div class="hdr">
-      <div class="lg">LINGEL<small>WINDOWS &amp; DOORS TECHNOLOGY</small></div>
-      <div class="rt">CUSTOMER<br>HANDOVER SIGN-OFF</div>
-    </div><div class="hivisbar"></div>
-    <div class="pad">
-      <div class="ack">Please review your installation handover below. When you're happy, add a quick review and sign at the bottom — your signed copy is saved to Lingel automatically.</div>
-
-      <h2>Customer &amp; Order</h2>
-      <div class="grid">
-        ${fld("Customer", d.customer)}
-        ${fld("Order / Offer No.", d.orderNo)}
-        ${fld("Site / Address", d.site)}
-        ${fld("Handover Date", d.date)}
-        ${fld("Product / Service", d.product)}
-        ${fld("Site Engineer", d.engineer)}
-      </div>
-
-      <h2>Handover Checklist${cl.length?` &nbsp;<span style="color:#6b6b6b;font-weight:400;text-transform:none;letter-spacing:0">(${d.clYes||0} pass · ${d.clNo||0} fail · ${d.clNa||0} n/a)</span>`:""}</h2>
-      ${cl.length?`<table><thead><tr><th>#</th><th>Item</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${clRows}</tbody></table>`:`<div class="clean">Checklist not recorded.</div>`}
-
-      <h2>Snag List / Pending Items ${snags.length?`(${snags.length})`:""}</h2>
-      ${snags.length?`<table><thead><tr><th>#</th><th>Position</th><th>Issue</th><th>Location</th><th>Priority</th></tr></thead><tbody>${snagRows}</tbody></table>`:`<div class="clean">✓ No snags or pending items — all clear.</div>`}
-
-      <h2>Keys &amp; Handover</h2>
-      <div class="grid">
-        ${fld("Keys Handed Over", d.keysGiven)}
-        ${fld("No. of Keys", d.keyCount)}
-        ${fld("Mesh (Mosquito Net)", d.mesh)}
-        ${fld("Key Remarks", d.keyRemarks)}
-      </div>
-      ${d.mesh==="Hold" && d.meshNote?`<div class="ack" style="margin-top:10px">${esc(d.meshNote)}</div>`:""}
-
-      <h2>Your Review</h2>
-      <div class="stars" id="stars">${[1,2,3,4,5].map(n=>`<span class="star" data-n="${n}">★</span>`).join("")}</div>
-      <div style="font-size:12px;color:#6b6b6b;margin:6px 0 12px" id="rlbl">Tap the stars to rate</div>
-      <textarea id="review" rows="3" placeholder="Anything you'd like to add about the installation or service? (optional)"></textarea>
-
-      <h2>Your Signature</h2>
-      <input type="text" id="signName" placeholder="Your full name" style="margin-bottom:10px">
-      <div class="sigwrap"><canvas id="sig"></canvas><div class="sighint" id="sighint">Sign here with your finger</div></div>
-      <div class="row"><button class="clr" onclick="clearSig()">Clear signature</button></div>
-
-      <button class="submit" id="go" onclick="submit()">✓ Confirm &amp; Sign Handover</button>
-      <div class="note">By signing, you confirm the handover details above are correct.<br>This is a one-time link — it can be signed once.</div>
-    </div>`;
-
-  setupStars();
-  setupSig();
+function addPhotos(inp){
+  Array.from(inp.files).forEach(f=>{const r=new FileReader();r.onload=e=>{photos.push({url:e.target.result,lbl:''});renderPhotos();};r.readAsDataURL(f);});
+  inp.value='';
+}
+function syncPhLabels(){document.querySelectorAll('[data-phi]').forEach(el=>{const i=+el.getAttribute('data-phi');if(photos[i])photos[i].lbl=el.value;});}
+function renderPhotos(){
+  const ph=T[lang].locationLbl;
+  document.getElementById('phgr').innerHTML=photos.map((p,i)=>`<div class="phth"><button class="phrm" onclick="syncPhLabels();photos.splice(${i},1);renderPhotos();">✕</button><img src="${p.url}" alt="Photo ${i+1}"><input class="iinp" type="text" data-phi="${i}" value="${p.lbl.replace(/"/g,'&quot;')}" placeholder="${ph}" oninput="photos[${i}].lbl=this.value" style="margin-top:4px;"></div>`).join('');
 }
 
-function setupStars(){
-  document.querySelectorAll("#stars .star").forEach(el=>{
-    el.onclick = ()=>{
-      stars = +el.dataset.n;
-      document.querySelectorAll("#stars .star").forEach(s=>s.classList.toggle("on", +s.dataset.n<=stars));
-      const labels={1:"Poor",2:"Fair",3:"Good",4:"Very good",5:"Excellent"};
-      $("#rlbl").textContent = labels[stars] + " · " + stars + "/5";
+function renderSelfieBtn(){
+  document.getElementById('selfieArea').innerHTML=`<button class="btns" onclick="document.getElementById('selfinp').click()">📷 ${T[lang].takeSelfieBtn}</button>`;
+}
+function captureSelfie(inp){
+  const file=inp.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    selfieName=document.getElementById('cname').value||'—';
+    selfieOrd=document.getElementById('ord').value||'—';
+    selfieTs=new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    selfieComposed=await composeSelfie(e.target.result,selfieName,selfieOrd,selfieTs);
+    renderSelfie();
+  };
+  reader.readAsDataURL(file);inp.value='';
+}
+function composeSelfie(dataUrl,custName,ordNo,ts){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const maxW=900,scale=img.width>maxW?maxW/img.width:1;
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      const ctx=cv.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      const bh=Math.max(80,Math.round(h*0.20));
+      ctx.fillStyle='rgba(0,0,0,0.72)';ctx.fillRect(0,h-bh,w,bh);
+      const f1=Math.round(bh*0.28),f2=Math.round(bh*0.22);
+      ctx.fillStyle='#FFFFFF';ctx.font='bold '+f1+'px sans-serif';
+      ctx.fillText('Lingel Windows & Doors',14,h-bh+Math.round(bh*0.32));
+      ctx.font=f2+'px sans-serif';ctx.fillStyle='rgba(255,255,255,0.9)';
+      ctx.fillText('Customer: '+custName+'   Order: '+ordNo,14,h-bh+Math.round(bh*0.60));
+      ctx.fillText(ts,14,h-bh+Math.round(bh*0.87));
+      resolve(cv.toDataURL('image/jpeg',0.88));
     };
+    img.src=dataUrl;
   });
 }
-
-/* signature pad */
-let sigCtx, sigDrawn=false;
-function setupSig(){
-  const cv = $("#sig");
-  const EXP = Math.max(2, Math.ceil(window.devicePixelRatio||1));
-  const w = cv.clientWidth||520, h = 190;
-  cv.width = w*EXP; cv.height = h*EXP;
-  sigCtx = cv.getContext("2d");
-  sigCtx.setTransform(EXP,0,0,EXP,0,0);
-  sigCtx.lineWidth=2.4; sigCtx.lineCap="round"; sigCtx.lineJoin="round"; sigCtx.strokeStyle="#101010";
-  let drawing=false, pts=[];
-  const pt=e=>{const r=cv.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};};
-  cv.onpointerdown=e=>{drawing=true;pts=[pt(e)];if(!sigDrawn){sigDrawn=true;$("#sighint").style.display="none";}e.preventDefault&&e.preventDefault();};
-  cv.onpointermove=e=>{if(!drawing)return;const p=pt(e);pts.push(p);const n=pts.length;
-    if(n>=3){const a=pts[n-3],b=pts[n-2],c=pts[n-1];const m1={x:(a.x+b.x)/2,y:(a.y+b.y)/2},m2={x:(b.x+c.x)/2,y:(b.y+c.y)/2};sigCtx.beginPath();sigCtx.moveTo(m1.x,m1.y);sigCtx.quadraticCurveTo(b.x,b.y,m2.x,m2.y);sigCtx.stroke();}
-    else{const a=pts[0];sigCtx.beginPath();sigCtx.moveTo(a.x,a.y);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();}
-    e.preventDefault&&e.preventDefault();};
-  const up=()=>{drawing=false;};
-  cv.onpointerup=up;cv.onpointerleave=up;cv.onpointercancel=up;
+function renderSelfie(){
+  if(!selfieComposed)return;
+  const t=T[lang];
+  document.getElementById('selfieArea').innerHTML=`
+    <div style="display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex-shrink:0;"><img src="${selfieComposed}" style="width:180px;border-radius:var(--rs);border:1px solid var(--bd);display:block;"></div>
+      <div style="flex:1;min-width:140px;">
+        <div class="sfbadge">✓ ${t.selfieOk}</div>
+        <div class="sfmeta">${t.selfieCustomerLbl}: <b>${selfieName}</b></div>
+        <div class="sfmeta">${t.selfieOrdLbl}: <b>${selfieOrd}</b></div>
+        <div class="sfmeta">${t.selfieTimeLbl}: <b>${selfieTs}</b></div>
+        <div class="sfproof">${t.selfieWatermark}</div>
+        <button class="btns" onclick="document.getElementById('selfinp').click()" style="margin-top:12px;font-size:12px;padding:6px 12px;">↻ ${t.selfieRetakeBtn}</button>
+      </div>
+    </div>`;
 }
-function clearSig(){const cv=$("#sig");sigCtx.clearRect(0,0,cv.width,cv.height);sigDrawn=false;$("#sighint").style.display="flex";}
 
-/* ---- build the signed handover PDF (compact, branded) ---- */
-function buildSignedPDF(sigDataUrl){
+function buildEmailText(){
+  const g=id=>document.getElementById(id)?.value||'—';
+  const items=CL.map((_,i)=>{const r=document.querySelector('input[name="cl'+(i+1)+'"]:checked');const rem=document.querySelector('#clr'+(i+1)+' .iinp')?.value;return r?'  '+(i+1)+'. '+T.en.ci[i]+': '+r.value+(rem?' ('+rem+')':''):null;}).filter(Boolean).join('\n')||'  Checklist not completed';
+  const snagTxt=snags.length?snags.map((s,i)=>'  '+(i+1)+'. '+(s.pos?'['+s.pos+'] ':'')+s.desc+' ['+s.priority+']'+(s.loc?' at '+s.loc:'')).join('\n'):'  No snags reported';
+  const balTxt=balanceItems.length?balanceItems.map((b,i)=>'  '+(i+1)+'. '+b.desc).join('\n'):'  No balance material';
+  return 'Dear '+g('cname')+',\n\n'+
+'Thank you for choosing Lingel Windows & Doors.\n'+
+'Here is the summary of your product handover.\n\n'+
+'ORDER DETAILS\n'+
+'-----------------------------\n'+
+'Order No.      : '+g('ord')+'\n'+
+'Handover Date  : '+g('hdate')+'\n'+
+'Product        : '+g('prod')+'\n'+
+'Quantity       : '+g('qty')+'\n\n'+
+'HANDOVER CHECKLIST\n'+
+'-----------------------------\n'+
+items+'\n\n'+
+'KEY HANDOVER\n'+
+'-----------------------------\n'+
+'Keys handed over: '+(document.querySelector('input[name="keysHo"]:checked')?.value||'—')+'\n'+
+'No. of keys    : '+g('keyqty')+'\n'+
+'Mesh           : '+(document.querySelector('input[name="meshHo"]:checked')?.value||'\u2014')+'\n'+
+((document.querySelector('input[name="meshHo"]:checked')?.value==='Hold')?('  \u21b3 '+T[lang].meshNote+'\n'):'')+
+'Key remarks    : '+g('keyrem')+'\n\n'+
+'SNAG LIST / PENDING ITEMS\n'+
+'-----------------------------\n'+
+snagTxt+'\n\n'+
+'BALANCE MATERIAL AT SITE\n'+
+'-----------------------------\n'+
+balTxt+'\n\n'+
+'CUSTOMER SATISFACTION\n'+
+'-----------------------------\n'+
+'Rating         : '+(CR>0?T.en.rl[CR]:'Not rated')+'\n'+
+'Feedback       : '+g('fb')+'\n\n'+
+'SITE ENGINEER\n'+
+'-----------------------------\n'+
+'Name           : '+g('tname')+'\n'+
+'\n'+
+'For any service requests, please contact us.\n\n'+
+'Regards,\n'+
+'Lingel Windows & Doors Technologies Pvt. Ltd.';
+}
+function doEmail(){document.getElementById('emTxt').value=buildEmailText();const p=document.getElementById('emP');p.style.display='block';p.scrollIntoView({behavior:'smooth',block:'nearest'});}
+function openMail(){const to=document.getElementById('ceml').value||'';const sub=encodeURIComponent('Lingel Windows & Doors — Handover Confirmation | Order '+(document.getElementById('ord').value||'—'));const body=encodeURIComponent(document.getElementById('emTxt').value||buildEmailText());window.location.href='mailto:'+to+'?subject='+sub+'&body='+body;}
+function copyEmail(){const txt=document.getElementById('emTxt').value;if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('Copied!'));}else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Copied!');}}
+function doWA(){
+  const n=document.getElementById('cname').value||'Customer',o=document.getElementById('ord').value||'—',d=document.getElementById('hdate').value||'—',p=document.getElementById('prod').value||'—';
+  const msg=encodeURIComponent('*Lingel Windows & Doors* ✅\nHandover completed\n\nCustomer: '+n+'\nOrder: '+o+'\nDate: '+d+'\nProduct: '+p+'\n\nThank you for choosing Lingel!');
+  window.open('https://wa.me/?text='+msg,'_blank');
+}
+function doPrint(){window.print();}
+function toast(msg){const t=document.getElementById('tst');document.getElementById('tmsg').textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',3000);}
+
+/* ---- PDF, Share, Drive ---- */
+function ensureLibs(){
+  const libs=["https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"];
+  return Promise.all(libs.map(s=>ensureScript(s)));}
+async function buildPDF(){
+  await ensureLibs();
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({unit:"pt",format:"a4",orientation:"portrait",compress:true});
-  const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight();
-  const M=40, CW=PW-M*2; let y=M;
-  const INK="#1a1a1a",SUB="#6b6b6b",LINE="#d8d8d8",HI="#e2f14d",DARK="#111",OK="#1f9d55",BAD="#d64545",NA="#999";
-  const d=DATA;
-  function need(h){ if(y+h>PH-M-24){footer();doc.addPage();y=M;head(true);} }
-  function footer(){const n=doc.internal.getNumberOfPages();doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB);
-    doc.text("Lingel Windows & Doors  ·  Customer Handover (Signed)",M,PH-22);doc.text("Page "+n,PW-M,PH-22,{align:"right"});
-    doc.setDrawColor(LINE).setLineWidth(.5).line(M,PH-32,PW-M,PH-32);}
-  function head(cont){doc.setFillColor(DARK).rect(0,0,PW,58,"F");doc.setFillColor(HI).rect(0,58,PW,3,"F");
-    doc.setFont("helvetica","bold").setFontSize(17).setTextColor("#fff").text("LINGEL",M,32);
-    doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#c9c9c9").text("WINDOWS & DOORS TECHNOLOGY",M,45);
-    doc.setFont("helvetica","bold").setFontSize(12).setTextColor("#fff").text("CUSTOMER HANDOVER"+(cont?" (contd.)":""),PW-M,30,{align:"right"});
-    doc.setFont("helvetica","normal").setFontSize(8).setTextColor(HI).text(d.formNo||("Order "+(d.orderNo||"")),PW-M,44,{align:"right"});y=78;}
-  function title(t){need(30);doc.setFillColor("#f2f2f2").rect(M,y,CW,20,"F");doc.setFillColor(HI).rect(M,y,3,20,"F");
-    doc.setFont("helvetica","bold").setFontSize(9.5).setTextColor(INK).text(t.toUpperCase(),M+10,y+13.5);y+=30;}
-  function fields(pairs){const rowH=17,colW=CW/2;for(let i=0;i<pairs.length;i+=2){need(rowH);
-    for(let c=0;c<2&&i+c<pairs.length;c++){const[l,v]=pairs[i+c];const x=M+c*colW;
-      doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text(String(l).toUpperCase(),x,y+6);
-      doc.setFont("helvetica","bold").setFontSize(9.5).setTextColor(INK);
-      doc.text(doc.splitTextToSize(v||"—",colW-14)[0],x,y+15);}y+=rowH;}y+=6;}
+  const doc = new jsPDF({ unit:'pt', format:'a4', orientation:'portrait', compress:true });
+  const PW = doc.internal.pageSize.getWidth();
+  const PH = doc.internal.pageSize.getHeight();
+  const M  = 40;                       // margin
+  const CW = PW - M*2;                  // content width
+  let y = M;
 
-  head(false);
-  title("Customer & Order Details");
-  fields([
-    ["Customer",d.customer],["Order / Offer No.",d.orderNo],
-    ["Site / Address",d.site],["Contact",d.contact],
-    ["Email",d.email],["Handover Date",d.date],
-    ["Product / Service",d.product],["Quantity",d.qty],
-    ["Installation Date",d.installDate],["Site Engineer",(d.engineer||"")+(d.engPhone?"  ("+d.engPhone+")":"")]
-  ]);
+  /* ---- palette ---- */
+  const INK='#1a1a1a', SUB='#6b6b6b', LINE='#d8d8d8', HIVIS='#f5a623', DARK='#111111';
+  const OK='#1f9d55', BAD='#d64545', NA='#999999';
 
-  // snags
-  const snags=d.snags||[];
-  if(snags.length){
-    title("Snag List / Pending Items ("+snags.length+")");
-    const nW=20,pW=76,lW=76,prW=54,dW=CW-nW-pW-lW-prW,hH=18;need(hH);
-    doc.setFillColor(DARK).rect(M,y,CW,hH,"F");doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor("#fff");
-    doc.text("#",M+7,y+12);doc.text("POSITION",M+nW,y+12);doc.text("ISSUE / DEFECT",M+nW+pW,y+12);
-    doc.text("LOCATION",M+nW+pW+dW,y+12);doc.text("PRIORITY",M+nW+pW+dW+lW,y+12);y+=hH;
-    snags.forEach((s,i)=>{
-      const pos=doc.splitTextToSize(String(s.pos||"—"),pW-6),des=doc.splitTextToSize(String(s.desc||"—"),dW-6),loc=doc.splitTextToSize(String(s.loc||"—"),lW-6);
-      const h=Math.max(16,pos.length*10+6,des.length*10+6,loc.length*10+6);need(h);
-      if(i%2)doc.setFillColor("#f7f7f7").rect(M,y,CW,h,"F");
-      doc.setFont("helvetica","normal").setFontSize(8).setTextColor(INK);
-      doc.text(String(i+1),M+7,y+11);doc.text(pos,M+nW,y+11);doc.text(des,M+nW+pW,y+11);
-      doc.setTextColor(SUB).text(loc,M+nW+pW+dW,y+11);
-      const pr=s.priority||"Medium",pc=(pr==="High"||pr==="Critical")?BAD:(pr==="Low"?OK:"#b8860b");
-      doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(pc).text(String(pr).toUpperCase(),M+nW+pW+dW+lW,y+11);
-      doc.setDrawColor(LINE).setLineWidth(.3).line(M,y+h,M+CW,y+h);y+=h;});
-    y+=10;
-  } else { title("Snag List / Pending Items");need(16);doc.setFont("helvetica","normal").setFontSize(9).setTextColor(OK).text("No snags or pending items recorded.",M,y+4);y+=20; }
+  const gv = id => (document.getElementById(id)?.value || '').trim();
+  const rd = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || '';
+  const T  = (window.T && window.T.en) ? window.T.en : {ci:[],rl:[]};
 
-  // checklist
-  const cl=d.checklist||[];
-  if(cl.length){
-    title("Handover Checklist");
-    const rowH=18,numW=22,statW=54,remW=120,descW=CW-numW-statW-remW;need(rowH);
-    doc.setFillColor("#fafafa").rect(M,y,CW,rowH,"F");doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(SUB);
-    doc.text("#",M+8,y+12);doc.text("CHECK ITEM",M+numW,y+12);doc.text("STATUS",M+numW+descW,y+12);doc.text("REMARKS",M+numW+descW+statW,y+12);y+=rowH;
-    cl.forEach((c,i)=>{
-      const lines=doc.splitTextToSize(c.q||"",descW-6),rem=(c.rem||"").trim(),remL=rem?doc.splitTextToSize(rem,remW-6):[""];
-      const h=Math.max(rowH,lines.length*10+7,remL.length*10+7);need(h);
-      doc.setDrawColor(LINE).setLineWidth(.4).line(M,y,M+CW,y);
-      doc.setFont("helvetica","normal").setFontSize(8).setTextColor(INK);
-      doc.text(String(i+1),M+8,y+12);doc.text(lines,M+numW,y+11);
-      const col=c.a==="Yes"?OK:c.a==="No"?BAD:NA,lab=c.a==="Yes"?"PASS":c.a==="No"?"FAIL":(c.a||"—");
-      doc.setFont("helvetica","bold").setFontSize(8).setTextColor(col).text(lab,M+numW+descW,y+11);
-      if(rem){doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text(remL,M+numW+descW+statW,y+11);}
-      y+=h;});
-    doc.setDrawColor(LINE).line(M,y,M+CW,y);y+=10;
-    doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor(INK).text("Passed: "+(d.clYes||0)+"    Failed: "+(d.clNo||0)+"    N/A: "+(d.clNa||0),M,y+2);y+=18;
+  /* ---- page-break guard ---- */
+  function need(h){ if(y+h > PH-M-24){ footer(); doc.addPage(); y=M; header(true); } }
+
+  function footer(){
+    const n = doc.internal.getNumberOfPages();
+    doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(SUB);
+    doc.text('Lingel Windows & Doors  \u00b7  Customer Handover', M, PH-22);
+    doc.text('Page '+n, PW-M, PH-22, {align:'right'});
+    doc.setDrawColor(LINE).setLineWidth(0.5).line(M, PH-32, PW-M, PH-32);
   }
 
-  // keys + review
-  need(60);title("Keys & Customer Satisfaction");
-  const pairs=[["Keys Handed Over",d.keysGiven||"—"],["Mesh",d.mesh||"—"]];
-  if(d.mesh==="Hold"&&d.meshNote)pairs.push(["Mesh Note",d.meshNote]);
-  pairs.push(["No. of Keys",d.keyCount],["Key Remarks",d.keyRemarks]);
-  const rlabels={1:"Poor",2:"Fair",3:"Good",4:"Very good",5:"Excellent"};
-  pairs.push(["Customer Rating", stars>0?(rlabels[stars]+"  ("+stars+"/5)"):"Not rated"]);
-  fields(pairs);
-  if(stars>0){need(20);let sx=M;doc.setFontSize(13);for(let i=1;i<=5;i++){doc.setTextColor(i<=stars?"#c9a227":LINE).text("★",sx,y+6);sx+=16;}y+=22;}
-  const rev=($("#review").value||"").trim();
-  if(rev){need(30);doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text("CUSTOMER REVIEW",M,y+2);y+=10;
-    doc.setFont("helvetica","italic").setFontSize(9.5).setTextColor(INK);const rl=doc.splitTextToSize('"'+rev+'"',CW);need(rl.length*11);doc.text(rl,M,y+4);y+=rl.length*11+10;}
+  /* ---- header band ---- */
+  function header(cont){
+    doc.setFillColor(DARK).rect(0,0,PW,58,'F');
+    doc.setFillColor(HIVIS).rect(0,58,PW,3,'F');
+    doc.setFont('helvetica','bold').setFontSize(17).setTextColor('#ffffff');
+    doc.text('LINGEL', M, 32);
+    doc.setFont('helvetica','normal').setFontSize(8).setTextColor('#c9c9c9');
+    doc.text('WINDOWS & DOORS TECHNOLOGY', M, 45);
+    doc.setFont('helvetica','bold').setFontSize(12).setTextColor('#ffffff');
+    doc.text('CUSTOMER HANDOVER'+(cont?' (contd.)':''), PW-M, 30, {align:'right'});
+    doc.setFont('helvetica','normal').setFontSize(8).setTextColor(HIVIS);
+    doc.text('CHF-'+(document.getElementById('fdate')?.textContent||'').trim(), PW-M, 44, {align:'right'});
+    y = 78;
+  }
 
-  // signatures
-  need(130);title("Acknowledgement");
-  const sigW=(CW-20)/2,sigH=68,sigY=y;
-  const custName=($("#signName").value||d.customer||"Customer").trim();
-  const blocks=[["Customer",sigDataUrl,custName],["Site Engineer",d.engineerSig||"",d.engineer||""]];
-  blocks.forEach((b,idx)=>{const x=M+idx*(sigW+20);
-    doc.setDrawColor(LINE).setLineWidth(.6).rect(x,sigY,sigW,sigH,"S");
-    if(b[1]){try{doc.addImage(b[1],"PNG",x+6,sigY+6,sigW-12,sigH-24);}catch(e){}}
-    doc.setDrawColor("#333").setLineWidth(.5).line(x+10,sigY+sigH-16,x+sigW-10,sigY+sigH-16);
-    doc.setFont("helvetica","bold").setFontSize(8).setTextColor(INK).text(b[0]+(b[2]?"  —  "+b[2]:""),x+10,sigY+sigH-5);});
-  y=sigY+sigH+14;
-  need(16);doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB);
-  doc.text("Digitally signed by the customer on "+new Date().toLocaleString(),M,y+2);y+=14;
+  /* ---- section title ---- */
+  function sectionTitle(t){
+    need(30);
+    doc.setFillColor('#f2f2f2').rect(M, y, CW, 20, 'F');
+    doc.setFillColor(HIVIS).rect(M, y, 3, 20, 'F');
+    doc.setFont('helvetica','bold').setFontSize(9.5).setTextColor(INK);
+    doc.text(t.toUpperCase(), M+10, y+13.5);
+    y += 30;
+  }
+
+  /* ---- two-column field grid ---- */
+  function fields(pairs){
+    const rowH=17, colW=CW/2;
+    for(let i=0;i<pairs.length;i+=2){
+      need(rowH);
+      for(let c=0;c<2 && i+c<pairs.length;c++){
+        const [label,val]=pairs[i+c];
+        const x=M+c*colW;
+        doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(SUB);
+        doc.text(label.toUpperCase(), x, y+6);
+        doc.setFont('helvetica','bold').setFontSize(9.5).setTextColor(INK);
+        const txt = doc.splitTextToSize(val||'\u2014', colW-14);
+        doc.text(txt[0], x, y+15);
+      }
+      y+=rowH;
+    }
+    y+=6;
+  }
+
+  /* ================= build ================= */
+  header(false);
+
+  /* --- customer + product --- */
+  sectionTitle('Customer & Order Details');
+  fields([
+    ['Customer', gv('cname')],
+    ['Order / Offer No.', gv('ord')],
+    ['Site / Address', gv('caddr')],
+    ['Contact', gv('cph')],
+    ['Email', gv('ceml')],
+    ['Handover Date', gv('hdate')],
+    ['Product / Service', gv('prod')],
+    ['Quantity', gv('qty')],
+    ['Installation Date', gv('idate')],
+    ['Site Engineer', gv('tname')+(gv('tph')?'  ('+gv('tph')+')':'')],
+  ]);
+
+  /* --- snag list table (near top) --- */
+  if(typeof snags!=='undefined' && snags.length){
+    sectionTitle('Snag List / Pending Items ('+snags.length+')');
+    const nW=20, pW=76, lW=76, prW=54, dW=CW-nW-pW-lW-prW, hH=18;
+    need(hH);
+    doc.setFillColor(DARK).rect(M,y,CW,hH,'F');
+    doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor('#ffffff');
+    doc.text('#',M+7,y+12);
+    doc.text('POSITION',M+nW,y+12);
+    doc.text('ISSUE / DEFECT',M+nW+pW,y+12);
+    doc.text('LOCATION',M+nW+pW+dW,y+12);
+    doc.text('PRIORITY',M+nW+pW+dW+lW,y+12);
+    y+=hH;
+    for(let i=0;i<snags.length;i++){
+      const s=snags[i];
+      const pos=doc.splitTextToSize(String(s.pos||'\u2014'),pW-6);
+      const desc=doc.splitTextToSize(String(s.desc||'\u2014'),dW-6);
+      const loc=doc.splitTextToSize(String(s.loc||'\u2014'),lW-6);
+      const h=Math.max(16,pos.length*10+6,desc.length*10+6,loc.length*10+6);
+      need(h);
+      if(i%2){doc.setFillColor('#f7f7f7').rect(M,y,CW,h,'F');}
+      doc.setFont('helvetica','normal').setFontSize(8).setTextColor(INK);
+      doc.text(String(i+1),M+7,y+11);
+      doc.text(pos,M+nW,y+11);
+      doc.text(desc,M+nW+pW,y+11);
+      doc.setTextColor(SUB);doc.text(loc,M+nW+pW+dW,y+11);
+      const pr=s.priority||'Medium';const pc=(pr==='High'||pr==='Critical')?BAD:(pr==='Low'?OK:HIVIS);
+      doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(pc);
+      doc.text(pr.toUpperCase(),M+nW+pW+dW+lW,y+11);
+      doc.setDrawColor(LINE).setLineWidth(0.3).line(M,y+h,M+CW,y+h);
+      y+=h;
+    }
+    y+=10;
+    const wph=snags.map((s,i)=>({s,i})).filter(o=>o.s.photo);
+    if(wph.length){
+      need(14);doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(SUB);doc.text('SNAG PHOTOS',M,y+2);y+=8;
+      const tw=52,th=40,gap=8;let px=M;need(th+14);
+      for(const o of wph){
+        if(px+tw>M+CW){px=M;y+=th+14;need(th+14);}
+        try{doc.addImage(o.s.photo,'JPEG',px,y,tw,th);}catch(e){}
+        doc.setFont('helvetica','normal').setFontSize(7).setTextColor(INK);
+        doc.text('#'+(o.i+1),px,y+th+9);
+        px+=tw+gap;
+      }
+      y+=th+18;
+    }
+  } else {
+    sectionTitle('Snag List / Pending Items');
+    need(16);doc.setFont('helvetica','normal').setFontSize(9).setTextColor(OK);
+    doc.text('No snags or pending items recorded.',M,y+4);y+=20;
+  }
+
+  /* --- checklist --- */
+  sectionTitle('Handover Checklist');
+  const rowH=18;
+  const numW=22, statW=54, remW=120, descW=CW-numW-statW-remW;
+  need(rowH);
+  doc.setFillColor('#fafafa').rect(M,y,CW,rowH,'F');
+  doc.setFont('helvetica','bold').setFontSize(7.5).setTextColor(SUB);
+  doc.text('#', M+8, y+12);
+  doc.text('CHECK ITEM', M+numW, y+12);
+  doc.text('STATUS', M+numW+descW, y+12);
+  doc.text('REMARKS', M+numW+descW+statW, y+12);
+  y+=rowH;
+  for(let i=0;i<T.ci.length;i++){
+    const ans=rd('cl'+(i+1));
+    const rem=(document.querySelectorAll('.iinp')[i]?.value||'').trim();
+    const lines=doc.splitTextToSize(T.ci[i], descW-6);
+    const remLines=rem?doc.splitTextToSize(rem, remW-6):[''];
+    const h=Math.max(rowH, lines.length*10+7, remLines.length*10+7);
+    need(h);
+    doc.setDrawColor(LINE).setLineWidth(0.4).line(M,y,M+CW,y);
+    doc.setFont('helvetica','normal').setFontSize(8).setTextColor(INK);
+    doc.text(String(i+1), M+8, y+12);
+    doc.text(lines, M+numW, y+11);
+    const col = ans==='Yes'?OK : ans==='No'?BAD : NA;
+    const lab = ans==='Yes'?'PASS' : ans==='No'?'FAIL' : (ans||'\u2014');
+    doc.setFont('helvetica','bold').setFontSize(8).setTextColor(col);
+    doc.text(lab, M+numW+descW, y+11);
+    if(rem){ doc.setFont('helvetica','normal').setFontSize(7.5).setTextColor(SUB);
+             doc.text(remLines, M+numW+descW+statW, y+11); }
+    y+=h;
+  }
+  doc.setDrawColor(LINE).line(M,y,M+CW,y); y+=10;
+  const cy=[...Array(T.ci.length)].filter((_,i)=>rd('cl'+(i+1))==='Yes').length;
+  const cn=[...Array(T.ci.length)].filter((_,i)=>rd('cl'+(i+1))==='No').length;
+  const ca=[...Array(T.ci.length)].filter((_,i)=>rd('cl'+(i+1))==='NA').length;
+  doc.setFont('helvetica','bold').setFontSize(8.5).setTextColor(INK);
+  doc.text('Passed: '+cy+'    Failed: '+cn+'    N/A: '+ca, M, y+2); y+=18;
+
+  /* --- snags now rendered as a table near the top --- */
+
+
+  /* --- balance material --- */
+  if(typeof balanceItems!=='undefined' && balanceItems.length){
+    sectionTitle('Balance Material ('+balanceItems.length+')');
+    for(let i=0;i<balanceItems.length;i++){
+      const b=balanceItems[i]; need(16);
+      doc.setFont('helvetica','normal').setFontSize(9).setTextColor(INK);
+      doc.text('\u2022  '+(b.desc||'\u2014'), M+6, y+8); y+=16;
+    }
+    y+=8;
+  }
+
+  /* --- keys + rating --- */
+  need(60);
+  sectionTitle('Keys & Customer Satisfaction');
+  fields([
+    ['Keys Handed Over', rd('keysHo')||'\u2014'],
+    ['Mesh', rd('meshHo')||'\u2014'],
+    ...((rd('meshHo')==='Hold')?[['Mesh Note', T[lang].meshNote]]:[]),
+    ['No. of Keys', gv('keyqty')],
+    ['Key Remarks', gv('keyrem')],
+    ['Satisfaction', (typeof CR!=='undefined'&&CR>0)?((T.rl[CR]||'')+'  ('+CR+'/5)'):'Not rated'],
+  ]);
+  // star row
+  if(typeof CR!=='undefined' && CR>0){
+    need(20); let sx=M;
+    doc.setFontSize(13);
+    for(let i=1;i<=5;i++){ doc.setTextColor(i<=CR?HIVIS:LINE); doc.text('\u2605', sx, y+6); sx+=16; }
+    y+=22;
+  }
+
+  /* --- signatures --- */
+  need(130);
+  sectionTitle('Acknowledgement');
+  const sigW=(CW-20)/2, sigH=68, sigY=y;
+  [['Customer','sc',gv('cname')],['Site Engineer','st',gv('tname')]].forEach((sig,idx)=>{
+    const x=M+idx*(sigW+20);
+    doc.setDrawColor(LINE).setLineWidth(0.6).rect(x,sigY,sigW,sigH,'S');
+    try{
+      const cv=document.getElementById(sig[1]);
+      if(cv){ const d=cv.toDataURL('image/png'); doc.addImage(d,'PNG',x+6,sigY+6,sigW-12,sigH-24); }
+    }catch(e){}
+    doc.setDrawColor('#333').setLineWidth(0.5).line(x+10,sigY+sigH-16,x+sigW-10,sigY+sigH-16);
+    doc.setFont('helvetica','bold').setFontSize(8).setTextColor(INK);
+    doc.text(sig[0]+(sig[2]?'  \u2014  '+sig[2]:''), x+10, sigY+sigH-5);
+  });
+  y=sigY+sigH+16;
+
+  /* --- selfie --- */
+  if(typeof selfieComposed!=='undefined' && selfieComposed){
+    need(150);
+    sectionTitle('Site Photo');
+    try{
+      const props=doc.getImageProperties(selfieComposed);
+      const w=Math.min(CW, 260), h=w*props.height/props.width;
+      need(h+6);
+      doc.addImage(selfieComposed,'JPEG',M,y,w,h);
+      y+=h+10;
+    }catch(e){}
+  }
 
   footer();
   return doc;
 }
 
-let submitting=false;
-async function submit(){
-  if(submitting) return;
-  const name=($("#signName").value||"").trim();
-  if(!sigDrawn){ alert("Please add your signature before confirming."); return; }
-  if(!name){ alert("Please type your full name."); return; }
-  submitting=true;
-  const go=$("#go"); go.disabled=true; go.textContent="Saving…";
+function pdfName(){return 'Lingel_Handover_'+(document.getElementById('ord').value||'form').replace(/[^\w-]/g,'_')+'.pdf';}
+async function downloadPDF(){
+  toast('Building PDF…');
+  try{const pdf=await buildPDF();pdf.save(pdfName());toast('✓ PDF saved');}
+  catch(e){console.error(e);toast('⚠ PDF failed — '+((e&&e.message)||'check internet'));}}
+async function shareReport(){
+  toast('Building report…');
   try{
-    const sigUrl = $("#sig").toDataURL("image/png");
-    const doc = buildSignedPDF(sigUrl);
-    const b64 = doc.output("datauristring").split(",")[1];
-    const name_pdf = "Handover_Signed_" + String(DATA.orderNo||"form").replace(/[^\w-]+/g,"-") + ".pdf";
-    const res = await post("signSubmit", {
-      token: TOKEN, data: b64, name: name_pdf,
-      stars: String(stars||""), review: ($("#review").value||"").trim(), signName: name
-    });
-    if(res.ok){
-      const reviewLink = DATA.reviewLink || "";
-      let btn = res.url ? `<a class="btn" href="${esc(res.url)}" target="_blank">View signed handover</a>` : "";
-      if(stars>=5 && reviewLink) btn += `<a class="btn" style="background:#c9a227;margin-top:10px" href="${esc(reviewLink)}" target="_blank">★ Leave us a Google review</a>`;
-      screen("✅","Thank you!","Your handover is signed and saved with Lingel. A copy has been kept on file."+(stars>=5&&reviewLink?"<br><br>We'd love a quick Google review!":""), btn);
-      if(stars>=5 && reviewLink){ setTimeout(()=>{ try{ window.open(reviewLink,"_blank"); }catch(e){} }, 900); }
-    } else if(res.state==="used"){
-      screen("✅","Already signed","This handover was already signed. Thank you!", res.url?`<a class="btn" href="${esc(res.url)}" target="_blank">View handover</a>`:"");
-    } else if(res.state==="expired"){
-      screen("⌛","Link expired","This sign-off link has expired. Please ask Lingel to resend it.");
-    } else {
-      go.disabled=false; go.textContent="✓ Confirm & Sign Handover"; submitting=false;
-      alert("Couldn't save: "+((res&&res.error)||"please try again"));
+    const pdf=await buildPDF();const blob=pdf.output('blob');
+    const file=new File([blob],pdfName(),{type:'application/pdf'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      const custName=document.getElementById('cname').value||'Customer';
+      const ordNo=document.getElementById('ord').value||'';
+      const text='Dear '+custName+',\n\nThank you for choosing Lingel Windows & Doors!\nPlease find attached your handover report'+(ordNo?' for order '+ordNo:'')+'. For any service needs, contact us anytime.\n\nWarm regards,\nLingel Windows & Doors Technologies Pvt. Ltd.\n+91 9799398394';
+      await navigator.share({title:'Lingel Handover — '+ordNo,text,files:[file]});
+    }else{
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=pdfName();a.click();URL.revokeObjectURL(url);
+      toast('Downloaded — share manually via email/WhatsApp');}
+  }catch(e){if(e.name!=='AbortError')toast('⚠ Share failed');}}
+
+/* Drive upload - via Apps Script (no OAuth, no Client ID) */
+async function uploadDrive(){
+  const api = luApi(); if(!api) return;
+  const offer = (document.getElementById('ord').value||'').trim();
+  luShow('Uploading to Drive','Building report…');
+  let b64;
+  try{ const pdf = await buildPDF(); b64 = pdf.output('datauristring').split(',')[1]; }
+  catch(e){ luFail("couldn't build PDF"); return; }
+  const name = 'Handover_' + (offer||'form').replace(/[^\w-]+/g,'-') + '_' + luStamp() + '.pdf';
+  const pdfJob = { id:'pdf_'+((offer||'form').replace(/[^\w-]+/g,'_')), kind:'pdf', folder: offer||'Misc', name, mime:'application/pdf', base64: b64 };
+  try{
+    const d = await queuedUpload(api, pdfJob, b64);
+    window._lastDriveUrl = d.url;
+    luDone('Saved to '+(d.folder||offer||'Misc'));
+  }catch(e){ console.error('pdf upload deferred',e); luFail('kept on phone · uploads when back online'); }
+}
+
+function doReset(){
+  if(!confirm('Reset the form and clear all entered data?\n(Any PDF/Drive/sheet already saved is not affected.)')) return;
+  document.querySelectorAll('input:not([type=radio]),textarea').forEach(el=>el.value='');
+  document.querySelectorAll('input[type=radio]').forEach(el=>el.checked=false);
+  CR=0;photos=[];snags=[];balanceItems=[];quotePositions=[];geoLoc=null;selfieComposed=null;selfieName='';selfieTs='';selfieOrd='';
+  hi(0);document.getElementById('rlbl').textContent=T[lang].notRated;
+  clrSig('sc');clrSig('st');
+  const _gn=document.getElementById('geoNote');if(_gn)_gn.textContent='';
+  document.getElementById('hdate').valueAsDate=new Date();setFn();
+  document.getElementById('pfll').style.width='0%';
+  const _pg=document.getElementById('phgr');if(_pg)_pg.innerHTML='';
+  const _emp=document.getElementById('emP');if(_emp)_emp.style.display='none';
+  updatePosCount();renderPosPicker();
+  renderSnags();renderBalance();renderSelfieBtn();toast('Form has been reset.');
+}
+
+
+/* ---- Snag List with PDF import ---- */
+let snags=[];
+function addSnag(posNo){snags.push({id:Date.now(),pos:posNo||'',desc:'',loc:'',priority:'Medium',photo:''});renderSnags();}
+function removeSnag(id){snags=snags.filter(s=>s.id!==id);renderSnags();}
+function renderSnags(){
+  const el=document.getElementById('snagList');if(!el)return;
+  el.innerHTML=snags.map((s,i)=>`<div class="snag-item">
+    <button class="snag-rm" onclick="removeSnag(${s.id})">✕</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="lbl">Snag #${i+1}</div>
+      ${s.pos?`<span class="snag-pos">${s.pos.replace(/</g,'&lt;')}</span>`:''}
+    </div>
+    <input type="text" placeholder="Position no. / ref" value="${(s.pos||'').replace(/"/g,'&quot;')}" oninput="snags[${i}].pos=this.value" style="margin-top:6px">
+    <input type="text" placeholder="Describe the issue / defect" value="${(s.desc||'').replace(/"/g,'&quot;')}" oninput="snags[${i}].desc=this.value" style="margin-top:4px">
+    <div class="snag-row">
+      <input type="text" placeholder="Location / room" value="${(s.loc||'').replace(/"/g,'&quot;')}" oninput="snags[${i}].loc=this.value">
+      <select onchange="snags[${i}].priority=this.value">
+        <option ${s.priority==='Low'?'selected':''}>Low</option>
+        <option ${s.priority==='Medium'?'selected':''}>Medium</option>
+        <option ${s.priority==='High'?'selected':''}>High</option>
+        <option ${s.priority==='Critical'?'selected':''}>Critical</option>
+      </select>
+      ${s.photo?`<img src="${s.photo}" class="snag-photo"><button class="btns" style="padding:4px 8px;font-size:10px" onclick="snags[${i}].photo='';renderSnags()">✕</button>`:`<button class="btns" style="padding:6px 10px;font-size:11px" onclick="snagPhoto(${i})">📷</button>`}
+    </div>
+  </div>`).join('');
+}
+function snagPhoto(idx){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{snags[idx].photo=ev.target.result;renderSnags();};r.readAsDataURL(f);};
+  inp.click();
+}
+function ensureScript(src){return new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load failed'));document.head.appendChild(s);});}
+async function ensurePdfjs(){
+  if(window.pdfjsLib&&window.pdfjsLib.getDocument)return;
+  const cdns=[['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'],
+    ['https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js','https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'],
+    ['https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js','https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js']];
+  for(const [lib,worker] of cdns){try{await ensureScript(lib);if(window.pdfjsLib){window.pdfjsLib.GlobalWorkerOptions.workerSrc=worker;return;}}catch(e){}}
+  throw new Error('PDF reader needs internet — try on your https link');}
+
+/* import quotation PDF into snag list */
+const _SNAG_ROW=/^\s*(\S[^=]*?)\s+((?:[A-Za-z]\d{0,2}\s*=\s*[\d.,]+\s*;\s*)+)(\d+)?\b/;const _SNAG_NOISE=/^(position\s+measure|quotation\s*-?\s*nr)/i;
+function _snagHeader(t){if(_SNAG_NOISE.test(t))return null;var m=t.match(_SNAG_ROW);if(!m)return null;var label=m[1].replace(/\s+/g," ").trim();if(!label||/^\d+([.,]\d+)?$/.test(label))return null;if(/^[A-Za-z]\d{0,2}$/.test(label))return null;return label;}
+document.getElementById('snagPdfInp').addEventListener('change',ev=>{
+  const f=ev.target.files[0];if(!f)return;ev.target.value='';
+  importQuotation(f,true);
+});
+
+/* ---- quotation positions picker (tap a position to log a snag against it) ---- */
+let quotePositions=[];
+function updatePosCount(){const el=document.getElementById('posCount');if(el)el.textContent=quotePositions.length;}
+function togglePicker(){const el=document.getElementById('posPicker');if(!el)return;const open=el.style.display==='flex';el.style.display=open?'none':'flex';if(!open)renderPosPicker();}
+function renderPosPicker(){
+  const el=document.getElementById('posPicker');if(!el)return;
+  if(!quotePositions.length){el.innerHTML='<div style="font-size:12px;color:var(--muted)">No positions loaded yet — import a quotation first.</div>';return;}
+  el.innerHTML=quotePositions.map((p,i)=>{const added=snags.some(s=>s.pos===p);return `<button type="button" class="poschip${added?' on':''}" onclick="togglePos(${i})">${added?'✓ ':''}${String(p).replace(/</g,'&lt;')}</button>`;}).join('');
+}
+function togglePos(i){
+  const p=quotePositions[i];const ex=snags.find(s=>s.pos===p);
+  if(ex){snags=snags.filter(s=>s!==ex);}else{snags.push({id:Date.now()+i,pos:p,desc:'',loc:'',priority:'Medium',photo:''});}
+  renderSnags();renderPosPicker();
+}
+async function importQuotation(file,fillCustomer){
+  toast('📄 Reading quotation…');
+  try{
+    await ensurePdfjs();
+    const buf=await file.arrayBuffer();
+    const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+    const seen={};quotePositions.forEach(p=>{seen[p]=1;});let count=0;
+    for(let pn=1;pn<=pdf.numPages;pn++){
+      const page=await pdf.getPage(pn);const tc=await page.getTextContent();
+      const sp=[];tc.items.forEach(it=>{if(!it.str)return;sp.push({x:it.transform[4],y:it.transform[5],str:it.str});});
+      sp.sort((a,b)=>b.y-a.y);
+      const bk=[];for(const s of sp){let placed=false;for(const b of bk){if(Math.abs(s.y-b.y)<5){b.items.push(s);placed=true;break;}}if(!placed)bk.push({y:s.y,items:[s]});}
+      const lines=bk.sort((a,b)=>b.y-a.y).map(b=>b.items.sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim());
+      for(const ln of lines){let lb=_snagHeader(ln);if(lb){if(seen[lb]){seen[lb]++;lb=lb+' ('+seen[lb]+')';}else seen[lb]=1;if(!quotePositions.includes(lb)){quotePositions.push(lb);count++;}}}
+      if(pn===1&&fillCustomer){
+        const G=id=>document.getElementById(id);
+        const vp=page.getViewport({scale:1}), pageW=vp.width, pageH=vp.height;
+        for(const ln of lines){
+          // Order / Offer no. — handles "Offer Nr.", "Nr.", "Quotation No." etc. and spaces around the slash
+          if(!G('ord').value){
+            const nr=ln.match(/(?:offer\s*nr|offer\s*no|quotation\s*(?:nr|no)|order\s*no|angebot\s*nr|\bnr)\.?\s*[:.]?\s*([0-9]{3,7}\s*[\/\-]\s*[0-9]{1,4})/i);
+            if(nr) G('ord').value=nr[1].replace(/\s+/g,'');
+          }
+          if(!G('cph').value){const ph=ln.match(/(?:\+?91[- ]?)?[6-9]\d{9}/);if(ph)G('cph').value=ph[0];}
+          if(!G('ceml').value){const em=ln.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);if(em)G('ceml').value=em[0];}
+        }
+        // Customer name — try a salutation line first, else the top-most left-column line below the header
+        if(!G('cname').value){
+          for(const ln of lines){
+            const cl=ln.match(/\b(?:M\/s|Mr|Mrs|Ms|Smt|Shri|Sh)\.?\s+([A-Za-z].{1,60})/);
+            if(cl && !/sales|manager|sr\.|lingel|fensterbau|windows|doors/i.test(ln)){ const nm=cleanName(cl[0]); if(nm.length>=3){G('cname').value=nm;break;} }
+          }
+        }
+        if(!G('cname').value){
+          const bad=/offer|quotation|invoice|\bnr\b|\bno\b|date|gstin|g\.?s\.?t|\bpan\b|tel|phone|mob|email|e-?mail|address|subject|\bref\b|dear|attn|page|lingel|fensterbau|windows|doors|technolog|pvt|ltd|www|http|@/i;
+          const cands=bk.filter(b=>{
+            const minx=Math.min.apply(null,b.items.map(it=>it.x));
+            return minx < pageW*0.5 && b.y < pageH*0.9 && b.y > pageH*0.45;
+          }).sort((a,b)=>b.y-a.y);
+          for(const b of cands){
+            let txt=b.items.slice().sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim();
+            if(bad.test(txt)) continue;
+            const nm=cleanName(txt);
+            if(nm.length>=3 && /[A-Za-z]{3,}/.test(nm)){ G('cname').value=nm; break; }
+          }
+        }
+      }
     }
+    updatePosCount();renderPosPicker();prog();setFn();
+    const pk=document.getElementById('posPicker');if(pk&&quotePositions.length)pk.style.display='flex';
+    toast(quotePositions.length?('✓ '+quotePositions.length+' positions'+(fillCustomer?' · details filled':'')):'⚠ No positions found');
+  }catch(e){console.error(e);toast('⚠ '+((e&&e.message)||"Couldn't read PDF"));}
+}
+
+/* trims a captured name to just the person/company name (stops at the address) */
+function cleanName(s){
+  s=String(s||'').replace(/^(to|for|kind attn\.?|attn\.?|m\/s)[:,]?\s*/i,'').trim();
+  const out=[];
+  for(const tk of s.split(/\s+/)){ if(/\d/.test(tk)) break; out.push(tk); if(out.join(' ').length>50) break; }
+  return out.join(' ').replace(/[,\-–|]+$/,'').trim();
+}
+
+/* ---- Pin GPS location into the site address ---- */
+let geoLoc=null;
+function pinLocation(){
+  const note=document.getElementById('geoNote');
+  if(!navigator.geolocation){ if(note)note.textContent='⚠ Location not supported on this device'; toast('⚠ Location not supported'); return; }
+  if(note)note.textContent='📍 Getting location…';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const la=pos.coords.latitude, lo=pos.coords.longitude;
+    geoLoc={lat:la,lng:lo};
+    const link='https://maps.google.com/?q='+la.toFixed(6)+','+lo.toFixed(6);
+    if(note)note.innerHTML='📍 Pinned: <a href="'+link+'" target="_blank" style="color:var(--hivis)">'+la.toFixed(5)+', '+lo.toFixed(5)+'</a> · tap to open in Maps';
+    const a=document.getElementById('caddr');
+    if(a && a.value.indexOf('maps.google')<0){ a.value=(a.value.trim()?a.value.trim()+'  ·  ':'')+'📍 '+link; }
+    toast('✓ Location pinned');
+  }, err=>{
+    if(note)note.textContent='⚠ '+((err&&err.message)||'Could not get location — allow location access');
+    toast('⚠ Location failed');
+  }, {enableHighAccuracy:true, timeout:10000, maximumAge:0});
+}
+
+/* ---- Balance Material at Site ---- */
+let balanceItems=[];
+function addBalance(){balanceItems.push({id:Date.now(),desc:'',photo:''});renderBalance();}
+function removeBalance(id){balanceItems=balanceItems.filter(b=>b.id!==id);renderBalance();}
+function renderBalance(){
+  const el=document.getElementById('balanceList');if(!el)return;
+  el.innerHTML=balanceItems.map((b,i)=>`<div class="snag-item">
+    <button class="snag-rm" onclick="removeBalance(${b.id})">✕</button>
+    <div class="lbl">Item #${i+1}</div>
+    <input type="text" placeholder="Material description (e.g. 2x spare gaskets, leftover silicon tubes)" value="${(b.desc||'').replace(/"/g,'&quot;')}" oninput="balanceItems[${i}].desc=this.value" style="margin-top:6px">
+    <div class="snag-row">
+      ${b.photo?`<img src="${b.photo}" class="snag-photo"><button class="btns" style="padding:4px 8px;font-size:10px" onclick="balanceItems[${i}].photo='';renderBalance()">✕</button>`:`<button class="btns" style="padding:6px 10px;font-size:11px" onclick="balancePhoto(${i})">📷 Photo</button>`}
+    </div>
+  </div>`).join('');
+}
+function balancePhoto(idx){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{balanceItems[idx].photo=ev.target.result;renderBalance();};r.readAsDataURL(f);};
+  inp.click();
+}
+
+/* ---- 5-star → Google Review ---- */
+const _origSetR=typeof setR==='function'?setR:null;
+function setR(n){CR=n;hi(n);
+  const t=T[lang];document.getElementById('rlbl').textContent=CR>0?t.rl[CR]:t.notRated;
+  if(CR===5){window.open('https://share.google/tpEKjnPKtsrmzHoZ3','_blank','noopener');}
+
+  prog();}
+
+buildCL();buildStars();renderSelfieBtn();
+document.getElementById('hdate').valueAsDate=new Date();setFn();
+window.addEventListener('load',()=>{setupSig('sc');setupSig('st');});
+
+
+/* ============ Google Sheet - log handover on PDF / Share / Drive ============
+   Posts to the shared Lingel Apps Script /exec (same one the hub, Daily Report
+   and SiteLog use). action=handover (summary row) + action=handoverSnags
+   (one row per snag). Offline-safe: queues and syncs on reconnect.
+   ========================================================================== */
+let HO_API = localStorage.getItem("lingel_api") || "";
+let _hoSig = "";
+
+function handoverPayload(){
+  const v  = id => (document.getElementById(id)?.value || "").trim();
+  const rd = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || "";
+
+  const cl = {yes:0, no:0, na:0};
+  const noItems = [];
+  for(let i=1; i<=CL.length; i++){
+    const a = rd("cl"+i);
+    if(a==="Yes") cl.yes++;
+    else if(a==="No"){ cl.no++; noItems.push(i); }
+    else if(a==="NA") cl.na++;
+  }
+
+  const summary = {
+    formNo:      "CHF-" + (document.getElementById("fdate")?.textContent || "").trim(),
+    date:        v("hdate"),
+    orderNo:     v("ord"),
+    customer:    v("cname"),
+    site:        v("caddr"),
+    contact:     v("cph"),
+    email:       v("ceml"),
+    product:     v("prod"),
+    qty:         v("qty"),
+    installDate: v("idate"),
+    engineer:    v("tname"),
+    engPhone:    v("tph"),
+    clYes: cl.yes, clNo: cl.no, clNa: cl.na,
+    clNoItems: noItems.join(", "),
+    snagCount:    snags.length,
+    balanceCount: balanceItems.length,
+    keysGiven:  rd("keysHo"),
+    keyCount:   v("keyqty"),
+    keyRemarks: v("keyrem"),
+    mesh:       rd("meshHo"),
+    stars:       CR || "",
+    ratingLabel: (CR>0 && T.en.rl[CR]) ? T.en.rl[CR] : "Not rated"
+  };
+
+  const snagRows = snags.map((s,i) => ({
+    n: i+1,
+    posNo:    s.pos || "",
+    desc:     s.desc || "",
+    loc:      s.loc || "",
+    priority: s.priority || "",
+    photo:    !!s.photo
+  })).filter(s => s.desc || s.posNo);
+
+  return { summary, snagRows };
+}
+
+async function hoPost(params){
+  const r = await fetch(HO_API, {method:"POST", body:new URLSearchParams(params)});
+  const d = await r.json();
+  if(!d.ok) throw new Error(d.error || "sheet rejected");
+  return d;
+}
+
+const HO_QK = "lingel_handover_queue";
+function hoQueue(job){
+  const q = JSON.parse(localStorage.getItem(HO_QK)||"[]");
+  q.push(job);
+  localStorage.setItem(HO_QK, JSON.stringify(q));
+}
+
+async function hoSend(job, quiet){
+  await hoPost(Object.assign({action:"handover"}, job.summary));
+  const s = job.summary, ts = new Date().toISOString();
+  const rows = (job.snagRows||[]).map(x => Object.assign({
+    ts, formNo:s.formNo, orderNo:s.orderNo, customer:s.customer, site:s.site
+  }, x));
+  // reviewed roster = the snags present this handover (by position). Any prior
+  // snag for this order NOT in the roster is treated as Resolved by the server.
+  const reviewed = (job.snagRows||[]).map(x=>({ orderNo:s.orderNo, posNo:x.posNo, open:true }));
+  // always send (even with zero snags) so a clean re-handover resolves old snags
+  await hoPost({
+    action:"handoverSnags",
+    rows:JSON.stringify(rows),
+    reviewed:JSON.stringify(reviewed)
+  });
+  if(!quiet) toast("\u2713 Handover logged to Sheet (" + rows.length + " snags)");
+}
+
+async function hoFlush(){
+  if(!HO_API) return;
+  const q = JSON.parse(localStorage.getItem(HO_QK)||"[]");
+  if(!q.length) return;
+  const left = [];
+  for(const j of q){ try{ await hoSend(j, true); }catch(e){ left.push(j); } }
+  localStorage.setItem(HO_QK, JSON.stringify(left));
+  if(q.length && !left.length) toast("\u2713 Pending handovers synced to Sheet");
+}
+
+async function logHandoverToSheet(){
+  const job = handoverPayload();
+  if(!job.summary.orderNo && !job.summary.customer) return;   // empty form, nothing to log
+  if(typeof logDailyReport==="function") logDailyReport({
+    visitType:"Handover",
+    offerNo:job.summary.orderNo, customer:job.summary.customer,
+    contact:job.summary.contact, address:job.summary.site,
+    visitDate:job.summary.date, salesperson:"",
+    supervisorFallback:job.summary.engineer,
+    remarks:"Customer handover \u00b7 "+job.summary.snagCount+" snag(s)"
+  });
+  const sig = JSON.stringify(job);
+  if(sig === _hoSig) return;                                  // PDF then Share = one write
+  if(!HO_API) HO_API = localStorage.getItem("lingel_api") || "";   // hub may have set it since load
+  if(!HO_API){
+    const u = prompt("One-time setup:\nPaste the Lingel Apps Script /exec URL");
+    if(!u) return;
+    HO_API = u.trim();
+    localStorage.setItem("lingel_api", HO_API);
+  }
+  try{
+    await hoSend(job);
+    _hoSig = sig;                                             // only lock in on success
   }catch(e){
-    go.disabled=false; go.textContent="✓ Confirm & Sign Handover"; submitting=false;
-    alert("Something went wrong saving your signature. Please check your internet and try again.");
+    console.error("Sheet log failed:", e);
+    if(navigator.onLine){
+      toast("\u26a0 Sheet error: " + (e.message || "check /exec URL & deployment"));
+    }else{
+      hoQueue(job);
+      _hoSig = sig;
+      toast("\u26a0 Offline \u2014 handover queued, will sync later");
+    }
   }
 }
 
-load();
+/* ---- persistent Drive outbox (Handover): if the upload fails or the phone is
+   offline, the report is saved on the device and auto-sent when the connection
+   returns — survives closing the app. Handover has no other IndexedDB, so this
+   opens a tiny DB used only for the outbox. ---- */
+const HO_DBP = new Promise((res,rej)=>{ let req; try{ req=indexedDB.open("lingel_handover",1); }catch(e){ rej(e); return; }
+  req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains("outbox"))db.createObjectStore("outbox"); };
+  req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error); });
+function hoIdb(mode,fn){ return HO_DBP.then(db=>new Promise((res,rej)=>{ const tx=db.transaction("outbox",mode); const os=tx.objectStore("outbox"); const rq=fn(os);
+  if(rq){rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);} else {tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);} })); }
+const obPut=(v,k)=>hoIdb("readwrite",os=>os.put(v,k));
+const obDel=(k)=>hoIdb("readwrite",os=>os.delete(k));
+const obAll=()=>hoIdb("readonly",os=>os.getAll());
+async function queuedUpload(api, job, base64){
+  try{ await obPut(Object.assign({}, job), job.id); }catch(e){}   // persist intent BEFORE trying
+  const d = await lingelUpload({ api, folder: job.folder, name: job.name, mime: job.mime, base64 });
+  try{ await obDel(job.id); }catch(e){}                            // sent → clear
+  return d;
+}
+let _flushingOutbox=false;
+async function flushOutbox(){
+  if(_flushingOutbox) return; _flushingOutbox=true;
+  try{
+    const api=luApi(); if(!api) return;
+    let jobs=[]; try{ jobs=(await obAll())||[]; }catch(e){ return; }
+    if(!jobs.length) return;
+    let sent=0;
+    for(const job of jobs){
+      try{
+        if(!job.base64){ await obDel(job.id); continue; }
+        await lingelUpload({ api, folder:job.folder, name:job.name, mime:job.mime||"application/pdf", base64:job.base64 });
+        await obDel(job.id); sent++;
+      }catch(e){ /* still offline / server unreachable — keep for the next reconnect */ }
+    }
+    if(sent) toast("\u2713 "+sent+" pending upload"+(sent>1?"s":"")+" synced to Drive");
+  } finally { _flushingOutbox=false; }
+}
+window.addEventListener("online", flushOutbox);
+flushOutbox();   // catch anything left from a previous session
+
+/* the report buttons use inline onclick, so wrap the functions themselves */
+["downloadPDF","shareReport","uploadDrive"].forEach(fn => {
+  const o = window[fn];
+  if(typeof o !== "function") return;
+  window[fn] = async function(){
+    const out = await o.apply(this, arguments);
+    logHandoverToSheet();
+    // one tap on Download PDF also pushes the report to Drive (uploadDrive already does its own)
+    if(fn === "downloadPDF"){ try{ await uploadDrive(); }catch(e){} }
+    return out;
+  };
+});
+
+window.addEventListener("online", hoFlush);
+hoFlush();
+
+
+
+/* ---- Drive upload with progress (Apps Script route, no login) ---- */
+function luEnsure(){
+  if(document.getElementById('luChip')) return;
+  var css='#luChip{position:fixed;right:14px;bottom:14px;z-index:99999;min-width:210px;max-width:76vw;'
+    +'background:#1c1c22;border:1px solid #34343c;border-radius:12px;padding:11px 13px;'
+    +'box-shadow:0 10px 30px rgba(0,0,0,.4);font-family:inherit;transform:translateY(140%);'
+    +'opacity:0;transition:transform .3s ease,opacity .3s ease;pointer-events:none}'
+    +'#luChip.on{transform:translateY(0);opacity:1;pointer-events:auto}'
+    +'#luChipTop{display:flex;align-items:center;gap:8px;margin-bottom:7px}'
+    +'#luChipDot{width:9px;height:9px;border-radius:50%;background:#f5a623;flex:0 0 auto;'
+    +'animation:luPulse 1s infinite}'
+    +'@keyframes luPulse{0%,100%{opacity:1}50%{opacity:.35}}'
+    +'#luChipTxt{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    +'#luChipPct{margin-left:auto;font-size:11px;font-weight:800;color:#f5a623}'
+    +'#luChipTrack{height:5px;background:#2c2c34;border-radius:3px;overflow:hidden}'
+    +'#luChipFill{height:100%;width:0;background:linear-gradient(90deg,#f5a623,#ffcb6b);'
+    +'border-radius:3px;transition:width .25s ease}'
+    +'#luChip.done #luChipFill{background:#1f9d55}#luChip.done #luChipDot{background:#1f9d55;animation:none}'
+    +'#luChip.done #luChipPct{color:#1f9d55}'
+    +'#luChip.err #luChipFill{background:#d64545}#luChip.err #luChipDot{background:#d64545;animation:none}'
+    +'#luChip.err #luChipPct{color:#d64545}#luChip.err{cursor:pointer}';
+  var st=document.createElement('style'); st.textContent=css; document.head.appendChild(st);
+  var c=document.createElement('div'); c.id='luChip';
+  c.innerHTML='<div id="luChipTop"><span id="luChipDot"></span>'
+    +'<span id="luChipTxt">Uploading\u2026</span><span id="luChipPct">0%</span></div>'
+    +'<div id="luChipTrack"><div id="luChipFill"></div></div>';
+  document.body.appendChild(c);
+}
+var _luRetry=null;
+function luShow(title,sub){
+  luEnsure();
+  var c=document.getElementById('luChip');
+  c.className='on';
+  document.getElementById('luChipTxt').textContent=sub||title||'Uploading\u2026';
+  luSet(0);
+  c.onclick=null;
+}
+function luSet(p){
+  luEnsure();
+  document.getElementById('luChipFill').style.width=p+'%';
+  document.getElementById('luChipPct').textContent=p+'%';
+}
+function luDone(msg){
+  luEnsure();
+  var c=document.getElementById('luChip'); c.className='on done';
+  document.getElementById('luChipTxt').textContent='\u2713 '+(msg||'Saved');
+  document.getElementById('luChipPct').textContent='';
+  setTimeout(function(){ c.className=''; },2600);
+}
+function luFail(msg){
+  luEnsure();
+  var c=document.getElementById('luChip'); c.className='on err';
+  document.getElementById('luChipTxt').textContent='\u2715 '+(msg||'Upload failed')+' \u2014 tap to retry';
+  document.getElementById('luChipPct').textContent='';
+  c.onclick=function(){ c.className=''; if(typeof _luRetry==='function') _luRetry(); };
+  setTimeout(function(){ if(c.className.indexOf('err')>-1) c.className=''; },7000);
+}
+function luHide(){ var c=document.getElementById('luChip'); if(c) c.className=''; }
+_luRetry=function(){ uploadDrive(); };
+
+function lingelUpload(opt){
+  return new Promise(async (resolve,reject)=>{
+    try{
+      // Match the Sheet-logging pattern exactly: fetch + URLSearchParams.
+      // This fills e.parameter server-side and is a CORS "simple request"
+      // (no preflight, no custom headers) — the same call style that already
+      // works for Sheet logging, so it cannot hit the CORS error.
+      luSet(92); // building done, sending now
+      const body = new URLSearchParams({
+        action: 'upload',
+        folder: opt.folder,
+        name:   opt.name,
+        mime:   opt.mime || 'application/pdf',
+        data:   opt.base64
+      });
+      const r = await fetch(opt.api, { method:'POST', body });
+      luSet(97);
+      const d = await r.json();
+      if(d && d.ok) resolve(d); else reject(new Error((d&&d.error)||'rejected'));
+    }catch(err){ reject(new Error(err.message||'network error')); }
+  });
+}
+function luApi(){
+  let a=localStorage.getItem('lingel_api')||'';
+  if(!a){ const u=prompt('One-time setup:\nPaste the Lingel Apps Script /exec URL'); if(u){a=u.trim();localStorage.setItem('lingel_api',a);} }
+  return a;
+}
+function luStamp(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p2m(d)+'-'+p2d(d); }
+function p2m(d){return String(d.getMonth()+1).padStart(2,'0');}
+function p2d(d){return String(d.getDate()).padStart(2,'0');}
+
+/* ============================================================
+   One-time customer sign-off link
+   Builds a snapshot of this handover, registers it with the hub
+   Apps Script under a random one-time token, and shares a link/QR.
+   The customer opens it on their own phone, reviews, rates & signs;
+   the signed PDF is saved straight into this order's Drive folder.
+   ============================================================ */
+const SIGN_REVIEW_LINK = "https://share.google/tpEKjnPKtsrmzHoZ3";
+const SO_PENDING_KEY = "lingel_signoff_pending";
+let _soPollTimer = null;
+
+function soEsc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function soToken(){
+  try{ const a=new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,"0")).join(""); }
+  catch(e){ return (Date.now().toString(16)+Math.random().toString(16).slice(2)).replace(/[^a-f0-9]/g,"").slice(0,32); }
+}
+function soBase(){
+  let b = localStorage.getItem("lingel_sign_base") || "";
+  if(!b){
+    const u = prompt("One-time setup:\nPaste the public URL of the customer sign-off page (sign.html)\n\ne.g. https://your-site.netlify.app/sign.html");
+    if(u){ b = u.trim(); localStorage.setItem("lingel_sign_base", b); }
+  }
+  return b;
+}
+
+function buildSignoffSnapshot(){
+  const gv = id => (document.getElementById(id)?.value||"").trim();
+  const rd = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || "";
+  const en = (window.T&&window.T.en)?window.T.en:{ci:[],rl:[],meshNote:""};
+  const iinps = document.querySelectorAll('.iinp');
+  const checklist = (en.ci||[]).map((q,i)=>({ q, a: rd('cl'+(i+1)), rem:(iinps[i]?.value||'').trim() }));
+  let clYes=0,clNo=0,clNa=0;
+  checklist.forEach(c=>{ if(c.a==='Yes')clYes++; else if(c.a==='No')clNo++; else if(c.a==='NA')clNa++; });
+  const snagRows = (typeof snags!=='undefined'?snags:[]).map((s,i)=>({n:i+1,pos:s.pos||'',desc:s.desc||'',loc:s.loc||'',priority:s.priority||''})).filter(s=>s.desc||s.pos);
+  let engSig=""; try{ const cv=document.getElementById('st'); if(cv) engSig=cv.toDataURL('image/png'); }catch(e){}
+  return {
+    formNo: "CHF-"+(document.getElementById('fdate')?.textContent||'').trim(),
+    date: gv('hdate'), orderNo: gv('ord'), customer: gv('cname'), site: gv('caddr'),
+    contact: gv('cph'), email: gv('ceml'), product: gv('prod'), qty: gv('qty'),
+    installDate: gv('idate'), engineer: gv('tname'), engPhone: gv('tph'),
+    checklist, clYes, clNo, clNa, snags: snagRows,
+    keysGiven: rd('keysHo'), keyCount: gv('keyqty'), keyRemarks: gv('keyrem'),
+    mesh: rd('meshHo'), meshNote: (rd('meshHo')==='Hold' ? (en.meshNote||'') : ''),
+    engineerSig: engSig, reviewLink: SIGN_REVIEW_LINK
+  };
+}
+
+async function sendSignoff(){
+  const order = (document.getElementById('ord')?.value||'').trim();
+  const customer = (document.getElementById('cname')?.value||'').trim();
+  if(!order){ toast('\u26a0 Enter the Order / Offer No. first \u2014 it names the Drive folder.'); return; }
+  const api = luApi(); if(!api){ toast('\u26a0 Apps Script URL not set'); return; }
+  const base = soBase(); if(!base){ toast('\u26a0 Sign-off page URL not set'); return; }
+
+  toast('Creating sign-off link\u2026');
+  const token = soToken();
+  const payload = JSON.stringify(buildSignoffSnapshot());
+  try{
+    const r = await fetch(api,{method:'POST',body:new URLSearchParams({
+      action:'signCreate', token, folder:order, orderNo:order, customer, payload, ttlMs:String(48*60*60*1000)
+    })});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error||'server refused');
+  }catch(e){ toast('\u26a0 Couldn\u2019t create link \u2014 '+((e&&e.message)||'check connection')); return; }
+
+  const link = base + (base.indexOf('?')>-1?'&':'?') + 't=' + token;
+  try{
+    const arr = JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]');
+    arr.push({token, orderNo:order, customer, created:Date.now()});
+    localStorage.setItem(SO_PENDING_KEY, JSON.stringify(arr.slice(-30)));
+  }catch(e){}
+  showSignoffModal(link, token, order, customer);
+}
+
+function showSignoffModal(link, token, order, customer){
+  soClosePoll();
+  const old=document.getElementById('soOverlay'); if(old) old.remove();
+  const cph=(document.getElementById('cph')?.value||'').replace(/[^\d]/g,'');
+  const waNum=(cph.length>=11?cph:(cph.length===10?'91'+cph:''));
+  const msg='Dear '+(customer||'Customer')+', please review & sign your Lingel handover for order '+(order||'')+':\n'+link+'\n\nThis is a secure one-time link. Thank you! \u2014 Lingel Windows & Doors';
+  const wa='https://wa.me/'+(waNum||'')+'?text='+encodeURIComponent(msg);
+  const qr='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data='+encodeURIComponent(link);
+  const ov=document.createElement('div'); ov.id='soOverlay';
+  ov.innerHTML=`<div class="so-card">
+    <div class="so-h">Customer sign-off link</div>
+    <div class="so-sub">Order ${soEsc(order)}${customer?' \u00b7 '+soEsc(customer):''}</div>
+    <img class="so-qr" src="${qr}" alt="QR code" onerror="this.style.display='none'">
+    <div class="so-scan">Customer scans this, or you send the link:</div>
+    <a class="so-link" href="${soEsc(link)}" target="_blank">${soEsc(link)}</a>
+    <div class="so-btns">
+      <button class="so-b" id="soCopyBtn">Copy link</button>
+      <a class="so-b wa" href="${soEsc(wa)}" target="_blank">WhatsApp</a>
+    </div>
+    <div class="so-status" id="soStatus">\u23f3 Waiting for the customer to sign\u2026</div>
+    <div class="so-note">One-time link \u00b7 expires in 48 hours \u00b7 saves the signed handover to this order\u2019s Drive folder.</div>
+    <button class="so-close" id="soCloseBtn">Done</button>
+  </div>`;
+  document.body.appendChild(ov);
+  soInjectStyles();
+  document.getElementById('soCopyBtn').onclick=()=>soCopy(link);
+  document.getElementById('soCloseBtn').onclick=soClose;
+  soStartPoll(token);
+}
+
+function soCopy(link){
+  (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject())
+    .then(()=>toast('\u2713 Link copied')).catch(()=>{ prompt('Copy this link:', link); });
+}
+function soClose(){ soClosePoll(); const ov=document.getElementById('soOverlay'); if(ov) ov.remove(); }
+function soClosePoll(){ if(_soPollTimer){ clearInterval(_soPollTimer); _soPollTimer=null; } }
+function soDropPending(token){ try{ const arr=JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]').filter(x=>x.token!==token); localStorage.setItem(SO_PENDING_KEY, JSON.stringify(arr)); }catch(e){} }
+
+function soStartPoll(token){
+  const tick=async()=>{
+    try{
+      const r=await fetch(luApi(),{method:'POST',body:new URLSearchParams({action:'signStatus',token})});
+      const d=await r.json();
+      const el=document.getElementById('soStatus');
+      if(d.ok && d.state==='used'){
+        if(el){ el.innerHTML='\u2713 Signed &amp; saved to Drive'+(d.url?' \u2014 <a href="'+soEsc(d.url)+'" target="_blank">view</a>':''); el.classList.add('done'); }
+        soClosePoll(); soDropPending(token);
+      }else if(d.ok && d.state==='expired'){
+        if(el) el.textContent='\u231b Link expired (not signed)';
+        soClosePoll();
+      }
+    }catch(e){}
+  };
+  soClosePoll(); _soPollTimer=setInterval(tick,12000); tick();
+}
+
+async function soCheckPendingOnLoad(){
+  const api=localStorage.getItem('lingel_api')||''; if(!api) return;
+  let arr; try{ arr=JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]'); }catch(e){ return; }
+  if(!arr.length) return;
+  let signed=0, keep=[];
+  for(const it of arr){
+    try{
+      const r=await fetch(api,{method:'POST',body:new URLSearchParams({action:'signStatus',token:it.token})});
+      const d=await r.json();
+      if(d.ok && d.state==='used'){ signed++; }
+      else if(d.ok && d.state==='expired'){ /* drop silently */ }
+      else keep.push(it);
+    }catch(e){ keep.push(it); }
+  }
+  localStorage.setItem(SO_PENDING_KEY, JSON.stringify(keep));
+  if(signed>0) setTimeout(()=>toast('\u2713 '+signed+' customer sign-off'+(signed>1?'s':'')+' completed & saved to Drive'), 900);
+}
+
+function soInjectStyles(){
+  if(document.getElementById('soStyles')) return;
+  const css=`
+  #soOverlay{position:fixed;inset:0;z-index:99998;background:rgba(10,12,16,.82);display:flex;align-items:center;justify-content:center;padding:18px}
+  #soOverlay .so-card{width:100%;max-width:380px;background:var(--panel,#1a1e25);border:1px solid var(--line,#2a2f3a);border-radius:16px;padding:20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  #soOverlay .so-h{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;color:var(--hivis,#e2f14d);text-transform:uppercase;letter-spacing:.06em}
+  #soOverlay .so-sub{font-size:12px;color:#9aa2ad;margin-top:4px}
+  #soOverlay .so-qr{width:200px;height:200px;background:#fff;border-radius:12px;padding:8px;margin:16px auto 8px;display:block;object-fit:contain}
+  #soOverlay .so-scan{font-size:11px;color:#9aa2ad;margin-bottom:6px}
+  #soOverlay .so-link{display:block;font-size:11px;color:#cfd6e0;word-break:break-all;background:#0e1116;border:1px solid #2a2f3a;border-radius:8px;padding:8px 10px;text-decoration:none;margin-bottom:12px}
+  #soOverlay .so-btns{display:flex;gap:8px}
+  #soOverlay .so-b{flex:1;text-align:center;background:var(--panel-2,#222732);border:1px solid #2a2f3a;color:#e8ebf0;border-radius:9px;padding:11px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;text-decoration:none}
+  #soOverlay .so-b.wa{background:#1f9d55;border-color:#1f9d55;color:#fff}
+  #soOverlay .so-status{margin:14px 0 4px;font-size:13px;font-weight:700;color:#f5c451}
+  #soOverlay .so-status.done{color:#4ade80}
+  #soOverlay .so-status a{color:inherit}
+  #soOverlay .so-note{font-size:10.5px;color:#7d848f;line-height:1.5;margin-bottom:14px}
+  #soOverlay .so-close{width:100%;background:var(--hivis,#e2f14d);color:#111;border:none;border-radius:9px;padding:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}`;
+  const st=document.createElement('style'); st.id='soStyles'; st.textContent=css; document.head.appendChild(st);
+}
+window.addEventListener('load', soCheckPendingOnLoad);
+
+</script>
+
+<script>
+/* ============================================================
+   Daily Report auto-log (shared across Measurement / SiteLog / Handover)
+   Fires ONE row into the DailyReport sheet each time a report PDF is made,
+   tagged with the supervisor from the hub login and this app's visit type.
+   Reuses the hub's Apps Script endpoint (localStorage 'lingel_api').
+   Backend: action=dailyReport -> handleDailyReport (tab "DailyReport").
+   ============================================================ */
+(function(){
+  var DRQ="dr_queue", lastSig="";
+  function api(){ try{return localStorage.getItem("lingel_api")||"";}catch(e){return "";} }
+  function supervisor(){ try{var s=JSON.parse(localStorage.getItem("lingel_supervisor")||"null");return (s&&s.name)?s.name:"";}catch(e){return "";} }
+  function q(){ try{return JSON.parse(localStorage.getItem(DRQ)||"[]");}catch(e){return [];} }
+  function saveQ(a){ try{localStorage.setItem(DRQ,JSON.stringify(a));}catch(e){} }
+  async function send(row){
+    var a=api(); if(!a) throw new Error("no api");
+    var r=await fetch(a,{method:"POST",body:new URLSearchParams(Object.assign({action:"dailyReport"},row))});
+    var d=await r.json().catch(function(){return {ok:true};});
+    if(d&&d.ok===false) throw new Error(d.error||"rejected");
+    return true;
+  }
+  async function flush(){
+    if(!api()) return;
+    var items=q(); if(!items.length) return;
+    var left=[];
+    for(var i=0;i<items.length;i++){ try{ await send(items[i]); }catch(e){ left.push(items[i]); } }
+    saveQ(left);
+  }
+  // PUBLIC — call once after a report PDF is generated
+  window.logDailyReport=async function(data){
+    data=data||{};
+    var row={
+      visitType:     data.visitType||"",
+      visitDate:     data.visitDate||new Date().toISOString().slice(0,10),
+      offerNo:       data.offerNo||"",
+      offerDate:     data.offerDate||"",
+      customer:      data.customer||"",
+      address:       data.address||"",
+      salesperson:   data.salesperson||"",
+      contact:       data.contact||"",
+      positions:     (data.positions!=null?String(data.positions):""),
+      supervisor:    supervisor() || data.supervisorFallback || "",
+      remarks:       data.remarks||"",
+      quotationFile: data.quotationFile||""
+    };
+    var sig=row.visitType+"|"+row.offerNo+"|"+row.customer+"|"+row.visitDate;
+    if(sig===lastSig) return;          // PDF + Drive/Share in one tap = one row
+    try{ await send(row); lastSig=sig; }
+    catch(e){ var Q=q(); Q.push(row); saveQ(Q); lastSig=sig; }   // offline -> queue + retry
+  };
+  window.addEventListener("online",flush); flush();
+})();
 </script>
 </body>
 </html>
