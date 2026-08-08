@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Lingel — Handover Sign-off</title>
+<!-- =====================================================================
+     ONE-TIME SETUP: paste your hub Apps Script /exec URL between the quotes
+     below (the same URL your field apps use). Then host this file anywhere
+     (e.g. your Netlify site) as sign.html. Nothing else to configure.
+     ===================================================================== -->
+<script>const API = "https://script.google.com/macros/s/AKfycbzTi9ihe1YpDEIkX7IdAnDqNl61rU3IDecHUetV4mmwAVezMbJSu_Ruxg4_CJnscVEH/exec";</script>
+<style>
+  :root{--ink:#1a1a1a;--sub:#6b6b6b;--line:#e2e0d8;--hivis:#111;--accent:#c9a227;--ok:#1f9d55;--bad:#d64545;--paper:#faf9f5}
+  *{box-sizing:border-box}
+  body{margin:0;background:#ece9e1;font-family:'Segoe UI',system-ui,sans-serif;color:var(--ink)}
+  .wrap{max-width:560px;margin:0 auto;background:var(--paper);min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.08)}
+  .hdr{background:#111;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-end}
+  .hdr .lg{font-weight:800;font-size:19px;letter-spacing:.5px}
+  .hdr .lg small{display:block;font-weight:400;font-size:9px;color:#c9c9c9;letter-spacing:1px}
+  .hdr .rt{font-size:11px;color:#e2f14d;font-weight:700;text-align:right}
+  .hivisbar{height:3px;background:#e2f14d}
+  .pad{padding:18px 20px}
+  h2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);margin:22px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  h2:first-child{margin-top:6px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+  .f .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--sub)}
+  .f .v{font-size:14px;font-weight:600;margin-top:1px;word-break:break-word}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+  th{text-align:left;font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--sub);border-bottom:1px solid var(--line);padding:5px 4px}
+  td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+  .pass{color:var(--ok);font-weight:700}.fail{color:var(--bad);font-weight:700}.na{color:var(--sub);font-weight:700}
+  .pri-High,.pri-Critical{color:var(--bad);font-weight:700}.pri-Medium{color:#b8860b;font-weight:700}.pri-Low{color:var(--ok);font-weight:700}
+  .clean{color:var(--ok);font-weight:600;font-size:13px}
+  .stars{display:flex;gap:6px;font-size:34px;line-height:1;user-select:none}
+  .star{cursor:pointer;color:#d8d4c8;transition:color .1s}
+  .star.on{color:var(--accent)}
+  textarea,input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:inherit;background:#fff}
+  textarea:focus,input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .sigwrap{border:1px dashed #b9b4a6;border-radius:10px;background:#fff;position:relative}
+  canvas{display:block;width:100%;height:190px;touch-action:none;border-radius:10px}
+  .sighint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#c3bfb2;font-size:13px;pointer-events:none}
+  .row{display:flex;gap:10px;align-items:center;margin-top:10px}
+  .clr{background:none;border:none;color:var(--sub);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;padding:6px 0}
+  .submit{width:100%;margin-top:22px;background:#111;color:#fff;border:none;border-radius:10px;padding:16px;font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;cursor:pointer}
+  .submit:disabled{opacity:.45;cursor:not-allowed}
+  .note{font-size:11px;color:var(--sub);margin-top:10px;text-align:center;line-height:1.5}
+  .msg{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 28px;gap:14px}
+  .msg .ic{font-size:52px}
+  .msg h1{font-size:22px;margin:0}
+  .msg p{color:var(--sub);font-size:15px;margin:0;line-height:1.6}
+  .msg a.btn{margin-top:8px;background:#111;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700}
+  .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:#111;border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .ack{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.5px;color:#444;line-height:1.55;margin-top:6px}
+</style>
+</head>
+<body>
+<div id="app" class="wrap"><div class="msg"><div class="spin"></div><p>Loading your handover…</p></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const APP = $("#app");
+const params = new URLSearchParams(location.search);
+const TOKEN = (params.get("t") || params.get("token") || "").trim();
+let DATA = null, stars = 0;
+
+function esc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+function screen(icon,title,body,btn){
+  APP.innerHTML = `<div class="msg"><div class="ic">${icon}</div><h1>${esc(title)}</h1><p>${body}</p>${btn||""}</div>`;
+}
+
+async function post(action, extra){
+  const body = new URLSearchParams(Object.assign({action}, extra||{}));
+  const r = await fetch(API, {method:"POST", body});
+  return r.json();
+}
+
+async function load(){
+  if(!API || API.indexOf("PASTE_") === 0){
+    return screen("⚙️","Not configured yet","This sign-off page hasn't been set up. Please contact Lingel.");
+  }
+  if(!TOKEN){
+    return screen("🔗","Invalid link","This sign-off link is missing its code. Please ask Lingel to resend it.");
+  }
+  let res;
+  try{ res = await post("signGet", {token:TOKEN}); }
+  catch(e){ return screen("📶","Connection problem","Couldn't reach the server. Please check your internet and reopen the link."); }
+
+  if(!res.ok){
+    if(res.state === "used")    return screen("✅","Already signed","This handover has already been signed and saved. Thank you!", res.url?`<a class="btn" href="${esc(res.url)}" target="_blank">View handover</a>`:"");
+    if(res.state === "expired") return screen("⌛","Link expired","This sign-off link is no longer valid. Please ask Lingel to send a fresh one.");
+    return screen("❓","Link not found","We couldn't find this sign-off. Please ask Lingel to resend the link.");
+  }
+
+  try{ DATA = JSON.parse(res.payload || "{}"); }catch(e){ DATA = {}; }
+  DATA.orderNo  = DATA.orderNo  || res.orderNo  || "";
+  DATA.customer = DATA.customer || res.customer || "";
+  render();
+}
+
+function fld(k,v){ return `<div class="f"><div class="k">${esc(k)}</div><div class="v">${esc(v||"—")}</div></div>`; }
+
+function render(){
+  const d = DATA;
+  const cl = d.checklist || [];
+  const clRows = cl.map((c,i)=>{
+    const a = c.a||"";
+    const cls = a==="Yes"?"pass":a==="No"?"fail":"na";
+    const lab = a==="Yes"?"Pass":a==="No"?"Fail":(a||"—");
+    return `<tr><td>${i+1}</td><td>${esc(c.q)}</td><td class="${cls}">${lab}</td><td style="color:#6b6b6b">${esc(c.rem||"")}</td></tr>`;
+  }).join("");
+  const snags = d.snags || [];
+  const snagRows = snags.map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.pos||"—")}</td><td>${esc(s.desc||"—")}</td><td>${esc(s.loc||"")}</td><td class="pri-${esc(s.priority||"Medium")}">${esc(s.priority||"")}</td></tr>`).join("");
+
+  APP.innerHTML = `
+    <div class="hdr">
+      <div class="lg">LINGEL<small>WINDOWS &amp; DOORS TECHNOLOGY</small></div>
+      <div class="rt">CUSTOMER<br>HANDOVER SIGN-OFF</div>
+    </div><div class="hivisbar"></div>
+    <div class="pad">
+      <div class="ack">Please review your installation handover below. When you're happy, add a quick review and sign at the bottom — your signed copy is saved to Lingel automatically.</div>
+
+      <h2>Customer &amp; Order</h2>
+      <div class="grid">
+        ${fld("Customer", d.customer)}
+        ${fld("Order / Offer No.", d.orderNo)}
+        ${fld("Site / Address", d.site)}
+        ${fld("Handover Date", d.date)}
+        ${fld("Product / Service", d.product)}
+        ${fld("Site Engineer", d.engineer)}
+      </div>
+
+      <h2>Handover Checklist${cl.length?` &nbsp;<span style="color:#6b6b6b;font-weight:400;text-transform:none;letter-spacing:0">(${d.clYes||0} pass · ${d.clNo||0} fail · ${d.clNa||0} n/a)</span>`:""}</h2>
+      ${cl.length?`<table><thead><tr><th>#</th><th>Item</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${clRows}</tbody></table>`:`<div class="clean">Checklist not recorded.</div>`}
+
+      <h2>Snag List / Pending Items ${snags.length?`(${snags.length})`:""}</h2>
+      ${snags.length?`<table><thead><tr><th>#</th><th>Position</th><th>Issue</th><th>Location</th><th>Priority</th></tr></thead><tbody>${snagRows}</tbody></table>`:`<div class="clean">✓ No snags or pending items — all clear.</div>`}
+
+      <h2>Keys &amp; Handover</h2>
+      <div class="grid">
+        ${fld("Keys Handed Over", d.keysGiven)}
+        ${fld("No. of Keys", d.keyCount)}
+        ${fld("Mesh (Mosquito Net)", d.mesh)}
+        ${fld("Key Remarks", d.keyRemarks)}
+      </div>
+      ${d.mesh==="Hold" && d.meshNote?`<div class="ack" style="margin-top:10px">${esc(d.meshNote)}</div>`:""}
+
+      <h2>Your Review</h2>
+      <div class="stars" id="stars">${[1,2,3,4,5].map(n=>`<span class="star" data-n="${n}">★</span>`).join("")}</div>
+      <div style="font-size:12px;color:#6b6b6b;margin:6px 0 12px" id="rlbl">Tap the stars to rate</div>
+      <textarea id="review" rows="3" placeholder="Anything you'd like to add about the installation or service? (optional)"></textarea>
+
+      <h2>Your Signature</h2>
+      <input type="text" id="signName" placeholder="Your full name" style="margin-bottom:10px">
+      <div class="sigwrap"><canvas id="sig"></canvas><div class="sighint" id="sighint">Sign here with your finger</div></div>
+      <div class="row"><button class="clr" onclick="clearSig()">Clear signature</button></div>
+
+      <button class="submit" id="go" onclick="submit()">✓ Confirm &amp; Sign Handover</button>
+      <div class="note">By signing, you confirm the handover details above are correct.<br>This is a one-time link — it can be signed once.</div>
+    </div>`;
+
+  setupStars();
+  setupSig();
+}
+
+function setupStars(){
+  document.querySelectorAll("#stars .star").forEach(el=>{
+    el.onclick = ()=>{
+      stars = +el.dataset.n;
+      document.querySelectorAll("#stars .star").forEach(s=>s.classList.toggle("on", +s.dataset.n<=stars));
+      const labels={1:"Poor",2:"Fair",3:"Good",4:"Very good",5:"Excellent"};
+      $("#rlbl").textContent = labels[stars] + " · " + stars + "/5";
+    };
+  });
+}
+
+/* signature pad */
+let sigCtx, sigDrawn=false;
+function setupSig(){
+  const cv = $("#sig");
+  const EXP = Math.max(2, Math.ceil(window.devicePixelRatio||1));
+  const w = cv.clientWidth||520, h = 190;
+  cv.width = w*EXP; cv.height = h*EXP;
+  sigCtx = cv.getContext("2d");
+  sigCtx.setTransform(EXP,0,0,EXP,0,0);
+  sigCtx.lineWidth=2.4; sigCtx.lineCap="round"; sigCtx.lineJoin="round"; sigCtx.strokeStyle="#101010";
+  let drawing=false, pts=[];
+  const pt=e=>{const r=cv.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};};
+  cv.onpointerdown=e=>{drawing=true;pts=[pt(e)];if(!sigDrawn){sigDrawn=true;$("#sighint").style.display="none";}e.preventDefault&&e.preventDefault();};
+  cv.onpointermove=e=>{if(!drawing)return;const p=pt(e);pts.push(p);const n=pts.length;
+    if(n>=3){const a=pts[n-3],b=pts[n-2],c=pts[n-1];const m1={x:(a.x+b.x)/2,y:(a.y+b.y)/2},m2={x:(b.x+c.x)/2,y:(b.y+c.y)/2};sigCtx.beginPath();sigCtx.moveTo(m1.x,m1.y);sigCtx.quadraticCurveTo(b.x,b.y,m2.x,m2.y);sigCtx.stroke();}
+    else{const a=pts[0];sigCtx.beginPath();sigCtx.moveTo(a.x,a.y);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();}
+    e.preventDefault&&e.preventDefault();};
+  const up=()=>{drawing=false;};
+  cv.onpointerup=up;cv.onpointerleave=up;cv.onpointercancel=up;
+}
+function clearSig(){const cv=$("#sig");sigCtx.clearRect(0,0,cv.width,cv.height);sigDrawn=false;$("#sighint").style.display="flex";}
+
+/* ---- build the signed handover PDF (compact, branded) ---- */
+function buildSignedPDF(sigDataUrl){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"pt",format:"a4",orientation:"portrait",compress:true});
+  const PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight();
+  const M=40, CW=PW-M*2; let y=M;
+  const INK="#1a1a1a",SUB="#6b6b6b",LINE="#d8d8d8",HI="#e2f14d",DARK="#111",OK="#1f9d55",BAD="#d64545",NA="#999";
+  const d=DATA;
+  function need(h){ if(y+h>PH-M-24){footer();doc.addPage();y=M;head(true);} }
+  function footer(){const n=doc.internal.getNumberOfPages();doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB);
+    doc.text("Lingel Windows & Doors  ·  Customer Handover (Signed)",M,PH-22);doc.text("Page "+n,PW-M,PH-22,{align:"right"});
+    doc.setDrawColor(LINE).setLineWidth(.5).line(M,PH-32,PW-M,PH-32);}
+  function head(cont){doc.setFillColor(DARK).rect(0,0,PW,58,"F");doc.setFillColor(HI).rect(0,58,PW,3,"F");
+    doc.setFont("helvetica","bold").setFontSize(17).setTextColor("#fff").text("LINGEL",M,32);
+    doc.setFont("helvetica","normal").setFontSize(8).setTextColor("#c9c9c9").text("WINDOWS & DOORS TECHNOLOGY",M,45);
+    doc.setFont("helvetica","bold").setFontSize(12).setTextColor("#fff").text("CUSTOMER HANDOVER"+(cont?" (contd.)":""),PW-M,30,{align:"right"});
+    doc.setFont("helvetica","normal").setFontSize(8).setTextColor(HI).text(d.formNo||("Order "+(d.orderNo||"")),PW-M,44,{align:"right"});y=78;}
+  function title(t){need(30);doc.setFillColor("#f2f2f2").rect(M,y,CW,20,"F");doc.setFillColor(HI).rect(M,y,3,20,"F");
+    doc.setFont("helvetica","bold").setFontSize(9.5).setTextColor(INK).text(t.toUpperCase(),M+10,y+13.5);y+=30;}
+  function fields(pairs){const rowH=17,colW=CW/2;for(let i=0;i<pairs.length;i+=2){need(rowH);
+    for(let c=0;c<2&&i+c<pairs.length;c++){const[l,v]=pairs[i+c];const x=M+c*colW;
+      doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text(String(l).toUpperCase(),x,y+6);
+      doc.setFont("helvetica","bold").setFontSize(9.5).setTextColor(INK);
+      doc.text(doc.splitTextToSize(v||"—",colW-14)[0],x,y+15);}y+=rowH;}y+=6;}
+
+  head(false);
+  title("Customer & Order Details");
+  fields([
+    ["Customer",d.customer],["Order / Offer No.",d.orderNo],
+    ["Site / Address",d.site],["Contact",d.contact],
+    ["Email",d.email],["Handover Date",d.date],
+    ["Product / Service",d.product],["Quantity",d.qty],
+    ["Installation Date",d.installDate],["Site Engineer",(d.engineer||"")+(d.engPhone?"  ("+d.engPhone+")":"")]
+  ]);
+
+  // snags
+  const snags=d.snags||[];
+  if(snags.length){
+    title("Snag List / Pending Items ("+snags.length+")");
+    const nW=20,pW=76,lW=76,prW=54,dW=CW-nW-pW-lW-prW,hH=18;need(hH);
+    doc.setFillColor(DARK).rect(M,y,CW,hH,"F");doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor("#fff");
+    doc.text("#",M+7,y+12);doc.text("POSITION",M+nW,y+12);doc.text("ISSUE / DEFECT",M+nW+pW,y+12);
+    doc.text("LOCATION",M+nW+pW+dW,y+12);doc.text("PRIORITY",M+nW+pW+dW+lW,y+12);y+=hH;
+    snags.forEach((s,i)=>{
+      const pos=doc.splitTextToSize(String(s.pos||"—"),pW-6),des=doc.splitTextToSize(String(s.desc||"—"),dW-6),loc=doc.splitTextToSize(String(s.loc||"—"),lW-6);
+      const h=Math.max(16,pos.length*10+6,des.length*10+6,loc.length*10+6);need(h);
+      if(i%2)doc.setFillColor("#f7f7f7").rect(M,y,CW,h,"F");
+      doc.setFont("helvetica","normal").setFontSize(8).setTextColor(INK);
+      doc.text(String(i+1),M+7,y+11);doc.text(pos,M+nW,y+11);doc.text(des,M+nW+pW,y+11);
+      doc.setTextColor(SUB).text(loc,M+nW+pW+dW,y+11);
+      const pr=s.priority||"Medium",pc=(pr==="High"||pr==="Critical")?BAD:(pr==="Low"?OK:"#b8860b");
+      doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(pc).text(String(pr).toUpperCase(),M+nW+pW+dW+lW,y+11);
+      doc.setDrawColor(LINE).setLineWidth(.3).line(M,y+h,M+CW,y+h);y+=h;});
+    y+=10;
+  } else { title("Snag List / Pending Items");need(16);doc.setFont("helvetica","normal").setFontSize(9).setTextColor(OK).text("No snags or pending items recorded.",M,y+4);y+=20; }
+
+  // checklist
+  const cl=d.checklist||[];
+  if(cl.length){
+    title("Handover Checklist");
+    const rowH=18,numW=22,statW=54,remW=120,descW=CW-numW-statW-remW;need(rowH);
+    doc.setFillColor("#fafafa").rect(M,y,CW,rowH,"F");doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(SUB);
+    doc.text("#",M+8,y+12);doc.text("CHECK ITEM",M+numW,y+12);doc.text("STATUS",M+numW+descW,y+12);doc.text("REMARKS",M+numW+descW+statW,y+12);y+=rowH;
+    cl.forEach((c,i)=>{
+      const lines=doc.splitTextToSize(c.q||"",descW-6),rem=(c.rem||"").trim(),remL=rem?doc.splitTextToSize(rem,remW-6):[""];
+      const h=Math.max(rowH,lines.length*10+7,remL.length*10+7);need(h);
+      doc.setDrawColor(LINE).setLineWidth(.4).line(M,y,M+CW,y);
+      doc.setFont("helvetica","normal").setFontSize(8).setTextColor(INK);
+      doc.text(String(i+1),M+8,y+12);doc.text(lines,M+numW,y+11);
+      const col=c.a==="Yes"?OK:c.a==="No"?BAD:NA,lab=c.a==="Yes"?"PASS":c.a==="No"?"FAIL":(c.a||"—");
+      doc.setFont("helvetica","bold").setFontSize(8).setTextColor(col).text(lab,M+numW+descW,y+11);
+      if(rem){doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text(remL,M+numW+descW+statW,y+11);}
+      y+=h;});
+    doc.setDrawColor(LINE).line(M,y,M+CW,y);y+=10;
+    doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor(INK).text("Passed: "+(d.clYes||0)+"    Failed: "+(d.clNo||0)+"    N/A: "+(d.clNa||0),M,y+2);y+=18;
+  }
+
+  // keys + review
+  need(60);title("Keys & Customer Satisfaction");
+  const pairs=[["Keys Handed Over",d.keysGiven||"—"],["Mesh",d.mesh||"—"]];
+  if(d.mesh==="Hold"&&d.meshNote)pairs.push(["Mesh Note",d.meshNote]);
+  pairs.push(["No. of Keys",d.keyCount],["Key Remarks",d.keyRemarks]);
+  const rlabels={1:"Poor",2:"Fair",3:"Good",4:"Very good",5:"Excellent"};
+  pairs.push(["Customer Rating", stars>0?(rlabels[stars]+"  ("+stars+"/5)"):"Not rated"]);
+  fields(pairs);
+  if(stars>0){need(20);let sx=M;doc.setFontSize(13);for(let i=1;i<=5;i++){doc.setTextColor(i<=stars?"#c9a227":LINE).text("★",sx,y+6);sx+=16;}y+=22;}
+  const rev=($("#review").value||"").trim();
+  if(rev){need(30);doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB).text("CUSTOMER REVIEW",M,y+2);y+=10;
+    doc.setFont("helvetica","italic").setFontSize(9.5).setTextColor(INK);const rl=doc.splitTextToSize('"'+rev+'"',CW);need(rl.length*11);doc.text(rl,M,y+4);y+=rl.length*11+10;}
+
+  // signatures
+  need(130);title("Acknowledgement");
+  const sigW=(CW-20)/2,sigH=68,sigY=y;
+  const custName=($("#signName").value||d.customer||"Customer").trim();
+  const blocks=[["Customer",sigDataUrl,custName],["Site Engineer",d.engineerSig||"",d.engineer||""]];
+  blocks.forEach((b,idx)=>{const x=M+idx*(sigW+20);
+    doc.setDrawColor(LINE).setLineWidth(.6).rect(x,sigY,sigW,sigH,"S");
+    if(b[1]){try{doc.addImage(b[1],"PNG",x+6,sigY+6,sigW-12,sigH-24);}catch(e){}}
+    doc.setDrawColor("#333").setLineWidth(.5).line(x+10,sigY+sigH-16,x+sigW-10,sigY+sigH-16);
+    doc.setFont("helvetica","bold").setFontSize(8).setTextColor(INK).text(b[0]+(b[2]?"  —  "+b[2]:""),x+10,sigY+sigH-5);});
+  y=sigY+sigH+14;
+  need(16);doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(SUB);
+  doc.text("Digitally signed by the customer on "+new Date().toLocaleString(),M,y+2);y+=14;
+
+  footer();
+  return doc;
+}
+
+let submitting=false;
+async function submit(){
+  if(submitting) return;
+  const name=($("#signName").value||"").trim();
+  if(!sigDrawn){ alert("Please add your signature before confirming."); return; }
+  if(!name){ alert("Please type your full name."); return; }
+  submitting=true;
+  const go=$("#go"); go.disabled=true; go.textContent="Saving…";
+  try{
+    const sigUrl = $("#sig").toDataURL("image/png");
+    const doc = buildSignedPDF(sigUrl);
+    const b64 = doc.output("datauristring").split(",")[1];
+    const name_pdf = "Handover_Signed_" + String(DATA.orderNo||"form").replace(/[^\w-]+/g,"-") + ".pdf";
+    const res = await post("signSubmit", {
+      token: TOKEN, data: b64, name: name_pdf,
+      stars: String(stars||""), review: ($("#review").value||"").trim(), signName: name
+    });
+    if(res.ok){
+      const reviewLink = DATA.reviewLink || "";
+      let btn = res.url ? `<a class="btn" href="${esc(res.url)}" target="_blank">View signed handover</a>` : "";
+      if(stars>=5 && reviewLink) btn += `<a class="btn" style="background:#c9a227;margin-top:10px" href="${esc(reviewLink)}" target="_blank">★ Leave us a Google review</a>`;
+      screen("✅","Thank you!","Your handover is signed and saved with Lingel. A copy has been kept on file."+(stars>=5&&reviewLink?"<br><br>We'd love a quick Google review!":""), btn);
+      if(stars>=5 && reviewLink){ setTimeout(()=>{ try{ window.open(reviewLink,"_blank"); }catch(e){} }, 900); }
+    } else if(res.state==="used"){
+      screen("✅","Already signed","This handover was already signed. Thank you!", res.url?`<a class="btn" href="${esc(res.url)}" target="_blank">View handover</a>`:"");
+    } else if(res.state==="expired"){
+      screen("⌛","Link expired","This sign-off link has expired. Please ask Lingel to resend it.");
+    } else {
+      go.disabled=false; go.textContent="✓ Confirm & Sign Handover"; submitting=false;
+      alert("Couldn't save: "+((res&&res.error)||"please try again"));
+    }
+  }catch(e){
+    go.disabled=false; go.textContent="✓ Confirm & Sign Handover"; submitting=false;
+    alert("Something went wrong saving your signature. Please check your internet and try again.");
+  }
+}
+
+load();
+</script>
+</body>
+</html>
