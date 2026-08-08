@@ -255,6 +255,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   <button class="btnp" onclick="downloadPDF()">⤓ Download PDF</button>
   <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
   <button class="btns" onclick="doWA()">WhatsApp text</button>
+  <button class="btns" onclick="sendSignoff()" style="border-color:var(--hivis);color:var(--hivis)">🔗 Send to customer for sign-off</button>
   <button class="btns" onclick="doReset()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">Reset</button>
 </div>
 
@@ -1285,6 +1286,176 @@ function luStamp(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+p2m(d)+'-'+p2d(d); }
 function p2m(d){return String(d.getMonth()+1).padStart(2,'0');}
 function p2d(d){return String(d.getDate()).padStart(2,'0');}
+
+/* ============================================================
+   One-time customer sign-off link
+   Builds a snapshot of this handover, registers it with the hub
+   Apps Script under a random one-time token, and shares a link/QR.
+   The customer opens it on their own phone, reviews, rates & signs;
+   the signed PDF is saved straight into this order's Drive folder.
+   ============================================================ */
+const SIGN_REVIEW_LINK = "https://share.google/tpEKjnPKtsrmzHoZ3";
+const SO_PENDING_KEY = "lingel_signoff_pending";
+let _soPollTimer = null;
+
+function soEsc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+function soToken(){
+  try{ const a=new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,"0")).join(""); }
+  catch(e){ return (Date.now().toString(16)+Math.random().toString(16).slice(2)).replace(/[^a-f0-9]/g,"").slice(0,32); }
+}
+function soBase(){
+  let b = localStorage.getItem("lingel_sign_base") || "";
+  if(!b){
+    const u = prompt("One-time setup:\nPaste the public URL of the customer sign-off page (sign.html)\n\ne.g. https://your-site.netlify.app/sign.html");
+    if(u){ b = u.trim(); localStorage.setItem("lingel_sign_base", b); }
+  }
+  return b;
+}
+
+function buildSignoffSnapshot(){
+  const gv = id => (document.getElementById(id)?.value||"").trim();
+  const rd = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || "";
+  const en = (window.T&&window.T.en)?window.T.en:{ci:[],rl:[],meshNote:""};
+  const iinps = document.querySelectorAll('.iinp');
+  const checklist = (en.ci||[]).map((q,i)=>({ q, a: rd('cl'+(i+1)), rem:(iinps[i]?.value||'').trim() }));
+  let clYes=0,clNo=0,clNa=0;
+  checklist.forEach(c=>{ if(c.a==='Yes')clYes++; else if(c.a==='No')clNo++; else if(c.a==='NA')clNa++; });
+  const snagRows = (typeof snags!=='undefined'?snags:[]).map((s,i)=>({n:i+1,pos:s.pos||'',desc:s.desc||'',loc:s.loc||'',priority:s.priority||''})).filter(s=>s.desc||s.pos);
+  let engSig=""; try{ const cv=document.getElementById('st'); if(cv) engSig=cv.toDataURL('image/png'); }catch(e){}
+  return {
+    formNo: "CHF-"+(document.getElementById('fdate')?.textContent||'').trim(),
+    date: gv('hdate'), orderNo: gv('ord'), customer: gv('cname'), site: gv('caddr'),
+    contact: gv('cph'), email: gv('ceml'), product: gv('prod'), qty: gv('qty'),
+    installDate: gv('idate'), engineer: gv('tname'), engPhone: gv('tph'),
+    checklist, clYes, clNo, clNa, snags: snagRows,
+    keysGiven: rd('keysHo'), keyCount: gv('keyqty'), keyRemarks: gv('keyrem'),
+    mesh: rd('meshHo'), meshNote: (rd('meshHo')==='Hold' ? (en.meshNote||'') : ''),
+    engineerSig: engSig, reviewLink: SIGN_REVIEW_LINK
+  };
+}
+
+async function sendSignoff(){
+  const order = (document.getElementById('ord')?.value||'').trim();
+  const customer = (document.getElementById('cname')?.value||'').trim();
+  if(!order){ toast('\u26a0 Enter the Order / Offer No. first \u2014 it names the Drive folder.'); return; }
+  const api = luApi(); if(!api){ toast('\u26a0 Apps Script URL not set'); return; }
+  const base = soBase(); if(!base){ toast('\u26a0 Sign-off page URL not set'); return; }
+
+  toast('Creating sign-off link\u2026');
+  const token = soToken();
+  const payload = JSON.stringify(buildSignoffSnapshot());
+  try{
+    const r = await fetch(api,{method:'POST',body:new URLSearchParams({
+      action:'signCreate', token, folder:order, orderNo:order, customer, payload, ttlMs:String(48*60*60*1000)
+    })});
+    const d = await r.json();
+    if(!d.ok) throw new Error(d.error||'server refused');
+  }catch(e){ toast('\u26a0 Couldn\u2019t create link \u2014 '+((e&&e.message)||'check connection')); return; }
+
+  const link = base + (base.indexOf('?')>-1?'&':'?') + 't=' + token;
+  try{
+    const arr = JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]');
+    arr.push({token, orderNo:order, customer, created:Date.now()});
+    localStorage.setItem(SO_PENDING_KEY, JSON.stringify(arr.slice(-30)));
+  }catch(e){}
+  showSignoffModal(link, token, order, customer);
+}
+
+function showSignoffModal(link, token, order, customer){
+  soClosePoll();
+  const old=document.getElementById('soOverlay'); if(old) old.remove();
+  const cph=(document.getElementById('cph')?.value||'').replace(/[^\d]/g,'');
+  const waNum=(cph.length>=11?cph:(cph.length===10?'91'+cph:''));
+  const msg='Dear '+(customer||'Customer')+', please review & sign your Lingel handover for order '+(order||'')+':\n'+link+'\n\nThis is a secure one-time link. Thank you! \u2014 Lingel Windows & Doors';
+  const wa='https://wa.me/'+(waNum||'')+'?text='+encodeURIComponent(msg);
+  const qr='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data='+encodeURIComponent(link);
+  const ov=document.createElement('div'); ov.id='soOverlay';
+  ov.innerHTML=`<div class="so-card">
+    <div class="so-h">Customer sign-off link</div>
+    <div class="so-sub">Order ${soEsc(order)}${customer?' \u00b7 '+soEsc(customer):''}</div>
+    <img class="so-qr" src="${qr}" alt="QR code" onerror="this.style.display='none'">
+    <div class="so-scan">Customer scans this, or you send the link:</div>
+    <a class="so-link" href="${soEsc(link)}" target="_blank">${soEsc(link)}</a>
+    <div class="so-btns">
+      <button class="so-b" id="soCopyBtn">Copy link</button>
+      <a class="so-b wa" href="${soEsc(wa)}" target="_blank">WhatsApp</a>
+    </div>
+    <div class="so-status" id="soStatus">\u23f3 Waiting for the customer to sign\u2026</div>
+    <div class="so-note">One-time link \u00b7 expires in 48 hours \u00b7 saves the signed handover to this order\u2019s Drive folder.</div>
+    <button class="so-close" id="soCloseBtn">Done</button>
+  </div>`;
+  document.body.appendChild(ov);
+  soInjectStyles();
+  document.getElementById('soCopyBtn').onclick=()=>soCopy(link);
+  document.getElementById('soCloseBtn').onclick=soClose;
+  soStartPoll(token);
+}
+
+function soCopy(link){
+  (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject())
+    .then(()=>toast('\u2713 Link copied')).catch(()=>{ prompt('Copy this link:', link); });
+}
+function soClose(){ soClosePoll(); const ov=document.getElementById('soOverlay'); if(ov) ov.remove(); }
+function soClosePoll(){ if(_soPollTimer){ clearInterval(_soPollTimer); _soPollTimer=null; } }
+function soDropPending(token){ try{ const arr=JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]').filter(x=>x.token!==token); localStorage.setItem(SO_PENDING_KEY, JSON.stringify(arr)); }catch(e){} }
+
+function soStartPoll(token){
+  const tick=async()=>{
+    try{
+      const r=await fetch(luApi(),{method:'POST',body:new URLSearchParams({action:'signStatus',token})});
+      const d=await r.json();
+      const el=document.getElementById('soStatus');
+      if(d.ok && d.state==='used'){
+        if(el){ el.innerHTML='\u2713 Signed &amp; saved to Drive'+(d.url?' \u2014 <a href="'+soEsc(d.url)+'" target="_blank">view</a>':''); el.classList.add('done'); }
+        soClosePoll(); soDropPending(token);
+      }else if(d.ok && d.state==='expired'){
+        if(el) el.textContent='\u231b Link expired (not signed)';
+        soClosePoll();
+      }
+    }catch(e){}
+  };
+  soClosePoll(); _soPollTimer=setInterval(tick,12000); tick();
+}
+
+async function soCheckPendingOnLoad(){
+  const api=localStorage.getItem('lingel_api')||''; if(!api) return;
+  let arr; try{ arr=JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]'); }catch(e){ return; }
+  if(!arr.length) return;
+  let signed=0, keep=[];
+  for(const it of arr){
+    try{
+      const r=await fetch(api,{method:'POST',body:new URLSearchParams({action:'signStatus',token:it.token})});
+      const d=await r.json();
+      if(d.ok && d.state==='used'){ signed++; }
+      else if(d.ok && d.state==='expired'){ /* drop silently */ }
+      else keep.push(it);
+    }catch(e){ keep.push(it); }
+  }
+  localStorage.setItem(SO_PENDING_KEY, JSON.stringify(keep));
+  if(signed>0) setTimeout(()=>toast('\u2713 '+signed+' customer sign-off'+(signed>1?'s':'')+' completed & saved to Drive'), 900);
+}
+
+function soInjectStyles(){
+  if(document.getElementById('soStyles')) return;
+  const css=`
+  #soOverlay{position:fixed;inset:0;z-index:99998;background:rgba(10,12,16,.82);display:flex;align-items:center;justify-content:center;padding:18px}
+  #soOverlay .so-card{width:100%;max-width:380px;background:var(--panel,#1a1e25);border:1px solid var(--line,#2a2f3a);border-radius:16px;padding:20px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  #soOverlay .so-h{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;color:var(--hivis,#e2f14d);text-transform:uppercase;letter-spacing:.06em}
+  #soOverlay .so-sub{font-size:12px;color:#9aa2ad;margin-top:4px}
+  #soOverlay .so-qr{width:200px;height:200px;background:#fff;border-radius:12px;padding:8px;margin:16px auto 8px;display:block;object-fit:contain}
+  #soOverlay .so-scan{font-size:11px;color:#9aa2ad;margin-bottom:6px}
+  #soOverlay .so-link{display:block;font-size:11px;color:#cfd6e0;word-break:break-all;background:#0e1116;border:1px solid #2a2f3a;border-radius:8px;padding:8px 10px;text-decoration:none;margin-bottom:12px}
+  #soOverlay .so-btns{display:flex;gap:8px}
+  #soOverlay .so-b{flex:1;text-align:center;background:var(--panel-2,#222732);border:1px solid #2a2f3a;color:#e8ebf0;border-radius:9px;padding:11px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;text-decoration:none}
+  #soOverlay .so-b.wa{background:#1f9d55;border-color:#1f9d55;color:#fff}
+  #soOverlay .so-status{margin:14px 0 4px;font-size:13px;font-weight:700;color:#f5c451}
+  #soOverlay .so-status.done{color:#4ade80}
+  #soOverlay .so-status a{color:inherit}
+  #soOverlay .so-note{font-size:10.5px;color:#7d848f;line-height:1.5;margin-bottom:14px}
+  #soOverlay .so-close{width:100%;background:var(--hivis,#e2f14d);color:#111;border:none;border-radius:9px;padding:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}`;
+  const st=document.createElement('style'); st.id='soStyles'; st.textContent=css; document.head.appendChild(st);
+}
+window.addEventListener('load', soCheckPendingOnLoad);
 
 </script>
 
