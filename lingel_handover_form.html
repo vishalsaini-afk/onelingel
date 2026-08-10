@@ -1352,7 +1352,8 @@ async function sendSignoff(){
 
   // The link freezes a snapshot of the form NOW — warn if key parts are still empty,
   // because anything added after this won't appear on the customer's copy.
-  const filledCL = [...Array(CL.length)].filter((_,i)=>rd('cl'+(i+1))).length;
+  const rdChk = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || '';
+  const filledCL = [...Array(CL.length)].filter((_,i)=>rdChk('cl'+(i+1))).length;
   const noSelfie = !(typeof selfieComposed!=='undefined' && selfieComposed);
   const missing = [];
   if(filledCL===0) missing.push('\u2022 Handover checklist is empty');
