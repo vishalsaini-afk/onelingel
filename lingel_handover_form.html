@@ -259,7 +259,6 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
   <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
   <button class="btns" onclick="doWA()">WhatsApp text</button>
   <button class="btns" onclick="sendSignoff()" style="border-color:var(--hivis);color:var(--hivis)">🔗 Send to customer for sign-off</button>
-  <button class="btns" onclick="setBackend()" title="Set the Apps Script /exec URL this app talks to">⚙ Backend</button>
   <button class="btns" onclick="doReset()" style="margin-left:auto;color:var(--danger);border-color:var(--danger)">Reset</button>
 </div>
 
@@ -1111,7 +1110,8 @@ window.addEventListener('load',()=>{refreshHoSigTile();});
    and SiteLog use). action=handover (summary row) + action=handoverSnags
    (one row per snag). Offline-safe: queues and syncs on reconnect.
    ========================================================================== */
-let HO_API = localStorage.getItem("lingel_api") || "";
+const HO_EXEC = "https://script.google.com/macros/s/AKfycbzTi9ihe1YpDEIkX7IdAnDqNl61rU3IDecHUetV4mmwAVezMbJSu_Ruxg4_CJnscVEH/exec";
+let HO_API = HO_EXEC;
 let _hoSig = "";
 
 function handoverPayload(){
@@ -1217,7 +1217,7 @@ async function logHandoverToSheet(){
   });
   const sig = JSON.stringify(job);
   if(sig === _hoSig) return;                                  // PDF then Share = one write
-  if(!HO_API) HO_API = localStorage.getItem("lingel_api") || "";   // hub may have set it since load
+  if(!HO_API) HO_API = HO_EXEC;
   if(!HO_API){
     const u = prompt("One-time setup:\nPaste the Lingel Apps Script /exec URL");
     if(!u) return;
@@ -1378,11 +1378,7 @@ function lingelUpload(opt){
     }catch(err){ reject(new Error(err.message||'network error')); }
   });
 }
-function luApi(){
-  let a=localStorage.getItem('lingel_api')||'';
-  if(!a){ const u=prompt('One-time setup:\nPaste the Lingel Apps Script /exec URL'); if(u){a=u.trim();localStorage.setItem('lingel_api',a);} }
-  return a;
-}
+function luApi(){ return HO_EXEC; }
 function luStamp(){ const d=new Date(),p=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+p2m(d)+'-'+p2d(d); }
 function p2m(d){return String(d.getMonth()+1).padStart(2,'0');}
@@ -1403,24 +1399,6 @@ function soEsc(s){return (s==null?"":String(s)).replace(/[&<>"]/g,m=>({'&':'&amp
 function soToken(){
   try{ const a=new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,"0")).join(""); }
   catch(e){ return (Date.now().toString(16)+Math.random().toString(16).slice(2)).replace(/[^a-f0-9]/g,"").slice(0,32); }
-}
-function setBackend(){
-  const cur = localStorage.getItem('lingel_api') || '(not set)';
-  const v = prompt(
-    'Backend Apps Script /exec URL this app talks to.\n\n'+
-    'This must be your FIELD SUITE deployment (handover/sign-off), the one whose\n'+
-    '?ping=1 shows version "signoff-v2" — NOT your invoice/day-plan backend.\n\n'+
-    'Current:\n'+cur+'\n\nPaste the correct /exec URL (or Cancel to keep):', 
-    (cur==='(not set)'?'':cur));
-  if(v && v.trim()){
-    localStorage.setItem('lingel_api', v.trim());
-    if(typeof HO_API!=='undefined') HO_API = v.trim();
-    toast('✓ Backend set — verifying…');
-    fetch(v.trim()+(v.indexOf('?')>-1?'&':'?')+'ping=1')
-      .then(r=>r.json())
-      .then(d=>{ toast(d && d.version==='signoff-v2' ? '✓ Backend OK (signoff-v2 live)' : '⚠ Reached it, but sign routes are NOT live here — redeploy a new version'); })
-      .catch(()=>toast('⚠ Saved, but could not reach that URL'));
-  }
 }
 function soBase(){
   // sign.html is hosted right next to this app, so derive its URL from the
@@ -1554,7 +1532,7 @@ function soStartPoll(token){
 }
 
 async function soCheckPendingOnLoad(){
-  const api=localStorage.getItem('lingel_api')||''; if(!api) return;
+  const api=luApi(); if(!api) return;
   let arr; try{ arr=JSON.parse(localStorage.getItem(SO_PENDING_KEY)||'[]'); }catch(e){ return; }
   if(!arr.length) return;
   let signed=0, keep=[];
@@ -1605,7 +1583,7 @@ window.addEventListener('load', soCheckPendingOnLoad);
    ============================================================ */
 (function(){
   var DRQ="dr_queue", lastSig="";
-  function api(){ try{return localStorage.getItem("lingel_api")||"";}catch(e){return "";} }
+  function api(){ return HO_EXEC; }
   function supervisor(){ try{var s=JSON.parse(localStorage.getItem("lingel_supervisor")||"null");return (s&&s.name)?s.name:"";}catch(e){return "";} }
   function q(){ try{return JSON.parse(localStorage.getItem(DRQ)||"[]");}catch(e){return [];} }
   function saveQ(a){ try{localStorage.setItem(DRQ,JSON.stringify(a));}catch(e){} }
