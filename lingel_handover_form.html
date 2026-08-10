@@ -226,10 +226,8 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 </div>
 
 <div class="sec">
-  <div class="slbl" data-t="custSat">Customer satisfaction <span class="nt">new</span></div>
-  <div style="display:flex;align-items:center;gap:4px" id="stars"></div>
-  <div style="font-size:13px;color:var(--muted);margin-top:6px" id="rlbl"></div>
-  <div class="fd" style="margin-top:14px">
+  <div class="slbl" data-t="custSat">Customer feedback <span class="nt">new</span></div>
+  <div class="fd">
     <div class="lbl" data-t="feedbackLbl">Feedback / comments from customer</div>
     <textarea id="fb" rows="2" placeholder="Any concerns, compliments, or pending issues..." style="resize:vertical"></textarea>
   </div>
@@ -294,7 +292,7 @@ const T={
     takeSelfieBtn:"Take selfie with customer",selfieOk:"Proof photo captured",
     selfieRetakeBtn:"Retake",selfieCustomerLbl:"Customer",selfieTimeLbl:"Captured",selfieOrdLbl:"Order",
     selfieWatermark:"Lingel branding and timestamp auto-stamped on photo",
-    custSat:"Customer satisfaction",feedbackLbl:"Feedback / comments from customer",
+    custSat:"Customer feedback",feedbackLbl:"Feedback / comments from customer",
     techDetails:"Technician / installer details",techName:"Technician name",empId:"Employee ID",
     sigs:"Supervisor Signature",custSig:"Customer signature",techSig:"Technician signature",clearBtn:"Clear",
     printPdf:"Print / Save PDF",sendEmail:"Email to customer",whatsappBtn:"WhatsApp",resetBtn:"Reset",
@@ -327,7 +325,7 @@ const T={
     takeSelfieBtn:"ग्राहक के साथ सेल्फी लें",selfieOk:"प्रमाण फोटो ली गई",
     selfieRetakeBtn:"फिर से लें",selfieCustomerLbl:"ग्राहक",selfieTimeLbl:"समय",selfieOrdLbl:"ऑर्डर",
     selfieWatermark:"लिंगेल ब्रांडिंग और समय-मुद्रा स्वचालित रूप से फोटो पर अंकित है",
-    custSat:"ग्राहक संतुष्टि",feedbackLbl:"ग्राहक की प्रतिक्रिया / टिप्पणी",
+    custSat:"ग्राहक प्रतिक्रिया",feedbackLbl:"ग्राहक की प्रतिक्रिया / टिप्पणी",
     techDetails:"तकनीशियन विवरण",techName:"तकनीशियन का नाम",empId:"कर्मचारी पहचान",
     sigs:"सुपरवाइज़र हस्ताक्षर",custSig:"ग्राहक हस्ताक्षर",techSig:"तकनीशियन हस्ताक्षर",clearBtn:"साफ़ करें",
     printPdf:"प्रिंट / PDF सहेजें",sendEmail:"ग्राहक को ईमेल करें",whatsappBtn:"WhatsApp",resetBtn:"रीसेट करें",
@@ -362,7 +360,6 @@ function applyLang(){
   });
   document.querySelectorAll('[data-t-i]').forEach(el=>{el.textContent=t.ci[+el.getAttribute('data-t-i')];});
   document.querySelectorAll('[data-t-h]').forEach(el=>{el.textContent=t.ch[+el.getAttribute('data-t-h')]||'';});
-  document.getElementById('rlbl').textContent=CR>0?t.rl[CR]:t.notRated;
 }
 function buildCL(){
   const t=T[lang];
@@ -374,12 +371,6 @@ function buildCL(){
       <td><input class="iinp" type="text" placeholder="—"></td>
     </tr>`).join('');
 }
-function buildStars(){
-  const c=document.getElementById('stars');c.innerHTML='';
-  for(let i=1;i<=5;i++){const s=document.createElement('span');s.className='star';s.textContent='★';s.onclick=()=>setR(i);s.onmouseenter=()=>hi(i);s.onmouseleave=()=>hi(CR);c.appendChild(s);}
-}
-/* setR moved below */
-function hi(n){document.querySelectorAll('.star').forEach((s,i)=>s.classList.toggle('on',i<n));}
 function setFn(){const v=document.getElementById('hdate').value;if(!v)return;const p=v.split('-');document.getElementById('fdate').textContent=p[0].slice(2)+p[1]+p[2];}
 function prog(){const f=['ord','hdate','cname','prod'].filter(id=>document.getElementById(id)?.value?.trim()).length;const r=Math.min(document.querySelectorAll('input[type=radio]:checked').length,6);document.getElementById('pfll').style.width=Math.round((f+r)/10*100)+'%';}
 
@@ -439,8 +430,9 @@ function addPhotos(inp){
 }
 function syncPhLabels(){document.querySelectorAll('[data-phi]').forEach(el=>{const i=+el.getAttribute('data-phi');if(photos[i])photos[i].lbl=el.value;});}
 function renderPhotos(){
+  const g=document.getElementById('phgr'); if(!g) return;
   const ph=T[lang].locationLbl;
-  document.getElementById('phgr').innerHTML=photos.map((p,i)=>`<div class="phth"><button class="phrm" onclick="syncPhLabels();photos.splice(${i},1);renderPhotos();">✕</button><img src="${p.url}" alt="Photo ${i+1}"><input class="iinp" type="text" data-phi="${i}" value="${p.lbl.replace(/"/g,'&quot;')}" placeholder="${ph}" oninput="photos[${i}].lbl=this.value" style="margin-top:4px;"></div>`).join('');
+  g.innerHTML=photos.map((p,i)=>`<div class="phth"><button class="phrm" onclick="syncPhLabels();photos.splice(${i},1);renderPhotos();">✕</button><img src="${p.url}" alt="Photo ${i+1}"><input class="iinp" type="text" data-phi="${i}" value="${p.lbl.replace(/"/g,'&quot;')}" placeholder="${ph}" oninput="photos[${i}].lbl=this.value" style="margin-top:4px;"></div>`).join('');
 }
 
 function renderSelfieBtn(){
@@ -526,9 +518,8 @@ snagTxt+'\n\n'+
 'BALANCE MATERIAL AT SITE\n'+
 '-----------------------------\n'+
 balTxt+'\n\n'+
-'CUSTOMER SATISFACTION\n'+
+'CUSTOMER FEEDBACK\n'+
 '-----------------------------\n'+
-'Rating         : '+(CR>0?T.en.rl[CR]:'Not rated')+'\n'+
 'Feedback       : '+g('fb')+'\n\n'+
 'SITE ENGINEER\n'+
 '-----------------------------\n'+
@@ -708,7 +699,7 @@ async function buildPDF(){
   y+=hH;
   for(let i=0;i<T.ci.length;i++){
     const ans=rd('cl'+(i+1));
-    const rem=(document.querySelectorAll('.iinp')[i]?.value||'').trim();
+    const rem=(document.querySelector('#clr'+(i+1)+' .iinp')?.value||'').trim();
     const lines=doc.splitTextToSize(T.ci[i], descW-PAD);
     const remLines=rem?doc.splitTextToSize(rem, remW-PAD):[''];
     const h=Math.max(24, lines.length*12+12, remLines.length*12+12);
@@ -753,17 +744,6 @@ async function buildPDF(){
     ['Key Remarks', gv('keyrem')],
     ((rd('meshHo')==='Hold')?['Mesh Note', T.meshNote]:null),
   ]);
-
-  /* --- customer satisfaction (real stars) --- */
-  sectionTitle('Customer Satisfaction');
-  need(52);
-  doc.setFont('helvetica','normal').setFontSize(8).setTextColor(SUB).text('CUSTOMER RATING', M, y+6);
-  const R=11, gap2=30, sy=y+30; let sx=M+R;
-  const hasCR = (typeof CR!=='undefined' && CR>0);
-  for(let i=1;i<=5;i++){ star(sx, sy, R, hasCR && i<=CR); sx+=gap2; }
-  if(hasCR){ doc.setFont('helvetica','bold').setFontSize(13).setTextColor(INK).text((T.rl[CR]||'')+'  ('+CR+'/5)', M+5*gap2+R, sy+5); }
-  else { doc.setFont('helvetica','italic').setFontSize(11).setTextColor(SUB).text('Not rated', M+5*gap2+R, sy+5); }
-  y=sy+R+18;
 
   /* --- signature (supervisor only; customer signs on the sign-off link) --- */
   need(120);
@@ -834,8 +814,7 @@ function doReset(){
   if(!confirm('Reset the form and clear all entered data?\n(Any PDF/Drive/sheet already saved is not affected.)')) return;
   document.querySelectorAll('input:not([type=radio]),textarea').forEach(el=>el.value='');
   document.querySelectorAll('input[type=radio]').forEach(el=>el.checked=false);
-  CR=0;photos=[];snags=[];balanceItems=[];quotePositions=[];geoLoc=null;selfieComposed=null;selfieName='';selfieTs='';selfieOrd='';
-  hi(0);document.getElementById('rlbl').textContent=T[lang].notRated;
+  photos=[];snags=[];balanceItems=[];quotePositions=[];geoLoc=null;selfieComposed=null;selfieName='';selfieTs='';selfieOrd='';
   hoSig.engineer='';refreshHoSigTile();
   const _gn=document.getElementById('geoNote');if(_gn)_gn.textContent='';
   document.getElementById('hdate').valueAsDate=new Date();setFn();
@@ -1012,15 +991,7 @@ function balancePhoto(idx){
   inp.click();
 }
 
-/* ---- 5-star → Google Review ---- */
-const _origSetR=typeof setR==='function'?setR:null;
-function setR(n){CR=n;hi(n);
-  const t=T[lang];document.getElementById('rlbl').textContent=CR>0?t.rl[CR]:t.notRated;
-  if(CR===5){window.open('https://share.google/tpEKjnPKtsrmzHoZ3','_blank','noopener');}
-
-  prog();}
-
-buildCL();buildStars();renderSelfieBtn();
+buildCL();renderSelfieBtn();
 document.getElementById('hdate').valueAsDate=new Date();setFn();
 window.addEventListener('load',()=>{refreshHoSigTile();});
 
@@ -1067,8 +1038,6 @@ function handoverPayload(){
     keyCount:   v("keyqty"),
     keyRemarks: v("keyrem"),
     mesh:       rd("meshHo"),
-    stars:       CR || "",
-    ratingLabel: (CR>0 && T.en.rl[CR]) ? T.en.rl[CR] : "Not rated"
   };
 
   const snagRows = snags.map((s,i) => ({
@@ -1355,8 +1324,7 @@ function buildSignoffSnapshot(){
   const gv = id => (document.getElementById(id)?.value||"").trim();
   const rd = nm => document.querySelector('input[name="'+nm+'"]:checked')?.value || "";
   const en = (window.T&&window.T.en)?window.T.en:{ci:[],rl:[],meshNote:""};
-  const iinps = document.querySelectorAll('.iinp');
-  const checklist = (en.ci||[]).map((q,i)=>({ q, a: rd('cl'+(i+1)), rem:(iinps[i]?.value||'').trim() }));
+  const checklist = (en.ci||[]).map((q,i)=>({ q, a: rd('cl'+(i+1)), rem:(document.querySelector('#clr'+(i+1)+' .iinp')?.value||'').trim() }));
   let clYes=0,clNo=0,clNa=0;
   checklist.forEach(c=>{ if(c.a==='Yes')clYes++; else if(c.a==='No')clNo++; else if(c.a==='NA')clNa++; });
   const snagRows = (typeof snags!=='undefined'?snags:[]).map((s,i)=>({n:i+1,pos:s.pos||'',desc:s.desc||'',loc:s.loc||'',priority:s.priority||''})).filter(s=>s.desc||s.pos);
@@ -1369,7 +1337,9 @@ function buildSignoffSnapshot(){
     checklist, clYes, clNo, clNa, snags: snagRows,
     keysGiven: rd('keysHo'), keyCount: gv('keyqty'), keyRemarks: gv('keyrem'),
     mesh: rd('meshHo'), meshNote: (rd('meshHo')==='Hold' ? (en.meshNote||'') : ''),
-    engineerSig: engSig, reviewLink: SIGN_REVIEW_LINK
+    engineerSig: engSig,
+    sitePhoto: (typeof selfieComposed!=='undefined' && selfieComposed) ? selfieComposed : '',
+    reviewLink: SIGN_REVIEW_LINK
   };
 }
 
