@@ -1350,6 +1350,18 @@ async function sendSignoff(){
   const api = luApi(); if(!api){ toast('\u26a0 Apps Script URL not set'); return; }
   const base = soBase(); if(!base){ toast('\u26a0 Sign-off page URL not set'); return; }
 
+  // The link freezes a snapshot of the form NOW — warn if key parts are still empty,
+  // because anything added after this won't appear on the customer's copy.
+  const filledCL = [...Array(CL.length)].filter((_,i)=>rd('cl'+(i+1))).length;
+  const noSelfie = !(typeof selfieComposed!=='undefined' && selfieComposed);
+  const missing = [];
+  if(filledCL===0) missing.push('\u2022 Handover checklist is empty');
+  if(noSelfie)     missing.push('\u2022 No site photo / selfie captured');
+  if(missing.length){
+    if(!confirm('This link saves a snapshot of the form as it is right now.\n\n'+missing.join('\n')+
+      '\n\nAnything you add after creating the link will NOT show on the customer\u2019s copy.\n\nCreate the link anyway?')) return;
+  }
+
   toast('Creating sign-off link\u2026');
   const token = soToken();
   const payload = JSON.stringify(buildSignoffSnapshot());
