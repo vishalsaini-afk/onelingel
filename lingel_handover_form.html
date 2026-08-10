@@ -253,7 +253,7 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 </div>
 
 <div class="acts">
-  <button class="btnp" onclick="downloadPDF()">⤓ Download PDF</button>
+  <button class="btnp" onclick="backupNow()">☁ Backup to Drive</button>
   <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
   <button class="btns" onclick="doWA()">WhatsApp text</button>
   <button class="btns" onclick="sendSignoff()" style="border-color:var(--hivis);color:var(--hivis)">🔗 Send to customer for sign-off</button>
@@ -340,6 +340,7 @@ const T={
     ch:["","","","","यदि हाँ — टिप्पणी में विवरण दें","","","","",""]
   }
 };
+window.T=T;
 
 let lang='en',CR=0,photos=[];
 let selfieComposed=null,selfieName='',selfieTs='',selfieOrd='';
@@ -816,6 +817,16 @@ async function uploadDrive(){
     window._lastDriveUrl = d.url;
     luDone('Saved to '+(d.folder||offer||'Misc'));
   }catch(e){ console.error('pdf upload deferred',e); luFail('kept on phone · uploads when back online'); }
+}
+
+async function backupNow(){
+  const order=(document.getElementById('ord')?.value||'').trim();
+  const customer=(document.getElementById('cname')?.value||'').trim();
+  if(!order && !customer){ toast('\u26a0 Fill the handover first (order no. / customer).'); return; }
+  // window.uploadDrive is wrapped at load to also log the Google Sheet,
+  // so one Backup tap = PDF saved to the order's Drive folder + a Sheet row.
+  try{ await uploadDrive(); }
+  catch(e){ toast('\u26a0 Backup issue \u2014 '+((e&&e.message)||'will retry when online')); }
 }
 
 function doReset(){
@@ -1382,6 +1393,10 @@ async function sendSignoff(){
     const d = await r.json();
     if(!d.ok) throw new Error(d.error||'server refused');
   }catch(e){ toast('\u26a0 Couldn\u2019t create link \u2014 '+((e&&e.message)||'check connection')); return; }
+
+  // Link created → log the handover to the Google Sheet now (Handover + DailyReport rows).
+  // The customer's sign-off later updates the CustomerSignoff tab server-side.
+  try{ if(typeof logHandoverToSheet==='function') logHandoverToSheet(); }catch(e){}
 
   const link = base + (base.indexOf('?')>-1?'&':'?') + 't=' + token + '&api=' + encodeURIComponent(api);
   try{
