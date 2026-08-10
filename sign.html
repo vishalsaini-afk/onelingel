@@ -237,11 +237,19 @@ function buildSignedPDF(sigDataUrl){
     doc.setFont("helvetica","bold").setFontSize(10.5).setTextColor(INK).text(t.toUpperCase(),M+12,y+16);
     y+=24+14;}
   const colW=CW/2;
+  function breakLong(s,w){
+    return String(s).split(" ").map(tok=>{
+      if(!tok || doc.getTextWidth(tok)<=w) return tok;
+      let out="",cur="";
+      for(const ch of tok){ if(doc.getTextWidth(cur+ch)>w && cur){ out+=(out?" ":"")+cur; cur=ch; } else cur+=ch; }
+      return out+(out?" ":"")+cur;
+    }).join(" ");
+  }
   function fields(pairs){
     pairs=pairs.filter(p=>p);
     for(let i=0;i<pairs.length;i+=2){
       const cells=[pairs[i],pairs[i+1]].filter(Boolean);
-      const wrapped=cells.map(c=>doc.splitTextToSize(String(c[1]==null||c[1]===""?"—":c[1]),colW-18).slice(0,2));
+      const wrapped=cells.map(c=>doc.splitTextToSize(breakLong(String(c[1]==null||c[1]===""?"—":c[1]),colW-18),colW-18).slice(0,3));
       const rowH=Math.max(26,...wrapped.map(w=>w.length*13+13));
       need(rowH);
       cells.forEach((c,ci)=>{const x=M+ci*colW;
