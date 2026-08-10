@@ -592,11 +592,19 @@ async function buildPDF(){
   }
 
   const colW = CW/2;
+  function breakLong(s,w){
+    return String(s).split(' ').map(tok=>{
+      if(!tok || doc.getTextWidth(tok)<=w) return tok;
+      let out='',cur='';
+      for(const ch of tok){ if(doc.getTextWidth(cur+ch)>w && cur){ out+=(out?' ':'')+cur; cur=ch; } else cur+=ch; }
+      return out+(out?' ':'')+cur;
+    }).join(' ');
+  }
   function fields(pairs){
     pairs = pairs.filter(p=>p);
     for(let i=0;i<pairs.length;i+=2){
       const cells=[pairs[i],pairs[i+1]].filter(Boolean);
-      const wrapped=cells.map(c=>doc.splitTextToSize(String(c[1]==null||c[1]===''?'\u2014':c[1]), colW-18).slice(0,2));
+      const wrapped=cells.map(c=>doc.splitTextToSize(breakLong(String(c[1]==null||c[1]===''?'\u2014':c[1]),colW-18), colW-18).slice(0,3));
       const rowH=Math.max(26, ...wrapped.map(w=>w.length*13+13));
       need(rowH);
       cells.forEach((c,ci)=>{ const x=M+ci*colW;
@@ -962,7 +970,8 @@ function pinLocation(){
     const link='https://maps.google.com/?q='+la.toFixed(6)+','+lo.toFixed(6);
     if(note)note.innerHTML='📍 Pinned: <a href="'+link+'" target="_blank" style="color:var(--hivis)">'+la.toFixed(5)+', '+lo.toFixed(5)+'</a> · tap to open in Maps';
     const a=document.getElementById('caddr');
-    if(a && a.value.indexOf('maps.google')<0){ a.value=(a.value.trim()?a.value.trim()+'  ·  ':'')+'📍 '+link; }
+    const coords='GPS '+la.toFixed(5)+', '+lo.toFixed(5);
+    if(a && a.value.indexOf('GPS ')<0 && a.value.indexOf('maps.google')<0){ a.value=(a.value.trim()?a.value.trim()+'  ·  ':'')+coords; }
     toast('✓ Location pinned');
   }, err=>{
     if(note)note.textContent='⚠ '+((err&&err.message)||'Could not get location — allow location access');
