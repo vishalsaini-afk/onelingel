@@ -253,7 +253,9 @@ input::placeholder,textarea::placeholder{color:var(--muted)}
 </div>
 
 <div class="acts">
-  <button class="btnp" onclick="backupNow()">☁ Backup to Drive</button>
+  <button class="btnp" onclick="saveDraft()">💾 Backup</button>
+  <button class="btns" onclick="restoreDraft()">↩ Restore</button>
+  <button class="btns" onclick="uploadDrive()">☁ Save to Drive</button>
   <button class="btns" onclick="shareReport()">↗ Share (Email/WhatsApp)</button>
   <button class="btns" onclick="doWA()">WhatsApp text</button>
   <button class="btns" onclick="sendSignoff()" style="border-color:var(--hivis);color:var(--hivis)">🔗 Send to customer for sign-off</button>
@@ -819,15 +821,102 @@ async function uploadDrive(){
   }catch(e){ console.error('pdf upload deferred',e); luFail('kept on phone · uploads when back online'); }
 }
 
-async function backupNow(){
-  const order=(document.getElementById('ord')?.value||'').trim();
-  const customer=(document.getElementById('cname')?.value||'').trim();
-  if(!order && !customer){ toast('\u26a0 Fill the handover first (order no. / customer).'); return; }
-  // window.uploadDrive is wrapped at load to also log the Google Sheet,
-  // so one Backup tap = PDF saved to the order's Drive folder + a Sheet row.
-  try{ await uploadDrive(); }
-  catch(e){ toast('\u26a0 Backup issue \u2014 '+((e&&e.message)||'will retry when online')); }
+/* ============================================================
+   Local on-device backup / restore — protects the form if the app
+   is interrupted (closed, reloaded, crashed). Saved to this device's
+   IndexedDB (handles large selfie/signature images). Autosaves quietly
+   as you work; "Backup" is a manual checkpoint; "Restore" brings it back.
+   ============================================================ */
+const DRAFT_DBP = new Promise((res,rej)=>{
+  let req; try{ req=indexedDB.open('lingel_handover_draft',1); }catch(e){ rej(e); return; }
+  req.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains('kv')) db.createObjectStore('kv'); };
+  req.onsuccess=()=>res(req.result); req.onerror=()=>rej(req.error);
+});
+function draftIdb(mode,fn){
+  return DRAFT_DBP.then(db=>new Promise((res,rej)=>{
+    const tx=db.transaction('kv',mode), os=tx.objectStore('kv'), rq=fn(os);
+    if(rq){ rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); }
+    else { tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }
+  }));
 }
+const draftPut=(v)=>draftIdb('readwrite',os=>os.put(v,'draft'));
+const draftGet=()=>draftIdb('readonly',os=>os.get('draft'));
+const draftDel=()=>draftIdb('readwrite',os=>os.delete('draft'));
+
+function collectFormState(){
+  const s={ v:{}, r:{}, clrem:[] };
+  document.querySelectorAll('input[id],textarea[id],select[id]').forEach(el=>{
+    if(el.type==='radio'||el.type==='checkbox'||el.type==='file') return;
+    s.v[el.id]=el.value;
+  });
+  document.querySelectorAll('input[type=radio]:checked').forEach(el=>{ s.r[el.name]=el.value; });
+  for(let i=1;i<=CL.length;i++){ s.clrem[i-1]=document.querySelector('#clr'+i+' .iinp')?.value||''; }
+  s.snags=snags; s.balanceItems=balanceItems; s.quotePositions=quotePositions;
+  s.selfieComposed=selfieComposed; s.selfieName=selfieName; s.selfieTs=selfieTs; s.selfieOrd=selfieOrd;
+  s.hoSig=hoSig; s.geoLoc=geoLoc;
+  s.formNo=document.getElementById('fdate')?.textContent||'';
+  s.ts=Date.now();
+  return s;
+}
+
+function applyFormState(s){
+  if(!s) return;
+  Object.entries(s.v||{}).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.value=val; });
+  document.querySelectorAll('input[type=radio]:checked').forEach(el=>el.checked=false);
+  Object.entries(s.r||{}).forEach(([name,val])=>{
+    const el=document.querySelector('input[name="'+name+'"][value="'+val+'"]'); if(el) el.checked=true;
+  });
+  (s.clrem||[]).forEach((val,i)=>{ const el=document.querySelector('#clr'+(i+1)+' .iinp'); if(el) el.value=val; });
+  snags=s.snags||[]; balanceItems=s.balanceItems||[]; quotePositions=s.quotePositions||[];
+  selfieComposed=s.selfieComposed||null; selfieName=s.selfieName||''; selfieTs=s.selfieTs||''; selfieOrd=s.selfieOrd||'';
+  hoSig=s.hoSig||{engineer:''}; geoLoc=s.geoLoc||null;
+  try{ renderSnags(); }catch(e){}
+  try{ renderBalance(); }catch(e){}
+  try{ renderSelfieBtn(); }catch(e){}
+  try{ refreshHoSigTile(); }catch(e){}
+  try{ updatePosCount(); renderPosPicker(); }catch(e){}
+  try{ meshNoteToggle(); }catch(e){}
+  try{ prog(); }catch(e){}
+}
+
+async function saveDraft(){
+  try{ await draftPut(collectFormState()); toast('\uD83D\uDCBE Backup saved on this device'); }
+  catch(e){ toast('\u26a0 Backup failed \u2014 '+((e&&e.message)||'storage error')); }
+}
+
+async function restoreDraft(){
+  let s; try{ s=await draftGet(); }catch(e){}
+  if(!s){ toast('No backup found on this device'); return; }
+  const when=s.ts?new Date(s.ts).toLocaleString():'earlier';
+  const who=(s.v&&(s.v.cname||s.v.ord))?(' for '+(s.v.cname||s.v.ord)):'';
+  if(!confirm('Restore the saved backup'+who+'?\n(Saved '+when+')\n\nThis will replace whatever is on the form now.')) return;
+  applyFormState(s);
+  toast('\u2713 Backup restored');
+}
+
+/* quiet autosave: debounced on any input + every 30s, so an interruption
+   never loses more than a few seconds of work */
+let _draftTimer=null;
+function autosaveDraft(){ clearTimeout(_draftTimer); _draftTimer=setTimeout(()=>{ draftPut(collectFormState()).catch(()=>{}); }, 1500); }
+document.addEventListener('input', autosaveDraft, true);
+document.addEventListener('change', autosaveDraft, true);
+setInterval(()=>{ draftPut(collectFormState()).catch(()=>{}); }, 30000);
+
+/* on load, if a backup exists and the form looks empty, offer to restore it */
+async function offerRestoreOnLoad(){
+  let s; try{ s=await draftGet(); }catch(e){ return; }
+  if(!s) return;
+  const draftHasData = !!(s.v && (s.v.cname || s.v.ord)) || (s.snags&&s.snags.length) || !!s.selfieComposed;
+  if(!draftHasData) return;
+  const formEmpty = !((document.getElementById('cname')?.value||'').trim() || (document.getElementById('ord')?.value||'').trim());
+  if(!formEmpty) return;
+  const when=s.ts?new Date(s.ts).toLocaleString():'earlier';
+  const who=(s.v&&(s.v.cname||s.v.ord))?(' for '+(s.v.cname||s.v.ord)):'';
+  setTimeout(()=>{
+    if(confirm('A saved handover backup'+who+' was found on this device (from '+when+').\n\nRestore it?')) applyFormState(s);
+  }, 600);
+}
+window.addEventListener('load', offerRestoreOnLoad);
 
 function doReset(){
   if(!confirm('Reset the form and clear all entered data?\n(Any PDF/Drive/sheet already saved is not affected.)')) return;
@@ -842,6 +931,7 @@ function doReset(){
   const _emp=document.getElementById('emP');if(_emp)_emp.style.display='none';
   updatePosCount();renderPosPicker();
   renderSnags();renderBalance();renderSelfieBtn();toast('Form has been reset.');
+  try{ draftDel(); }catch(e){}
 }
 
 
