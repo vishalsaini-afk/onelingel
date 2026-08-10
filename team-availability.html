@@ -186,6 +186,12 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .psec{margin-bottom:14px}
 .psectt{font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .psectt .cnt{font-family:'JetBrains Mono';font-size:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:1px 8px}
+.psummary{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.pstat{flex:1;min-width:92px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center}
+.pstat .pnum{font-family:'Archivo';font-weight:900;font-size:26px;line-height:1;color:var(--text)}
+.pstat .plbl{font-family:'Archivo Narrow';font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:6px}
+.pstat.hold .pnum{color:var(--amber)}
+.pstat.avail .pnum{color:#4ade80}
 .sgrp{margin-bottom:10px}
 .shead{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--hivis);background:rgba(255,206,31,.08);border-radius:6px;padding:5px 9px;margin-bottom:6px}
 .prow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:6px}
@@ -210,6 +216,12 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .pdflight .sameas{display:none!important}
 .pdflight .psec{margin-bottom:20px}
 .pdflight .psectt{font-family:'Archivo Narrow',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:12px;color:#111;margin-bottom:9px}
+.pdflight .psummary{display:flex;gap:10px;margin-bottom:18px}
+.pdflight .pstat{flex:1;background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:12px 10px;text-align:center}
+.pdflight .pstat .pnum{font-family:'Archivo',sans-serif;font-weight:800;font-size:26px;line-height:1;color:#111}
+.pdflight .pstat .plbl{font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#555;margin-top:6px}
+.pdflight .pstat.hold .pnum{color:#b45309}
+.pdflight .pstat.avail .pnum{color:#166534}
 .pdflight .ptabwrap{overflow:visible;border:1px solid #ccc;border-radius:10px}
 .pdflight .ptab{width:100%;border-collapse:collapse;font-size:12px}
 .pdflight .ptab thead th{background:#f2f2f2;color:#333;font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:8px 10px;border-bottom:1px solid #bbb}
@@ -220,8 +232,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .pdflight .ptab tr.grp .gcnt{font-family:'JetBrains Mono';font-size:10px;background:#fff;color:#555;border:1px solid #ccc;border-radius:20px;padding:1px 7px;margin-left:6px}
 .pdflight .ptab .dayh .thd{display:block;font-family:'JetBrains Mono';font-size:9px;color:#666;font-weight:400;margin-top:2px;text-transform:none;letter-spacing:0}
 .pdflight .ptab .daypill{display:inline-block;font-family:'JetBrains Mono';font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px}
-.pdflight .ptab .daypill.td{background:#dcfce7;color:#166534}
-.pdflight .ptab .daypill.tm{background:#dbeafe;color:#1e40af}
+.pdflight .ptab .daypill.td{background:#dbeafe;color:#1e40af}
+.pdflight .ptab .daypill.tm{background:#dcfce7;color:#166534}
 .pdflight .ptab .daypill.hold{background:#fef3c7;color:#92600a}
 .pdflight .ptab .free{color:#999}
 .pdflight .ptab .dd{color:#555;font-size:11px}
@@ -241,8 +253,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab tr.grp .gcnt{font-family:'JetBrains Mono';font-size:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:1px 7px;margin-left:6px}
 .ptab td.cn{font-weight:700;color:#fff}
 .ptab .daypill{display:inline-block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:6px;margin-right:6px}
-.ptab .daypill.td{background:rgba(74,222,128,.18);color:#4ade80}
-.ptab .daypill.tm{background:rgba(91,155,213,.18);color:#a9cdf0}
+.ptab .daypill.td{background:rgba(91,155,213,.18);color:#a9cdf0}
+.ptab .daypill.tm{background:rgba(74,222,128,.18);color:#4ade80}
 .ptab .daypill.hold{background:rgba(240,166,58,.18);color:var(--amber)}
 .ptab tr.heldrow td{background:rgba(240,166,58,.05)}
 .ptab.pivot td.dcell{white-space:normal;line-height:1.35}
@@ -265,6 +277,9 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   .wrap{max-width:none;padding:0;min-height:0}
   .preporthd{border-bottom:2px solid #111}.prt{color:#111}.prs{color:#555}
   .psectt{color:#111}.psectt .cnt{background:#eee;color:#555;border-color:#ccc}
+  .pstat{background:#f5f5f5;border:1px solid #ddd}
+  .pstat .pnum{color:#111}.pstat .plbl{color:#555}
+  .pstat.hold .pnum{color:#b45309}.pstat.avail .pnum{color:#166534}
   .ptabwrap{overflow:visible;border:1px solid #ccc}
   .ptab{min-width:0}
   .ptab thead th{background:#f2f2f2;color:#333;border-bottom:1px solid #bbb}
@@ -272,8 +287,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   .ptab td.cn{color:#000}
   .ptab tr.grp td{background:#eaeaea;color:#111;border-top:1px solid #bbb}
   .ptab tr.grp .gcnt{background:#fff;color:#555;border-color:#ccc}
-  .ptab .daypill.td{background:#dcfce7;color:#166534}
-  .ptab .daypill.tm{background:#dbeafe;color:#1e40af}
+  .ptab .daypill.td{background:#dbeafe;color:#1e40af}
+  .ptab .daypill.tm{background:#dcfce7;color:#166534}
   .ptab .daypill.hold{background:#fef3c7;color:#92600a}
   .ptab tr.heldrow td{background:#fffdf5}
   .ptab .dayh .thd{color:#666}
@@ -381,6 +396,7 @@ let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 /* ===== DAY-PLAN state ===== */
 const POLL_PLAN=20000;
 const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
+const DEFAULT_SALES=['Ravish','Digvijay','Krishna','Praphul','Bir','Vivek','Rohan','Suraj','Abhishek','Vikas'];
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
 function saveTombstones(){ try{ localStorage.setItem('lingel_plan_tombstones_v1', JSON.stringify([...deletedPlanIds].slice(-500))); }catch(e){} }
@@ -400,7 +416,7 @@ function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.l
 function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:String(p.date||''), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
 function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
 function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
-function loadSalesLocal(){ try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
+function loadSalesLocal(){ DEFAULT_SALES.forEach(s=>salesSet.add(s)); try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
 function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
 async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ plans=d.plans.map(normPlan).filter(p=>!deletedPlanIds.has(p.id)); savePlansLocal(); return true; } }catch(e){} return false; }
@@ -686,9 +702,26 @@ function supTable(){
   });
   return h+'</table></div>';
 }
+function planSummary(){
+  let booked=0, avail=0, na=0, hold=0;
+  (rows||[]).forEach(r=>{
+    (r.teams||[]).forEach(tm=>{ const s=normStatus(tm.status); if(s==='booked')booked++; else if(s==='available')avail++; else na++; });
+    hold += (r.held ? r.held.length : 0);
+  });
+  return { booked, avail, na, hold };
+}
+function planSummaryHTML(){
+  const s=planSummary();
+  return '<div class="psummary">'
+    + '<div class="pstat"><div class="pnum">'+s.booked+'</div><div class="plbl">Total Sites</div></div>'
+    + '<div class="pstat hold"><div class="pnum">'+s.hold+'</div><div class="plbl">Sites On Hold</div></div>'
+    + '<div class="pstat avail"><div class="pnum">'+s.avail+'</div><div class="plbl">Team Available</div></div>'
+    + '</div>';
+}
 function renderPlan(){
   document.getElementById('planReport').innerHTML=
     '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?' · '+esc(SUP):'')+'</div></div>'
+    +planSummaryHTML()
     +'<div class="psec"><div class="psectt">👷 Contractor Teams — grouped by salesperson</div>'+contractorTable()+'</div>'
     +'<div class="psec"><div class="psectt">👔 Supervisors — grouped by supervisor</div>'+supTable()+'</div>';
 }
