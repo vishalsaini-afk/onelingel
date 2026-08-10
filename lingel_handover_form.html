@@ -1344,12 +1344,11 @@ function setBackend(){
   }
 }
 function soBase(){
-  let b = localStorage.getItem("lingel_sign_base") || "";
-  if(!b){
-    const u = prompt("One-time setup:\nPaste the public URL of the customer sign-off page (sign.html)\n\ne.g. https://your-site.netlify.app/sign.html");
-    if(u){ b = u.trim(); localStorage.setItem("lingel_sign_base", b); }
-  }
-  return b;
+  // sign.html is hosted right next to this app, so derive its URL from the
+  // current page. This works identically on GitHub Pages, Netlify, or any host
+  // (including project subpaths like /your-repo/) with no manual setup.
+  try{ return new URL("sign.html", location.href).href; }
+  catch(e){ return "sign.html"; }
 }
 
 function buildSignoffSnapshot(){
