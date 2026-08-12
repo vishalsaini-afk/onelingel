@@ -410,16 +410,44 @@ function teamItems(date){
   return planFor(date,'team');
 }
 function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function isoDateAny(v){
+  if(v==null) return '';
+  if(v instanceof Date) return isNaN(v)?'':isoDate(v);
+  var s=String(v).trim(); if(!s) return '';
+  var m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return m[1]+'-'+m[2]+'-'+m[3];   // ISO yyyy-mm-dd
+  // JS/Apps-Script Date string e.g. "Wed Aug 12 2026 00:00:00 GMT+0530 ..." — read y/m/d directly (no TZ shift)
+  var M={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  var m2=s.match(/\b([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})\b/);
+  if(m2 && M[m2[1]]) return m2[3]+'-'+M[m2[1]]+'-'+String(m2[2]).padStart(2,'0');
+  var d=new Date(s); return isNaN(d)?s:isoDate(d);
+}
 function TODAY(){ return isoDate(new Date()); }
 function TOMORROW(){ const t=new Date(); t.setDate(t.getDate()+1); return isoDate(t); }
 function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.length<3) return iso||'—'; const dt=new Date(p[0],p[1]-1,p[2]); return dt.toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); }
-function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:String(p.date||''), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
+function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:isoDateAny(p.date), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
 function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
 function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
 function loadSalesLocal(){ DEFAULT_SALES.forEach(s=>salesSet.add(s)); try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
 function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
-async function syncPlansFromServer(){ try{ const r=await fetch(API+'?action=dayplan&t='+Date.now()); const d=await r.json(); if(d&&d.ok!==false&&Array.isArray(d.plans)){ plans=d.plans.map(normPlan).filter(p=>!deletedPlanIds.has(p.id)); savePlansLocal(); return true; } }catch(e){} return false; }
+async function syncPlansFromServer(){
+  try{
+    const r=await fetch(API+'?action=dayplan&t='+Date.now());
+    const d=await r.json();
+    if(d&&d.ok!==false&&Array.isArray(d.plans)){
+      const server=d.plans.map(normPlan).filter(p=>!deletedPlanIds.has(p.id));
+      const serverIds=new Set(server.map(p=>p.id));
+      // preserve locally-added plans the server hasn't stored yet (and re-push them),
+      // so a newly added supervisor/team plan is never wiped by a sync
+      const localOnly=(plans||[]).filter(p=>p&&p.id&&!serverIds.has(p.id)&&!deletedPlanIds.has(p.id));
+      localOnly.forEach(p=>{ try{ pushPlan(p); }catch(e){} });
+      plans=server.concat(localOnly);
+      savePlansLocal();
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
 async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
 async function pushPlanDelete(id){ deletedPlanIds.add(id); saveTombstones(); try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
 function upsertPlan(entry){ if(deletedPlanIds.has(entry.id)){ deletedPlanIds.delete(entry.id); saveTombstones(); } const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
