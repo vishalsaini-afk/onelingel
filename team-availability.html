@@ -790,14 +790,25 @@ async function sharePlanPdf(){
     holder.style.cssText='position:fixed;left:-10000px;top:0;width:820px;';
     holder.innerHTML=document.getElementById('planReport').innerHTML;
     document.body.appendChild(holder);
-    const canvas=await window.html2canvas(holder,{scale:2,backgroundColor:'#ffffff',useCORS:true,windowWidth:820});
+    const canvas=await window.html2canvas(holder,{scale:1.5,backgroundColor:'#ffffff',useCORS:true,windowWidth:820});
     document.body.removeChild(holder);
     const { jsPDF }=window.jspdf; const pdf=new jsPDF({unit:'pt',format:'a4'});
     const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
-    const iw=pw, ih=canvas.height*pw/canvas.width, img=canvas.toDataURL('image/png');
-    let heightLeft=ih, position=0;
-    pdf.addImage(img,'PNG',0,position,iw,ih); heightLeft-=ph;
-    while(heightLeft>0){ position-=ph; pdf.addPage(); pdf.addImage(img,'PNG',0,position,iw,ih); heightLeft-=ph; }
+    // slice the tall screenshot into per-page strips and embed each as a compressed
+    // JPEG — avoids re-embedding the whole full-res PNG on every page (was ~28MB)
+    const pxPerPage=Math.floor(canvas.width*ph/pw);
+    let sy=0, page=0;
+    while(sy < canvas.height){
+      const sliceH=Math.min(pxPerPage, canvas.height-sy);
+      const slice=document.createElement('canvas'); slice.width=canvas.width; slice.height=sliceH;
+      const sctx=slice.getContext('2d'); sctx.fillStyle='#ffffff'; sctx.fillRect(0,0,slice.width,sliceH);
+      sctx.drawImage(canvas, 0, sy, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      const imgData=slice.toDataURL('image/jpeg', 0.72);
+      const drawH=sliceH*pw/canvas.width;
+      if(page>0) pdf.addPage();
+      pdf.addImage(imgData,'JPEG',0,0,pw,drawH);
+      sy+=sliceH; page++;
+    }
     const fname='Lingel-DayPlan-'+TODAY()+'.pdf', blob=pdf.output('blob');
     const file=new File([blob],fname,{type:'application/pdf'});
     if(navigator.canShare && navigator.canShare({files:[file]})){
