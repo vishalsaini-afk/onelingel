@@ -186,6 +186,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .psec{margin-bottom:14px}
 .psectt{font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px}
 .psectt .cnt{font-family:'JetBrains Mono';font-size:10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:20px;padding:1px 8px}
+.reglbl{font-family:'Archivo Narrow';font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);align-self:center;margin-right:2px}
 .psummary{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
 .pstat{flex:1;min-width:92px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center}
 .pstat .pnum{font-family:'Archivo';font-weight:900;font-size:26px;line-height:1;color:var(--text)}
@@ -351,6 +352,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div id="planView" hidden>
     <div class="planbar noprint">
+      <span class="reglbl">Region</span>
+      <div class="seg" id="planRegionSeg"><button type="button" data-val="all" class="on">All</button><button type="button" data-val="ncr">NCR</button><button type="button" data-val="others">Others</button></div>
       <button id="btnAddSup" class="pbtn">＋ Supervisor plan</button>
       <button id="btnWa" class="pbtn wa">🟢 Share PDF (WhatsApp)</button>
       <button id="btnCopy" class="pbtn ghost">📋 Copy</button>
@@ -397,6 +400,13 @@ let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 const POLL_PLAN=20000;
 const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
 const DEFAULT_SALES=['Ravish','Digvijay','Krishna','Praphul','Bir','Vivek','Rohan','Suraj','Abhishek','Vikas'];
+// Region → NCR salespeople. Anyone not in this set counts as "Others".
+const NCR_SALES=['Ravish','Digvijay','Rohan','Suraj','Abhishek','Praphul','Ziaaz Homes','Vivek','Krishna','Vikas'];
+const NCR_SET=new Set(NCR_SALES.map(s=>s.trim().toLowerCase()));
+const REGION_LABEL={all:'All regions',ncr:'NCR',others:'Others'};
+let planRegion='all'; try{ planRegion=localStorage.getItem('lingel_dayplan_region')||'all'; }catch(e){}
+function regionOf(sales){ return NCR_SET.has(String(sales||'').trim().toLowerCase())?'NCR':'Others'; }
+function inRegion(sales){ if(planRegion==='all') return true; const isNCR=NCR_SET.has(String(sales||'').trim().toLowerCase()); return planRegion==='ncr'?isNCR:!isNCR; }
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
 function saveTombstones(){ try{ localStorage.setItem('lingel_plan_tombstones_v1', JSON.stringify([...deletedPlanIds].slice(-500))); }catch(e){} }
@@ -427,7 +437,7 @@ function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.l
 function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:isoDateAny(p.date), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
 function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
 function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
-function loadSalesLocal(){ DEFAULT_SALES.forEach(s=>salesSet.add(s)); try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
+function loadSalesLocal(){ DEFAULT_SALES.forEach(s=>salesSet.add(s)); NCR_SALES.forEach(s=>salesSet.add(s)); try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
 function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
 async function syncPlansFromServer(){
@@ -700,8 +710,8 @@ function contractorPlanRows(){
 }
 function rowRank(p){ return p.held?2:(p.today?0:1); }
 function contractorTable(){
-  const groups=groupBy(contractorPlanRows(), p=>p.salesperson, 'Unassigned');
-  if(!groups.length) return '<div class="pempty">No contractor teams planned.</div>';
+  const groups=groupBy(contractorPlanRows().filter(p=>inRegion(p.salesperson)), p=>p.salesperson, 'Unassigned');
+  if(!groups.length) return '<div class="pempty">No contractor teams planned'+(planRegion==='all'?'':' for '+REGION_LABEL[planRegion])+'.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
@@ -719,8 +729,8 @@ function contractorTable(){
 }
 function supTable(){
   const list=[]; planFor(TODAY(),'supervisor').forEach(p=>list.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>list.push(p));
-  const groups=groupBy(list, p=>p.supervisor, 'Unnamed');
-  if(!groups.length) return '<div class="pempty">No supervisors planned.</div>';
+  const groups=groupBy(list.filter(p=>inRegion(p.salesperson)), p=>p.supervisor, 'Unnamed');
+  if(!groups.length) return '<div class="pempty">No supervisors planned'+(planRegion==='all'?'':' for '+REGION_LABEL[planRegion])+'.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Salesperson</th><th>Purpose</th><th>When</th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">👔 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
@@ -733,8 +743,12 @@ function supTable(){
 function planSummary(){
   let booked=0, avail=0, na=0, hold=0;
   (rows||[]).forEach(r=>{
-    (r.teams||[]).forEach(tm=>{ const s=normStatus(tm.status); if(s==='booked')booked++; else if(s==='available')avail++; else na++; });
-    hold += (r.held ? r.held.length : 0);
+    (r.teams||[]).forEach(tm=>{ const s=normStatus(tm.status);
+      if(s==='booked'){ if(inRegion(tm.salesperson)) booked++; }
+      else if(s==='available') avail++;
+      else na++;
+    });
+    (r.held||[]).forEach(h=>{ if(inRegion(h.salesperson)) hold++; });
   });
   return { booked, avail, na, hold };
 }
@@ -743,20 +757,19 @@ function planSummaryHTML(){
   return '<div class="psummary">'
     + '<div class="pstat"><div class="pnum">'+s.booked+'</div><div class="plbl">Total Sites</div></div>'
     + '<div class="pstat hold"><div class="pnum">'+s.hold+'</div><div class="plbl">Sites On Hold</div></div>'
-    + '<div class="pstat avail"><div class="pnum">'+s.avail+'</div><div class="plbl">Team Available</div></div>'
     + '</div>';
 }
 function renderPlan(){
   document.getElementById('planReport').innerHTML=
-    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?' · '+esc(SUP):'')+'</div></div>'
+    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+esc(REGION_LABEL[planRegion])+(SUP?' · '+esc(SUP):'')+'</div></div>'
     +planSummaryHTML()
     +'<div class="psec"><div class="psectt">👷 Contractor Teams — grouped by salesperson</div>'+contractorTable()+'</div>'
     +'<div class="psec"><div class="psectt">👔 Supervisors — grouped by supervisor</div>'+supTable()+'</div>';
 }
 function planText(){
-  let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+(SUP?'  ('+SUP+')':'')+'\n';
+  let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+REGION_LABEL[planRegion]+(SUP?'  ('+SUP+')':'')+'\n';
   out+='\n*👷 CONTRACTOR TEAMS*\n';
-  const cg=groupBy(contractorPlanRows(), p=>p.salesperson, 'Unassigned');
+  const cg=groupBy(contractorPlanRows().filter(p=>inRegion(p.salesperson)), p=>p.salesperson, 'Unassigned');
   if(!cg.length) out+='  (none)\n';
   cg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(rowRank(a)-rowRank(b))).forEach(function(p){
     let when;
@@ -765,7 +778,7 @@ function planText(){
     out+='  • #'+(p.offer||'—')+' | '+(p.project||'—')+(p.city?' | '+p.city:'')+' | '+(p.contractor||'—')+' | '+when+'\n'; }); });
   out+='\n*👔 SUPERVISORS*\n';
   const sl=[]; planFor(TODAY(),'supervisor').forEach(p=>sl.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>sl.push(p));
-  const sg=groupBy(sl, p=>p.supervisor, 'Unnamed');
+  const sg=groupBy(sl.filter(p=>inRegion(p.salesperson)), p=>p.supervisor, 'Unnamed');
   if(!sg.length) out+='  (none)\n';
   sg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.date<b.date?-1:1)).forEach(function(p){
     out+='  • #'+(p.offer||'—')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+(p.salesperson?' | '+p.salesperson:'')+' | '+(p.task||'—')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
@@ -893,6 +906,11 @@ document.getElementById('planReport').addEventListener('click',e=>{ const b=e.ta
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
 document.getElementById('btnWa').addEventListener('click',()=>sharePlanPdf());
 document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
+(function(){ const seg=document.getElementById('planRegionSeg'); if(!seg) return;
+  seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.val===planRegion));
+  seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    planRegion=b.dataset.val; try{ localStorage.setItem('lingel_dayplan_region',planRegion); }catch(_){}
+    seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b)); renderPlan(); }); })();
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
 
 /* ============ VIEW SWITCH + POLL ============ */
