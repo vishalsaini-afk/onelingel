@@ -1225,7 +1225,10 @@ $("#pdfBtn").onclick=async()=>{
   try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ PDF saved");ok=true;}
   catch(e){console.error(e);toast("⚠ PDF needs internet — opening printable report");fallbackReport();return;}
   // one tap = download + log Sheet + upload PDF (videos already uploaded above; saveToDrive skips them)
-  if(ok){ try{ await saveToDrive(); }catch(e){ logIssuesToSheet(); } }
+  // Log issues to the Sheet DIRECTLY here — don't leave it as a side-effect of saveToDrive:
+  // if saveToDrive early-returns (no /exec URL yet) or is skipped, issues would never log.
+  // logIssuesToSheet() has its own _sheetSig de-dup, so saveToDrive calling it again is a no-op.
+  if(ok){ logIssuesToSheet(); try{ await saveToDrive(); }catch(e){ console.error("saveToDrive failed", e); } }
 };
 $("#shareBtn").onclick=async()=>{
   if(!positions.length&&!materials.length){toast("Add at least one position or material item first");return;}
