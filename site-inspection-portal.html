@@ -1478,8 +1478,12 @@ if(!window.isSecureContext){const w=document.getElementById("ctxWarn");if(w)w.st
    shared Lingel Apps Script (same /exec deployment the hub + Daily Report use).
    Fires on PDF, Share and Drive. Offline-safe: queues and syncs on reconnect.
    ========================================================================== */
+/* Hardcoded backend endpoint — single source of truth. Overwrites any stale
+   lingel_api saved on the device so the app ALWAYS posts to this deployment. */
+window.LINGEL_API = "https://script.google.com/macros/s/AKfycbzTi9ihe1YpDEIkX7IdAnDqNl61rU3IDecHUetV4mmwAVezMbJSu_Ruxg4_CJnscVEH/exec";
+try { localStorage.setItem("lingel_api", window.LINGEL_API); } catch(e){}
 const SHEET_STATUSES = ["issue","onr"];      // set to ["issue"] for issues only
-let SHEET_API = localStorage.getItem("lingel_api") || "";
+let SHEET_API = window.LINGEL_API;
 let _sheetSig = "";
 
 function issueRows(){
@@ -1562,7 +1566,7 @@ async function logIssuesToSheet(){
   if(!rows.length) return;                       // no issues / ONR → nothing to log
   const sig = JSON.stringify(rows.map(r=>[r.posNo,r.status,r.resp,r.obs]));
   if(sig === _sheetSig) return;                  // PDF then Share = one write, not two
-  if(!SHEET_API) SHEET_API = localStorage.getItem("lingel_api") || "";   // hub may have set it since load
+  if(!SHEET_API) SHEET_API = window.LINGEL_API;   // hub may have set it since load
   if(!SHEET_API){
     const u = prompt("One-time setup:\nPaste the Lingel Apps Script /exec URL");
     if(!u) return;
@@ -1672,7 +1676,7 @@ function lingelUpload(opt){
   });
 }
 function luApi(){
-  let a=localStorage.getItem('lingel_api')||'';
+  let a=window.LINGEL_API||localStorage.getItem('lingel_api')||'';
   if(!a){ const u=prompt('One-time setup:\nPaste the Lingel Apps Script /exec URL'); if(u){a=u.trim();localStorage.setItem('lingel_api',a);} }
   return a;
 }
@@ -1693,7 +1697,7 @@ function p2d(d){return String(d.getDate()).padStart(2,'0');}
    ============================================================ */
 (function(){
   var DRQ="dr_queue", lastSig="";
-  function api(){ try{return localStorage.getItem("lingel_api")||"";}catch(e){return "";} }
+  function api(){ try{return window.LINGEL_API||localStorage.getItem("lingel_api")||"";}catch(e){return "";} }
   function supervisor(){ try{var s=JSON.parse(localStorage.getItem("lingel_supervisor")||"null");return (s&&s.name)?s.name:"";}catch(e){return "";} }
   function q(){ try{return JSON.parse(localStorage.getItem(DRQ)||"[]");}catch(e){return [];} }
   function saveQ(a){ try{localStorage.setItem(DRQ,JSON.stringify(a));}catch(e){} }
