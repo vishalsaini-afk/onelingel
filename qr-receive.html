@@ -1,0 +1,154 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Lingel QR — Site Receiving</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#13161b"><link rel="apple-touch-icon" href="icon.svg"><meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+:root{--bg:#13161b;--panel:#1b2027;--panel2:#20262f;--line:#2b333d;--ink:#eef2f6;--mut:#9aa7b4;--hv:#ffce1f;--ok:#37c871;--bad:#ff5d5d;--warn:#ff9f43}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Archivo,system-ui,sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#161a20,#12151a);border-bottom:1px solid var(--line);padding:12px 14px;display:flex;align-items:center;gap:10px}
+.mark{width:34px;height:34px;border-radius:8px;background:var(--hv);color:#111;display:grid;place-items:center;font-weight:800;overflow:hidden}
+.mark img{width:100%;height:100%;object-fit:contain;background:#fff}
+h1{font-size:15px;margin:0}small{color:var(--mut);font-size:11px}
+.hspace{flex:1}
+.iconbtn{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 10px;font-size:13px;cursor:pointer;text-decoration:none}
+.wrap{max-width:640px;margin:0 auto;padding:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+nav{display:flex;gap:8px;max-width:640px;margin:10px auto 0;padding:0 14px}
+nav button{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:11px;font-weight:800;font-size:14px;cursor:pointer}
+nav button.on{background:var(--hv);color:#111;border-color:var(--hv)}
+.view{display:none}.view.on{display:block}
+label.fld{display:block;margin-bottom:8px}label.fld span{display:block;font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.inp{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:13px 12px;font-size:16px}
+.inp.mid{text-align:center}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px 16px;font-weight:800;font-size:14px;cursor:pointer}
+#cam{width:100%;border-radius:12px;display:none;background:#000;margin-top:10px}
+.result{border-radius:14px;padding:16px;text-align:center;border:1px solid var(--line);min-height:80px;display:flex;flex-direction:column;justify-content:center;gap:6px;margin-top:12px}
+.result.ok{background:rgba(55,200,113,.12);border-color:var(--ok)}
+.result.bad{background:rgba(255,93,93,.12);border-color:var(--bad)}
+.result.warn{background:rgba(255,159,67,.12);border-color:var(--warn)}
+.big{font-size:22px;font-weight:800}
+.hint{font-size:12px;color:var(--mut)}.muted{color:var(--mut)}
+.feed{margin-top:12px}.frow{display:flex;gap:8px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px}
+.frow .t{margin-left:auto;font-size:11px;color:var(--mut)}
+.pbar{height:8px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:8px 0}
+.pbar i{display:block;height:100%;background:var(--ok)}
+.prow{display:flex;gap:8px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line);font-size:14px}
+.prow .n{margin-left:auto;font-size:12px}
+.pill{display:inline-block;background:var(--ok);color:#052;font-weight:800;border-radius:20px;padding:4px 12px;font-size:13px}
+</style></head><body>
+<header><div class="mark" id="mark">L</div>
+<div><h1>QR · Site Receiving</h1><small>Scan what arrives to mark it received</small></div>
+<div class="hspace"></div>
+<a class="iconbtn" href="qr-box-lookup.html" title="Box contents">📦</a>
+<a class="iconbtn" href="index.html" title="Home">⌂</a></header>
+<nav>
+ <button data-v="scan" class="on">Receive scan</button>
+ <button data-v="orders">Order check</button>
+</nav>
+<div class="wrap">
+ <section class="view on" id="v-scan">
+  <div class="card">
+   <label class="fld"><span>Received by</span><input class="inp" id="recv" placeholder="Your name" autocomplete="off"></label>
+   <input class="inp mono mid" id="scanInp" placeholder="Scan or type a QR code…" autocomplete="off" autocapitalize="off" spellcheck="false" style="margin-top:6px">
+   <div style="margin-top:10px"><button class="btn" id="camBtn">📷 Camera scan</button></div>
+   <video id="cam" playsinline muted></video>
+   <div class="result" id="res"><div class="muted">Scan any window part, glass or hardware-box QR as it arrives on site.</div></div>
+   <div class="feed" id="feed"></div>
+  </div>
+ </section>
+ <section class="view" id="v-orders">
+  <div class="card">
+   <label class="fld"><span>Order</span><select class="inp" id="oSel"></select></label>
+   <div style="display:flex;gap:8px"><button class="btn" id="oChk" style="flex:1">Check received vs expected</button><button class="btn" id="oRef">↻</button></div>
+   <div id="oOut"><div class="hint" style="margin-top:12px">Pick an order to see which pieces have arrived.</div></div>
+  </div>
+ </section>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function applyLogo(){const d=localStorage.getItem('lingel_logo');if(d)$('#mark').innerHTML='<img src="'+d+'">';}
+applyLogo();
+function api(){let a=localStorage.getItem('lingel_qr_api')||'';if(!a){a=(prompt('Paste the Lingel Apps Script /exec URL:')||'').trim();if(a)localStorage.setItem('lingel_qr_api',a);}return a;}
+async function postForm(u,params){const b=new URLSearchParams();Object.keys(params).forEach(k=>b.set(k,params[k]==null?'':params[k]));const ctl=new AbortController();const to=setTimeout(function(){ctl.abort();},12000);try{const r=await fetch(u,{method:'POST',body:b,signal:ctl.signal});return await r.json().catch(function(){return {};});}catch(e){return {};}finally{clearTimeout(to);}}
+function parseCode(code){code=String(code||'').trim().toUpperCase();
+ let m=code.match(/^L-(.+)-P(\d+)(?:-([A-Z]{2})(\d+))?$/);if(m)return{kind:m[3]?'part':'pos',slug:m[1],pos:+m[2],xx:m[3]||'',idx:m[4]?+m[4]:0,code};
+ m=code.match(/^L-(.+)-HW(\d+)$/);if(m)return{kind:'hw',slug:m[1],idx:+m[2],code};return null;}
+function beep(f){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.frequency.value=f;o.connect(g);g.connect(a.destination);g.gain.value=.08;o.start();setTimeout(()=>{o.stop();a.close();},110);}catch(e){}}
+const PARTN={FR:'Frame',SA:'Sash',GL:'Glass',ME:'Mesh',GB:'Georgian',CP:'Coupling'};
+function partName(p){if(p.kind==='hw')return 'Hardware box '+p.idx;if(p.kind==='pos')return 'Position '+p.pos;return (PARTN[p.xx]||p.xx)+' '+p.idx;}
+
+/* receiver name */
+$('#recv').value=localStorage.getItem('lingel_receiver')||'';
+$('#recv').onchange=()=>localStorage.setItem('lingel_receiver',$('#recv').value.trim());
+
+/* slug -> offer map from the shared order list */
+let slugMap={};
+function slugify(o){return String(o||'').toUpperCase().replace(/[^0-9A-Z]+/g,'-').replace(/^-|-$/g,'');}
+async function loadOrders(){const u=api();if(!u)return[];let list=[];try{const r=await postForm(u,{action:'qrOrders'});list=(r&&r.orders)||[];}catch(e){}
+ slugMap={};list.forEach(o=>{slugMap[slugify(o.offer)]=o.offer;});
+ const sel=$('#oSel');if(sel){const cur=sel.value;sel.innerHTML='<option value="">— pick an order —</option>'+list.map(o=>'<option value="'+esc(o.offer)+'">'+esc(o.offer)+' — '+esc(o.customer||'')+'</option>').join('');sel.value=cur;}
+ return list;}
+
+/* ---- receive scan ---- */
+const done={};
+async function receive(raw){const p=parseCode(raw),res=$('#res');
+ if(!p){res.className='result bad';res.innerHTML='<div class="big">✕ Not a Lingel QR</div><div class="mono">'+esc(String(raw).slice(0,40))+'</div>';beep(220);return;}
+ const who=$('#recv').value.trim()||localStorage.getItem('lingel_receiver')||'';
+ if(!who){res.className='result warn';res.innerHTML='<div class="big">Enter your name first</div><div class="hint">Type who is receiving at the top.</div>';$('#recv').focus();beep(330);return;}
+ localStorage.setItem('lingel_receiver',who);
+ const offer=slugMap[p.slug]||p.slug;
+ if(done[p.code]){res.className='result warn';res.innerHTML='<div class="big">Already received ✓</div><div>'+esc(offer)+' · '+esc(partName(p))+'</div><div class="mono">'+p.code+'</div>';beep(330);return;}
+ const u=api();if(!u){res.className='result bad';res.innerHTML='<div class="big">No server URL set</div>';return;}
+ res.className='result';res.innerHTML='<div class="muted">Recording '+esc(partName(p))+'…</div>';
+ const r=await postForm(u,{action:'qrScan',code:p.code,stage:'recv',result:'received',supervisor:who,device:dev()});
+ if(r&&r.ok){done[p.code]=1;res.className='result ok';res.innerHTML='<div class="big">✅ Received</div><div>'+esc(offer)+' · '+esc(partName(p))+'</div><div class="mono">'+p.code+'</div>';beep(660);addFeed(offer,partName(p));}
+ else{res.className='result bad';res.innerHTML='<div class="big">Save failed</div><div class="hint">Check your connection and scan again.</div>';beep(220);}}
+function dev(){let d=localStorage.getItem('lingel_device');if(!d){d=Math.random().toString(36).slice(2,8);localStorage.setItem('lingel_device',d);}return d;}
+function addFeed(offer,name){const f=$('#feed');const row=document.createElement('div');row.className='frow';row.innerHTML='<span>✅</span><span>'+esc(offer)+' · '+esc(name)+'</span><span class="t">'+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</span>';f.insertBefore(row,f.firstChild);}
+$('#scanInp').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();receive($('#scanInp').value);$('#scanInp').value='';}});
+
+/* ---- order check: received vs expected ---- */
+async function checkOrder(){const off=$('#oSel').value,out=$('#oOut');if(!off){out.innerHTML='<div class="hint" style="margin-top:12px">Pick an order first.</div>';return;}
+ const u=api();if(!u){out.innerHTML='<div class="hint" style="margin-top:12px">No server URL set.</div>';return;}
+ out.innerHTML='<div class="hint" style="margin-top:12px">Loading…</div>';
+ let units={};try{const r=await postForm(u,{action:'qrStatus',offer:off});units=(r&&r.units)||{};}catch(e){}
+ const codes=Object.keys(units);
+ if(!codes.length){out.innerHTML='<div class="hint" style="margin-top:12px">No pieces recorded for this order yet.</div>';return;}
+ const groups={};let recd=0;
+ codes.forEach(c=>{const u2=units[c];const pos=u2.pos||'—';(groups[pos]||(groups[pos]={t:0,r:0,miss:[]}));groups[pos].t++;if(u2.recv){groups[pos].r++;recd++;}else groups[pos].miss.push(u2.part||c);});
+ const total=codes.length,pct=Math.round(recd/total*100);
+ let html='<div class="pbar"><i style="width:'+pct+'%"></i></div>'+
+  '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b>'+recd+' / '+total+' received</b>'+(recd>=total?' <span class="pill">100% received ✓</span>':'')+'</div>';
+ Object.keys(groups).sort().forEach(pos=>{const g=groups[pos];const ok=g.r>=g.t;
+  html+='<div class="prow"><span>'+(ok?'✅':'⬜')+'</span><span>'+esc(pos)+'</span><span class="n" style="color:'+(ok?'var(--ok)':'var(--warn)')+'">'+g.r+'/'+g.t+'</span></div>';
+  if(!ok&&g.miss.length)html+='<div class="hint" style="margin:2px 0 6px 22px">missing: '+esc(g.miss.slice(0,12).join(', '))+(g.miss.length>12?'…':'')+'</div>';});
+ out.innerHTML=html;}
+$('#oChk').onclick=checkOrder;
+$('#oRef').onclick=loadOrders;
+
+/* nav */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+ const v=b.getAttribute('data-v');document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+ if(v==='orders')loadOrders();if(v==='scan')setTimeout(()=>$('#scanInp').focus(),80);});
+setTimeout(()=>$('#scanInp').focus(),200);
+loadOrders();
+
+/* camera */
+let stream=null,raf=null,det=null,last='',lastT=0;
+$('#camBtn').onclick=async()=>{const v=$('#cam');if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;cancelAnimationFrame(raf);v.style.display='none';$('#camBtn').textContent='📷 Camera scan';return;}
+ try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=stream;v.style.display='block';await v.play();$('#camBtn').textContent='■ Stop camera';if('BarcodeDetector'in window)det=new BarcodeDetector({formats:['qr_code']});loop();}
+ catch(e){const r=$('#res');r.className='result bad';r.innerHTML='<div class="big">Camera blocked</div><div class="hint">Allow camera or use a USB scanner.</div>';}};
+async function loop(){const v=$('#cam');if(!stream)return;
+ try{let code=null;if(det){const b=await det.detect(v);if(b.length)code=b[0].rawValue;}
+  else{const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;if(c.width){const x=c.getContext('2d');x.drawImage(v,0,0);const img=x.getImageData(0,0,c.width,c.height),q=jsQR(img.data,c.width,c.height);if(q)code=q.data;}}
+  if(code){const now=Date.now();if(code!==last||now-lastT>1500){last=code;lastT=now;receive(code);}}}catch(e){}
+ raf=requestAnimationFrame(loop);}
+</script>
+<script>if('serviceWorker'in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+</body></html>
