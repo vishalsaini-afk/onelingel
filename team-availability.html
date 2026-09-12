@@ -411,6 +411,18 @@ let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
 function saveTombstones(){ try{ localStorage.setItem('lingel_plan_tombstones_v1', JSON.stringify([...deletedPlanIds].slice(-500))); }catch(e){} }
 function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
+function DAYAFTER(){ const d=new Date(); d.setDate(d.getDate()+2); return isoDate(d); }
+function planDateField(sel,dateVal){ sel=sel||'tomorrow'; const dmin=DAYAFTER(); const val=dateVal||dmin;
+  return '<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:'today',l:'Today'},{v:'tomorrow',l:'Tomorrow'},{v:'later',l:'Later…'}],sel)
+    +'<input type="date" id="segDateLater" min="'+dmin+'" value="'+val+'" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;'+(sel==='later'?'':'display:none')+'"></div>'; }
+function wirePlanDate(){ const sg=document.getElementById('segDate'), inp=document.getElementById('segDateLater'); if(!sg||!inp) return; sg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ inp.style.display=(b.dataset.val==='later')?'':'none'; })); }
+function chosenPlanDate(){ const d=segVal('segDate')||'tomorrow'; if(d==='later'){ const el=document.getElementById('segDateLater'); return (el&&el.value)||DAYAFTER(); } return dateOf(d); }
+function upcomingItems(){ return plans.filter(p=>(p.kind==='team'||p.kind==='supervisor') && p.date>TOMORROW() && inRegion(p.salesperson)).sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); }
+function upcomingSection(){ const items=upcomingItems(); if(!items.length) return '';
+  let h='<div class="psec"><div class="psectt">📅 Upcoming — later dates <span class="cnt">'+items.length+'</span></div><div class="ptabwrap"><table class="ptab"><thead><tr><th>Date</th><th>Type</th><th>Contractor / Supervisor</th><th>Offer No.</th><th>Site</th><th>City</th><th>Salesperson</th><th class="xcol noprint"></th></tr></thead><tbody>';
+  items.forEach(function(p){ const who=p.kind==='team'?(esc(p.contractor)+' · T'+esc(p.team)):(esc(p.supervisor)+' · '+esc(p.task||'')); const typ=p.kind==='team'?'Install':'Supervisor';
+    h+='<tr><td>'+esc(prettyDate(p.date))+'</td><td>'+typ+'</td><td class="cn">'+who+'</td><td>'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'')+'</td><td>'+esc(p.city||'')+'</td><td>'+esc(p.salesperson||'')+'</td><td class="xcol noprint"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>'; });
+  return h+'</tbody></table></div></div>'; }
 function teamItems(date){
   if(date===TODAY()){
     const items=[];
@@ -596,9 +608,10 @@ function openBook(name,team){
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
     +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>'
-    +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
+    +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
+    +planDateField('today');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
-  wireSegs(); wireDutySwitch(name,team);
+  wireSegs(); wireDutySwitch(name,team); wirePlanDate();
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
   goHandler=()=>{
     const holdBy=segVal('segHold');
@@ -607,8 +620,13 @@ function openBook(name,team){
     const city=(document.getElementById('mCity').value||'').trim();
     const sales=(document.getElementById('mSales').value||'').trim();
     if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
+    const date=chosenPlanDate();
     rememberSalesperson(sales); closeModal();
-    if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales);
+    if(date===TODAY()){
+      if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales);
+    } else {
+      upsertPlan({ id:'c|'+name+'|'+team+'|'+date, kind:'team', date:date, contractor:name, team:String(team), offer:offer, project:project, city:city, salesperson:sales, holdBy:holdBy||'', supervisor:'', task:'', by:SUP, at:new Date().toISOString() });
+    }
     if(view==='plan') renderPlan();
   };
 }
@@ -617,11 +635,11 @@ function openSupPlan(preset){
   setBox('');
   document.getElementById('mTtl').textContent= ed?'Edit supervisor plan':'Plan Supervisor';
   document.getElementById('mSub').textContent='Site measurement or site visit';
-  const daySel = ed ? (ed.date===TODAY()?'today':'tomorrow') : (preset.day||supDay||'tomorrow');
+  const daySel = ed ? (ed.date===TODAY()?'today':(ed.date===TOMORROW()?'tomorrow':'later')) : (preset.day||supDay||'tomorrow');
   const supName = ed ? ed.supervisor : (preset.supervisor||'');
   const task = ed ? ed.task : 'Measurement';
   document.getElementById('mBody').innerHTML=
-    '<div class="fd"><label>Plan for</label>'+seg('segDate',[{v:'today',l:'Today'},{v:'tomorrow',l:'Tomorrow'}],daySel)+'</div>'
+    planDateField(daySel, ed?ed.date:null)
     +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
     +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
     +'<div class="fd"><label>Offer No. (optional)</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
@@ -630,11 +648,11 @@ function openSupPlan(preset){
     +'<div class="fd"><label>Salesperson (optional)</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh" value="'+esc(ed?ed.salesperson:'')+'"></div>'
     +(ed?'<button type="button" id="mDelSup" class="mbtn ghost" style="width:100%;margin-top:2px;border-color:var(--red);color:#fda4a4">Remove this plan</button>':'');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent= ed?'Save':'Add to plan →'; go.className='mbtn go'; modal.hidden=false;
-  wireSegs();
+  wireSegs(); wirePlanDate();
   if(ed){ const del=document.getElementById('mDelSup'); if(del) del.onclick=()=>{ plans=plans.filter(p=>p.id!==ed.id); savePlansLocal(); pushPlanDelete(ed.id); closeModal(); if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); setDot('dotS','syncS','ok','Removed plan'); }; }
   setTimeout(()=>{ const o=document.getElementById('mSupName'); if(o && !supName) o.focus(); },50);
   goHandler=()=>{
-    const date=dateOf(segVal('segDate')||'tomorrow'), task2=segVal('segTask')||'Measurement';
+    const date=chosenPlanDate(), task2=segVal('segTask')||'Measurement';
     const sup=(document.getElementById('mSupName').value||'').trim();
     if(!sup){ showMErr('Supervisor name is required.'); return; }
     const others=plans.filter(p=>p.kind==='supervisor'&&p.date===date&&p.supervisor===sup&&(!ed||p.id!==ed.id));
@@ -764,7 +782,8 @@ function renderPlan(){
     '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+esc(REGION_LABEL[planRegion])+(SUP?' · '+esc(SUP):'')+'</div></div>'
     +planSummaryHTML()
     +'<div class="psec"><div class="psectt">👷 Contractor Teams — grouped by salesperson</div>'+contractorTable()+'</div>'
-    +'<div class="psec"><div class="psectt">👔 Supervisors — grouped by supervisor</div>'+supTable()+'</div>';
+    +'<div class="psec"><div class="psectt">👔 Supervisors — grouped by supervisor</div>'+supTable()+'</div>'
+    +upcomingSection();
 }
 function planText(){
   let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+REGION_LABEL[planRegion]+(SUP?'  ('+SUP+')':'')+'\n';
@@ -782,6 +801,8 @@ function planText(){
   if(!sg.length) out+='  (none)\n';
   sg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.date<b.date?-1:1)).forEach(function(p){
     out+='  • #'+(p.offer||'—')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+(p.salesperson?' | '+p.salesperson:'')+' | '+(p.task||'—')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
+  const up=upcomingItems();
+  if(up.length){ out+='\n*📅 UPCOMING (LATER DATES)*\n'; up.forEach(function(p){ const who=p.kind==='team'?(p.contractor+' · T'+p.team):(p.supervisor+' · '+(p.task||'')); out+='  • '+prettyDate(p.date)+' | #'+(p.offer||'—')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+' | '+who+(p.salesperson?' | '+p.salesperson:'')+'\n'; }); }
   return out;
 }
 /* ===== PDF export + WhatsApp share (renders the actual report, print look) ===== */
