@@ -270,6 +270,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab .dcell{white-space:nowrap}
 .ptab td.xcol{width:38px;text-align:center;padding:6px}
 .ptab .xcol .pdel{margin:0;width:26px;height:26px}
+.ptab td.tmtog{cursor:pointer}
+.ptab td.tmtog:active{background:var(--panel-2)}
 @media print{
   @page{margin:12mm}
   body{background:#fff;color:#111}
@@ -353,7 +355,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div id="planView" hidden>
     <div class="planbar noprint">
       <span class="reglbl">Region</span>
-      <div class="seg" id="planRegionSeg"><button type="button" data-val="all" class="on">All</button><button type="button" data-val="ncr">NCR</button><button type="button" data-val="others">Others</button></div>
+      <select class="inp" id="planSalesSel" style="max-width:230px"><option value="all">All salespeople</option></select>
       <button id="btnAddSup" class="pbtn">＋ Supervisor plan</button>
       <button id="btnWa" class="pbtn wa">🟢 Share PDF (WhatsApp)</button>
       <button id="btnCopy" class="pbtn ghost">📋 Copy</button>
@@ -403,12 +405,16 @@ const DEFAULT_SALES=['Ravish','Digvijay','Krishna','Praphul','Bir','Vivek','Roha
 // Region → NCR salespeople. Anyone not in this set counts as "Others".
 const NCR_SALES=['Ravish','Digvijay','Rohan','Suraj','Abhishek','Praphul','Ziaaz Homes','Vivek','Krishna','Vikas'];
 const NCR_SET=new Set(NCR_SALES.map(s=>s.trim().toLowerCase()));
-const REGION_LABEL={all:'All regions',ncr:'NCR',others:'Others'};
-let planRegion='all'; try{ planRegion=localStorage.getItem('lingel_dayplan_region')||'all'; }catch(e){}
+let planSales='all'; try{ planSales=localStorage.getItem('lingel_dayplan_sales')||'all'; }catch(e){}
+function salesLabel(){ return planSales==='all'?'All salespeople':planSales; }
+function normSales(x){ return String(x||'').trim().toLowerCase(); }
 function regionOf(sales){ return NCR_SET.has(String(sales||'').trim().toLowerCase())?'NCR':'Others'; }
-function inRegion(sales){ if(planRegion==='all') return true; const isNCR=NCR_SET.has(String(sales||'').trim().toLowerCase()); return planRegion==='ncr'?isNCR:!isNCR; }
+function inRegion(sales){ if(planSales==='all') return true; return normSales(sales)===normSales(planSales); }
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
+let carrySkip=new Set(); try{ carrySkip=new Set(JSON.parse(localStorage.getItem('lingel_carry_skip_v1')||'[]')); }catch(e){}
+function saveCarrySkip(){ try{ localStorage.setItem('lingel_carry_skip_v1', JSON.stringify([...carrySkip].slice(-500))); }catch(e){} }
+function carryKey(c,t){ return 'c|'+c+'|'+t+'|'+TOMORROW(); }
 function saveTombstones(){ try{ localStorage.setItem('lingel_plan_tombstones_v1', JSON.stringify([...deletedPlanIds].slice(-500))); }catch(e){} }
 function dateOf(sel){ return sel==='today'?TODAY():TOMORROW(); }
 function DAYAFTER(){ const d=new Date(); d.setDate(d.getDate()+2); return isoDate(d); }
@@ -723,7 +729,7 @@ function contractorPlanRows(){
     for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t));
       if(tm && tm.status==='booked'){
         const meta=planById('c|'+r.name+'|'+t+'|'+TODAY())||{};
-        const e={ contractor:r.name, team:String(t), offer:tm.offer||meta.offer||'', project:tm.project||meta.project||'', city:tm.city||meta.city||'', salesperson:tm.salesperson||meta.salesperson||'', today:true, tomorrow:false, held:false, holdBy:'', heldOn:'', id:'' };
+        const e={ contractor:r.name, team:String(t), offer:tm.offer||meta.offer||'', project:tm.project||meta.project||'', city:tm.city||meta.city||'', salesperson:tm.salesperson||meta.salesperson||'', today:true, tomorrow:!carrySkip.has(carryKey(r.name,t)), carry:true, held:false, holdBy:'', heldOn:'', id:'' };
         out.push(e); idx[K(e.contractor,e.team,e.offer)]=e;
       }
     }
@@ -744,7 +750,7 @@ function contractorPlanRows(){
 function rowRank(p){ return p.held?2:(p.today?0:1); }
 function contractorTable(){
   const groups=groupBy(contractorPlanRows().filter(p=>inRegion(p.salesperson)), p=>p.salesperson, 'Unassigned');
-  if(!groups.length) return '<div class="pempty">No contractor teams planned'+(planRegion==='all'?'':' for '+REGION_LABEL[planRegion])+'.</div>';
+  if(!groups.length) return '<div class="pempty">No contractor teams planned'+(planSales==='all'?'':' for '+salesLabel())+'.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
@@ -753,7 +759,8 @@ function contractorTable(){
       const base='<td>#'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td>';
       let dayCells;
       if(p.held) dayCells='<td colspan="2" class="heldcell">⏸ On hold · '+esc(p.holdBy||'—')+(p.heldOn?' · '+esc(shortDate(p.heldOn)):'')+'</td>';
-      else dayCells='<td class="dc">'+(p.today?'<span class="daypill td">✓</span>':'<span class="free">—</span>')+'</td><td class="dc">'+(p.tomorrow?'<span class="daypill tm">✓</span>':'<span class="free">—</span>')+'</td>';
+      else { const tmAttr=' class="dc tmtog" data-c="'+esc(p.contractor||'')+'" data-t="'+esc(p.team||'')+'" title="Tap to set / clear tomorrow"';
+        dayCells='<td class="dc">'+(p.today?'<span class="daypill td">✓</span>':'<span class="free">—</span>')+'</td><td'+tmAttr+'>'+(p.tomorrow?'<span class="daypill tm">✓</span>':'<span class="free">—</span>')+'</td>'; }
       h+='<tr'+(p.held?' class="heldrow"':'')+'>'+base+dayCells+'<td class="xcol noprint">'+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</td></tr>';
     });
     h+='</tbody>';
@@ -763,7 +770,7 @@ function contractorTable(){
 function supTable(){
   const list=[]; planFor(TODAY(),'supervisor').forEach(p=>list.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>list.push(p));
   const groups=groupBy(list.filter(p=>inRegion(p.salesperson)), p=>p.supervisor, 'Unnamed');
-  if(!groups.length) return '<div class="pempty">No supervisors planned'+(planRegion==='all'?'':' for '+REGION_LABEL[planRegion])+'.</div>';
+  if(!groups.length) return '<div class="pempty">No supervisors planned'+(planSales==='all'?'':' for '+salesLabel())+'.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Salesperson</th><th>Purpose</th><th>When</th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">👔 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
@@ -793,15 +800,16 @@ function planSummaryHTML(){
     + '</div>';
 }
 function renderPlan(){
+  fillPlanSales();
   document.getElementById('planReport').innerHTML=
-    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+esc(REGION_LABEL[planRegion])+(SUP?' · '+esc(SUP):'')+'</div></div>'
+    '<div class="preporthd"><div class="prt">Day Plan</div><div class="prs">Lingel Field Operations · '+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+esc(salesLabel())+(SUP?' · '+esc(SUP):'')+'</div></div>'
     +planSummaryHTML()
     +'<div class="psec"><div class="psectt">👷 Contractor Teams — grouped by salesperson</div>'+contractorTable()+'</div>'
     +'<div class="psec"><div class="psectt">👔 Supervisors — grouped by supervisor</div>'+supTable()+'</div>'
     +upcomingSection();
 }
 function planText(){
-  let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+REGION_LABEL[planRegion]+(SUP?'  ('+SUP+')':'')+'\n';
+  let out='*LINGEL — DAY PLAN*\n'+prettyDate(TODAY())+' → '+prettyDate(TOMORROW())+' · '+salesLabel()+(SUP?'  ('+SUP+')':'')+'\n';
   out+='\n*👷 CONTRACTOR TEAMS*\n';
   const cg=groupBy(contractorPlanRows().filter(p=>inRegion(p.salesperson)), p=>p.salesperson, 'Unassigned');
   if(!cg.length) out+='  (none)\n';
@@ -938,15 +946,30 @@ document.getElementById('supGrid').addEventListener('click',e=>{
 
 
 /* ============ DAY-PLAN wiring ============ */
-document.getElementById('planReport').addEventListener('click',e=>{ const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
+document.getElementById('planReport').addEventListener('click',e=>{
+  const tg=e.target.closest('.tmtog');
+  if(tg){ const c=tg.getAttribute('data-c'), t=tg.getAttribute('data-t'); if(!c||!t) return;
+    const k=carryKey(c,t), planned=plans.find(p=>p.id===k);
+    if(planned){ plans=plans.filter(p=>p.id!==k); savePlansLocal(); pushPlanDelete(k); carrySkip.add(k); saveCarrySkip(); }
+    else if(carrySkip.has(k)){ carrySkip.delete(k); saveCarrySkip(); }
+    else { carrySkip.add(k); saveCarrySkip(); }
+    renderPlan(); return; }
+  const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
 document.getElementById('btnWa').addEventListener('click',()=>sharePlanPdf());
 document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
-(function(){ const seg=document.getElementById('planRegionSeg'); if(!seg) return;
-  seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.val===planRegion));
-  seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
-    planRegion=b.dataset.val; try{ localStorage.setItem('lingel_dayplan_region',planRegion); }catch(_){}
-    seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b)); renderPlan(); }); })();
+function fillPlanSales(){ const sel=document.getElementById('planSalesSel'); if(!sel) return;
+  const set=new Set(); contractorPlanRows().forEach(p=>{ if((p.salesperson||'').trim()) set.add(p.salesperson.trim()); });
+  plans.forEach(p=>{ if((p.salesperson||'').trim()) set.add(p.salesperson.trim()); });
+  [...salesSet].forEach(x=>{ if((x||'').trim()) set.add(String(x).trim()); });
+  const names=[...set].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+  if(planSales!=='all' && !names.some(n=>normSales(n)===normSales(planSales))) names.push(planSales);
+  sel.innerHTML='<option value="all">All salespeople</option>'+names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');
+  sel.value = planSales==='all' ? 'all' : (names.find(n=>normSales(n)===normSales(planSales))||'all');
+}
+(function(){ const sel=document.getElementById('planSalesSel'); if(!sel) return;
+  sel.addEventListener('change',()=>{ planSales=sel.value||'all'; try{ localStorage.setItem('lingel_dayplan_sales',planSales); }catch(_){}
+    renderPlan(); }); })();
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
 
 /* ============ VIEW SWITCH + POLL ============ */
