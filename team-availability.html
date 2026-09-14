@@ -717,12 +717,27 @@ function whenCell(p){
   return '<span class="daypill '+(p.date===TODAY()?'td':'tm')+'">'+dayTag(p.date)+'</span><span class="dd">'+prettyDate(p.date)+'</span>';
 }
 function contractorPlanRows(){
-  const out=[];
+  const out=[], idx={};
+  const K=(c,t,o)=>String(c||'').toLowerCase()+'|'+String(t||'')+'|'+String(o||'').toLowerCase();
   rows.forEach(r=>{
     for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t));
-      if(tm && tm.status==='booked') out.push({ contractor:r.name, team:String(t), offer:tm.offer||'', project:tm.project||'', city:tm.city||'', salesperson:tm.salesperson||'', today:true, tomorrow:true, held:false, holdBy:'', heldOn:'', id:'' });
+      if(tm && tm.status==='booked'){
+        const meta=planById('c|'+r.name+'|'+t+'|'+TODAY())||{};
+        const e={ contractor:r.name, team:String(t), offer:tm.offer||meta.offer||'', project:tm.project||meta.project||'', city:tm.city||meta.city||'', salesperson:tm.salesperson||meta.salesperson||'', today:true, tomorrow:false, held:false, holdBy:'', heldOn:'', id:'' };
+        out.push(e); idx[K(e.contractor,e.team,e.offer)]=e;
+      }
     }
     (r.held||[]).forEach(h=>out.push({ contractor:r.name, team:String(h.team||''), offer:h.offer||'', project:h.project||'', city:h.city||'', salesperson:h.salesperson||'', today:false, tomorrow:false, held:true, holdBy:h.holdBy||'', heldOn:h.heldOn||'', id:'' }));
+  });
+  // merge saved plan entries for TODAY (planned but team not live-booked)
+  planFor(TODAY(),'team').forEach(p=>{ const k=K(p.contractor,p.team,p.offer), ex=idx[k];
+    if(ex){ ex.today=true; if(!ex.id) ex.id=p.id; if(!ex.city) ex.city=p.city||''; if(!ex.salesperson) ex.salesperson=p.salesperson||''; }
+    else { const e={ contractor:p.contractor||'', team:String(p.team||''), offer:p.offer||'', project:p.project||'', city:p.city||'', salesperson:p.salesperson||'', today:true, tomorrow:false, held:false, holdBy:p.holdBy||'', heldOn:'', id:p.id }; out.push(e); idx[k]=e; }
+  });
+  // merge saved plan entries for TOMORROW  <-- these were never shown before
+  planFor(TOMORROW(),'team').forEach(p=>{ const k=K(p.contractor,p.team,p.offer), ex=idx[k];
+    if(ex){ ex.tomorrow=true; if(!ex.id) ex.id=p.id; if(!ex.city) ex.city=p.city||''; if(!ex.salesperson) ex.salesperson=p.salesperson||''; }
+    else { const e={ contractor:p.contractor||'', team:String(p.team||''), offer:p.offer||'', project:p.project||'', city:p.city||'', salesperson:p.salesperson||'', today:false, tomorrow:true, held:false, holdBy:p.holdBy||'', heldOn:'', id:p.id }; out.push(e); idx[k]=e; }
   });
   return out;
 }
