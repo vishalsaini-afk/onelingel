@@ -270,6 +270,15 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab .dcell{white-space:nowrap}
 .ptab td.xcol{width:38px;text-align:center;padding:6px}
 .ptab .xcol .pdel{margin:0;width:26px;height:26px}
+.spwrap{position:relative;display:inline-block}
+.spbtn{max-width:230px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px}
+.spbtn.active{background:var(--hivis);color:#111;border-color:var(--hivis)}
+.spmenu{position:absolute;z-index:60;top:calc(100% + 6px);left:0;min-width:240px;max-height:320px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 14px 40px rgba(0,0,0,.5)}
+.spmenu .sprow{display:flex;align-items:center;gap:9px;padding:9px 8px;border-radius:8px;cursor:pointer;font-size:14px;font-family:'Archivo Narrow';font-weight:600}
+.spmenu .sprow:active{background:var(--panel-2)}
+.spmenu .sphead{justify-content:space-between;border-bottom:1px solid var(--line);margin-bottom:4px;cursor:default}
+.spmenu .splink{background:transparent;border:0;color:var(--hivis);font-weight:700;font-size:13px;cursor:pointer;padding:2px 4px}
+.spmenu input{width:17px;height:17px;flex:0 0 auto}
 .ptab td.tmtog{cursor:pointer}
 .ptab td.tmtog:active{background:var(--panel-2)}
 @media print{
@@ -354,8 +363,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div id="planView" hidden>
     <div class="planbar noprint">
-      <span class="reglbl">Region</span>
-      <select class="inp" id="planSalesSel" style="max-width:230px"><option value="all">All salespeople</option></select>
+      <span class="reglbl">Salesperson</span>
+      <div class="spwrap"><button type="button" class="pbtn ghost spbtn" id="salesBtn">All salespeople ▾</button><div class="spmenu" id="salesMenu" hidden><div class="sprow sphead"><button type="button" class="splink" id="spAll">Select all</button><button type="button" class="splink" id="spNone">Clear</button></div><div id="spList"></div></div></div>
       <button id="btnAddSup" class="pbtn">＋ Supervisor plan</button>
       <button id="btnWa" class="pbtn wa">🟢 Share PDF (WhatsApp)</button>
       <button id="btnCopy" class="pbtn ghost">📋 Copy</button>
@@ -405,11 +414,14 @@ const DEFAULT_SALES=['Ravish','Digvijay','Krishna','Praphul','Bir','Vivek','Roha
 // Region → NCR salespeople. Anyone not in this set counts as "Others".
 const NCR_SALES=['Ravish','Digvijay','Rohan','Suraj','Abhishek','Praphul','Ziaaz Homes','Vivek','Krishna','Vikas'];
 const NCR_SET=new Set(NCR_SALES.map(s=>s.trim().toLowerCase()));
-let planSales='all'; try{ planSales=localStorage.getItem('lingel_dayplan_sales')||'all'; }catch(e){}
-function salesLabel(){ return planSales==='all'?'All salespeople':planSales; }
+let planSalesList=[];
+try{ const raw=localStorage.getItem('lingel_dayplan_sales_multi'); if(raw) planSalesList=JSON.parse(raw)||[];
+     else { const old=localStorage.getItem('lingel_dayplan_sales'); if(old && old!=='all') planSalesList=[old]; } }catch(e){ planSalesList=[]; }
+function saveSalesSel(){ try{ localStorage.setItem('lingel_dayplan_sales_multi', JSON.stringify(planSalesList)); }catch(e){} }
 function normSales(x){ return String(x||'').trim().toLowerCase(); }
+function salesLabel(){ if(!planSalesList.length) return 'All salespeople'; if(planSalesList.length===1) return planSalesList[0]; if(planSalesList.length<=3) return planSalesList.join(', '); return planSalesList.length+' salespeople'; }
 function regionOf(sales){ return NCR_SET.has(String(sales||'').trim().toLowerCase())?'NCR':'Others'; }
-function inRegion(sales){ if(planSales==='all') return true; return normSales(sales)===normSales(planSales); }
+function inRegion(sales){ if(!planSalesList.length) return true; const n=normSales(sales); return planSalesList.some(x=>normSales(x)===n); }
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
 let carrySkip=new Set(); try{ carrySkip=new Set(JSON.parse(localStorage.getItem('lingel_carry_skip_v1')||'[]')); }catch(e){}
@@ -750,7 +762,7 @@ function contractorPlanRows(){
 function rowRank(p){ return p.held?2:(p.today?0:1); }
 function contractorTable(){
   const groups=groupBy(contractorPlanRows().filter(p=>inRegion(p.salesperson)), p=>p.salesperson, 'Unassigned');
-  if(!groups.length) return '<div class="pempty">No contractor teams planned'+(planSales==='all'?'':' for '+salesLabel())+'.</div>';
+  if(!groups.length) return '<div class="pempty">No contractor teams planned'+(!planSalesList.length?'':' for '+salesLabel())+'.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
@@ -770,7 +782,7 @@ function contractorTable(){
 function supTable(){
   const list=[]; planFor(TODAY(),'supervisor').forEach(p=>list.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>list.push(p));
   const groups=groupBy(list.filter(p=>inRegion(p.salesperson)), p=>p.supervisor, 'Unnamed');
-  if(!groups.length) return '<div class="pempty">No supervisors planned'+(planSales==='all'?'':' for '+salesLabel())+'.</div>';
+  if(!groups.length) return '<div class="pempty">No supervisors planned'+(!planSalesList.length?'':' for '+salesLabel())+'.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Salesperson</th><th>Purpose</th><th>When</th><th class="xcol noprint"></th></tr></thead>';
   groups.forEach(grp=>{
     h+='<tbody><tr class="grp"><td colspan="7">👔 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
@@ -958,18 +970,28 @@ document.getElementById('planReport').addEventListener('click',e=>{
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
 document.getElementById('btnWa').addEventListener('click',()=>sharePlanPdf());
 document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
-function fillPlanSales(){ const sel=document.getElementById('planSalesSel'); if(!sel) return;
-  const set=new Set(); contractorPlanRows().forEach(p=>{ if((p.salesperson||'').trim()) set.add(p.salesperson.trim()); });
+function allSalesNames(){ const set=new Set();
+  contractorPlanRows().forEach(p=>{ if((p.salesperson||'').trim()) set.add(p.salesperson.trim()); });
   plans.forEach(p=>{ if((p.salesperson||'').trim()) set.add(p.salesperson.trim()); });
   [...salesSet].forEach(x=>{ if((x||'').trim()) set.add(String(x).trim()); });
-  const names=[...set].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
-  if(planSales!=='all' && !names.some(n=>normSales(n)===normSales(planSales))) names.push(planSales);
-  sel.innerHTML='<option value="all">All salespeople</option>'+names.map(n=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');
-  sel.value = planSales==='all' ? 'all' : (names.find(n=>normSales(n)===normSales(planSales))||'all');
-}
-(function(){ const sel=document.getElementById('planSalesSel'); if(!sel) return;
-  sel.addEventListener('change',()=>{ planSales=sel.value||'all'; try{ localStorage.setItem('lingel_dayplan_sales',planSales); }catch(_){}
-    renderPlan(); }); })();
+  planSalesList.forEach(x=>{ if((x||'').trim()) set.add(String(x).trim()); });
+  return [...set].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase())); }
+function fillPlanSales(){ const btn=document.getElementById('salesBtn'), list=document.getElementById('spList'); if(!btn||!list) return;
+  btn.textContent=salesLabel()+' ▾'; btn.classList.toggle('active', planSalesList.length>0);
+  list.innerHTML=allSalesNames().map(n=>'<label class="sprow"><input type="checkbox" value="'+esc(n)+'"'+(planSalesList.some(x=>normSales(x)===normSales(n))?' checked':'')+'><span>'+esc(n)+'</span></label>').join('')
+    || '<div class="sprow" style="color:var(--muted)">No salespeople yet</div>'; }
+(function(){ const btn=document.getElementById('salesBtn'), menu=document.getElementById('salesMenu'); if(!btn||!menu) return;
+  btn.addEventListener('click',e=>{ e.stopPropagation(); menu.hidden=!menu.hidden; });
+  menu.addEventListener('click',e=>e.stopPropagation());
+  document.addEventListener('click',()=>{ if(!menu.hidden) menu.hidden=true; });
+  menu.addEventListener('change',e=>{ const cb=e.target.closest('input[type=checkbox]'); if(!cb) return;
+    const v=cb.value;
+    if(cb.checked){ if(!planSalesList.some(x=>normSales(x)===normSales(v))) planSalesList.push(v); }
+    else planSalesList=planSalesList.filter(x=>normSales(x)!==normSales(v));
+    saveSalesSel(); renderPlan(); });
+  document.getElementById('spAll').addEventListener('click',()=>{ planSalesList=allSalesNames().slice(); saveSalesSel(); renderPlan(); });
+  document.getElementById('spNone').addEventListener('click',()=>{ planSalesList=[]; saveSalesSel(); renderPlan(); });
+})();
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
 
 /* ============ VIEW SWITCH + POLL ============ */
