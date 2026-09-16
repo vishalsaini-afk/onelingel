@@ -859,7 +859,17 @@ async function sharePlanPdf(){
     holder.style.cssText='position:fixed;left:-10000px;top:0;width:820px;';
     holder.innerHTML=document.getElementById('planReport').innerHTML;
     document.body.appendChild(holder);
-    const canvas=await window.html2canvas(holder,{scale:1.5,backgroundColor:'#ffffff',useCORS:true,windowWidth:820});
+    const S=1.5;
+    const canvas=await window.html2canvas(holder,{scale:S,backgroundColor:'#ffffff',useCORS:true,windowWidth:820});
+    // Measure the on-screen position of every block we must not split across a
+    // page (table rows, section titles, stat cards, header) BEFORE removing the
+    // holder. Coordinates are in canvas pixels so we can snap page cuts to gaps.
+    const hTop=holder.getBoundingClientRect().top;
+    const breaks=[];
+    holder.querySelectorAll('tr, .psectt, .pstat, .preporthd, .pempty').forEach(el=>{
+      const r=el.getBoundingClientRect();
+      breaks.push({ top:(r.top-hTop)*S, bottom:(r.bottom-hTop)*S });
+    });
     document.body.removeChild(holder);
     const { jsPDF }=window.jspdf; const pdf=new jsPDF({unit:'pt',format:'a4'});
     const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
@@ -867,8 +877,18 @@ async function sharePlanPdf(){
     // JPEG — avoids re-embedding the whole full-res PNG on every page (was ~28MB)
     const pxPerPage=Math.floor(canvas.width*ph/pw);
     let sy=0, page=0;
-    while(sy < canvas.height){
-      const sliceH=Math.min(pxPerPage, canvas.height-sy);
+    while(sy < canvas.height-1){
+      let target=Math.min(sy+pxPerPage, canvas.height);
+      if(target<canvas.height){
+        // if any block straddles the intended cut line, pull the cut up to the
+        // top of that block so the whole block moves to the next page intact
+        let cut=target;
+        for(const b of breaks){
+          if(b.top>sy+4 && b.top<target && b.bottom>target && b.top<cut) cut=b.top;
+        }
+        if(cut>sy+2) target=Math.round(cut);   // else block taller than a page -> hard cut
+      }
+      const sliceH=target-sy;
       const slice=document.createElement('canvas'); slice.width=canvas.width; slice.height=sliceH;
       const sctx=slice.getContext('2d'); sctx.fillStyle='#ffffff'; sctx.fillRect(0,0,slice.width,sliceH);
       sctx.drawImage(canvas, 0, sy, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
@@ -876,7 +896,7 @@ async function sharePlanPdf(){
       const drawH=sliceH*pw/canvas.width;
       if(page>0) pdf.addPage();
       pdf.addImage(imgData,'JPEG',0,0,pw,drawH);
-      sy+=sliceH; page++;
+      sy=target; page++;
     }
     const fname='Lingel-DayPlan-'+TODAY()+'.pdf', blob=pdf.output('blob');
     const file=new File([blob],fname,{type:'application/pdf'});
