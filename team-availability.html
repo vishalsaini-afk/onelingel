@@ -563,13 +563,25 @@ async function loadBoard(silent){
     else setDot('dot','syncTxt','err','Offline · will retry');
   }finally{ document.getElementById('refreshB').classList.remove('spin'); }
 }
-async function apiPost(params){ const r=await fetch(API,{method:'POST',body:new URLSearchParams(params)}); const data=await r.json(); if(!data||data.ok===false) throw new Error((data&&data.error)||'Save failed'); return data; }
+async function apiPost(params){
+  let r, txt;
+  try{ r=await fetch(API,{method:'POST',body:new URLSearchParams(params)}); }
+  catch(e){ throw new Error('Cannot reach backend (network/URL). '+(e.message||'')); }
+  try{ txt=await r.text(); }catch(e){ txt=''; }
+  if(!r.ok) throw new Error('Backend HTTP '+r.status+' — '+String(txt).slice(0,160));
+  const t=String(txt).trim();
+  if(t.charAt(0)==='<' || /google account|sign in|requires authorization|accounts\.google/i.test(t))
+    throw new Error('Backend returned a sign-in / HTML page, not data. The Apps Script deployment access is not set to “Anyone”, or the /exec URL is wrong.');
+  let data; try{ data=JSON.parse(t); }catch(e){ throw new Error('Backend sent non-JSON: '+t.slice(0,160)); }
+  if(!data||data.ok===false) throw new Error((data&&data.error)||'Backend rejected the request (ok:false). action='+(params&&params.action||'?'));
+  return data;
+}
 async function book(name,team,offer,project,holdBy,city,salesperson){
   const key=name+'|'+team; pending.set(key,{status:'booked',offer,project,by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Booking…');
   try{ await apiPost({action:'book',name,team,offer,project,by:SUP,holdBy:holdBy||'',city:city||'',salesperson:salesperson||''});
     const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; }
     pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
-  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); }
+  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); alert('BOOK FAILED:\n\n'+(e.message||e)); }
 }
 async function release(name,team){
   const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Releasing…');
@@ -594,7 +606,7 @@ async function holdSite(name,team,holdBy){
 async function holdNewSite(name,team,offer,project,holdBy,city,salesperson){
   setDot('dot','syncTxt','busy','Adding held site…');
   try{ await apiPost({action:'book',name,team,offer,project,by:SUP,holdBy:holdBy||'Hold',city:city||'',salesperson:salesperson||''}); await loadBoard(true); setDot('dot','syncTxt','ok','Held site added to '+esc(name)); }
-  catch(e){ setDot('dot','syncTxt','err',(e.message||'Failed')+' — try again'); }
+  catch(e){ setDot('dot','syncTxt','err',(e.message||'Failed')+' — try again'); alert('HELD-SITE ADD FAILED:\n\n'+(e.message||e)); }
 }
 async function resumeSite(name,offer,heldOn){
   setDot('dot','syncTxt','busy','Resuming…');
@@ -632,6 +644,7 @@ function openBook(name,team){
   wireSegs(); wireDutySwitch(name,team); wirePlanDate();
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
   goHandler=()=>{
+   try{
     const holdBy=segVal('segHold');
     const offer=(document.getElementById('mOffer').value||'').trim();
     const project=(document.getElementById('mProject').value||'').trim();
@@ -646,6 +659,7 @@ function openBook(name,team){
       upsertPlan({ id:'c|'+name+'|'+team+'|'+date, kind:'team', date:date, contractor:name, team:String(team), offer:offer, project:project, city:city, salesperson:sales, holdBy:holdBy||'', supervisor:'', task:'', by:SUP, at:new Date().toISOString() });
     }
     if(view==='plan') renderPlan();
+   }catch(err){ showMErr('Script error: '+(err.message||err)); alert('BOOK BUTTON ERROR:\n\n'+(err.stack||err.message||err)); }
   };
 }
 function openSupPlan(preset){
