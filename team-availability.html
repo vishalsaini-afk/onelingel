@@ -581,7 +581,7 @@ async function book(name,team,offer,project,holdBy,city,salesperson){
   try{ await apiPost({action:'book',name,team,offer,project,by:SUP,holdBy:holdBy||'',city:city||'',salesperson:salesperson||''});
     const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='booked'; tm.offer=offer; tm.project=project; tm.by=SUP; }
     pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
-  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); alert('BOOK FAILED:\n\n'+(e.message||e)); }
+  }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); alert('Couldn’t book this team:\n\n'+(e.message||e)); }
 }
 async function release(name,team){
   const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Releasing…');
@@ -606,7 +606,7 @@ async function holdSite(name,team,holdBy){
 async function holdNewSite(name,team,offer,project,holdBy,city,salesperson){
   setDot('dot','syncTxt','busy','Adding held site…');
   try{ await apiPost({action:'book',name,team,offer,project,by:SUP,holdBy:holdBy||'Hold',city:city||'',salesperson:salesperson||''}); await loadBoard(true); setDot('dot','syncTxt','ok','Held site added to '+esc(name)); }
-  catch(e){ setDot('dot','syncTxt','err',(e.message||'Failed')+' — try again'); alert('HELD-SITE ADD FAILED:\n\n'+(e.message||e)); }
+  catch(e){ setDot('dot','syncTxt','err',(e.message||'Failed')+' — try again'); alert('Couldn’t add the held site:\n\n'+(e.message||e)); }
 }
 async function resumeSite(name,offer,heldOn){
   setDot('dot','syncTxt','busy','Resuming…');
@@ -655,11 +655,16 @@ function openBook(name,team){
     rememberSalesperson(sales); closeModal();
     if(date===TODAY()){
       if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales);
+      if(view==='plan') renderPlan();
     } else {
       upsertPlan({ id:'c|'+name+'|'+team+'|'+date, kind:'team', date:date, contractor:name, team:String(team), offer:offer, project:project, city:city, salesperson:sales, holdBy:holdBy||'', supervisor:'', task:'', by:SUP, at:new Date().toISOString() });
+      // an active salesperson filter must not hide the booking the user just made
+      if(!inRegion(sales)){ planSalesList=[]; saveSalesSel(); }
+      const when = date===TOMORROW() ? 'Tomorrow' : prettyDate(date);
+      switchView('plan');   // jump to the Day Plan so they can see it
+      setTimeout(()=>setDot('dotP','syncP','ok','Planned '+esc(name)+' Team '+team+' for '+when+(offer?(' · #'+esc(offer)):'')), 60);
     }
-    if(view==='plan') renderPlan();
-   }catch(err){ showMErr('Script error: '+(err.message||err)); alert('BOOK BUTTON ERROR:\n\n'+(err.stack||err.message||err)); }
+   }catch(err){ showMErr('Script error: '+(err.message||err)); alert('Couldn’t save the booking:\n\n'+(err.message||err)); }
   };
 }
 function openSupPlan(preset){
