@@ -60,6 +60,9 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .team .ts{font-family:Archivo;font-weight:700;font-size:13px;margin-top:3px}
 .team.avail .ts{color:#86efac}.team:not(.avail):not(.na) .ts{color:#fda4a4}.team.na .ts{color:var(--amber)}
 .team .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team.ahead{border-left-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(34,197,94,.03))}
+.team .tnext{margin-top:6px;display:block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:600;color:#1a1400;background:var(--amber);border-radius:6px;padding:3px 6px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team.ahead .to::after{content:' · booked ahead';color:var(--amber)}
 .held{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
 .heldhd{font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber);display:flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
 .heldhd .hchev{display:inline-block;transition:transform .15s;font-size:11px}
@@ -493,6 +496,13 @@ async function pushPlanDelete(id){ deletedPlanIds.add(id); saveTombstones(); try
 function upsertPlan(entry){ if(deletedPlanIds.has(entry.id)){ deletedPlanIds.delete(entry.id); saveTombstones(); } const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
 function planById(id){ return plans.find(p=>p.id===id); }
 function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind); }
+function upcomingForTeam(name,t){
+  const n=String(name||'').toLowerCase(), tk=String(t);
+  return plans.filter(p=> p.kind==='team' && p.date>TODAY()
+      && String(p.contractor||'').toLowerCase()===n && String(p.team||'')===tk)
+    .sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
+}
+function whenLabel(iso){ return iso===TODAY()?'Today':(iso===TOMORROW()?'Tomorrow':prettyDate(iso)); }
 function swapDate(id,d){ return String(id).replace(/\|[^|]*$/, '|'+d); }
 async function loadSupervisors(){
   try{ const a=JSON.parse(localStorage.getItem(SUP_KEY)||'[]'); if(Array.isArray(a)) supList=a; }catch(e){}
@@ -526,7 +536,15 @@ function teamChip(r,t){
   if(tm.status==='booked'){ cls=''; label='Booked'; sub=tm.offer?('#'+esc(tm.offer)+(tm.project?' · '+esc(tm.project):'')):'booked'; }
   else if(tm.status==='na'){ cls=' na'; label='On leave'; sub='tap to manage'; }
   else { cls=' avail'; label='Available'; sub='tap to book'; }
-  return '<div class="team'+cls+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'"><div class="tl">Team '+t+'</div><div class="ts">'+label+'</div><div class="to">'+sub+'</div></div>';
+  // advance bookings for later dates — make them visible on the card
+  const up=upcomingForTeam(r.name,t);
+  let nextHtml='';
+  if(up.length){
+    if(tm.status!=='booked' && tm.status!=='na') cls+=' ahead';
+    const n0=up[0], extra=up.length>1?(' +'+(up.length-1)):'';
+    nextHtml='<div class="tnext">📅 '+esc(whenLabel(n0.date))+(n0.offer?(' · #'+esc(n0.offer)):(n0.holdBy?' · '+esc(n0.holdBy):''))+extra+'</div>';
+  }
+  return '<div class="team'+cls+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'"><div class="tl">Team '+t+'</div><div class="ts">'+label+'</div><div class="to">'+sub+'</div>'+nextHtml+'</div>';
 }
 function renderBoard(){
   const g=document.getElementById('grid'); counts();
@@ -657,7 +675,13 @@ function openBook(name,team){
       if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales);
       if(view==='plan') renderPlan();
     } else {
-      upsertPlan({ id:'c|'+name+'|'+team+'|'+date, kind:'team', date:date, contractor:name, team:String(team), offer:offer, project:project, city:city, salesperson:sales, holdBy:holdBy||'', supervisor:'', task:'', by:SUP, at:new Date().toISOString() });
+      const planId='c|'+name+'|'+team+'|'+date;
+      const prev=planById(planId);
+      if(prev && (String(prev.offer||'')!==offer || String(prev.holdBy||'')!==(holdBy||''))){
+        const ok=confirm('Team '+team+' is already planned for '+whenLabel(date)+' for #'+(prev.offer||prev.holdBy||'—')+'.\n\nReplace it with #'+(offer||holdBy||'—')+'?');
+        if(!ok){ return; }
+      }
+      upsertPlan({ id:planId, kind:'team', date:date, contractor:name, team:String(team), offer:offer, project:project, city:city, salesperson:sales, holdBy:holdBy||'', supervisor:'', task:'', by:SUP, at:new Date().toISOString() });
       // an active salesperson filter must not hide the booking the user just made
       if(!inRegion(sales)){ planSalesList=[]; saveSalesSel(); }
       const when = date===TOMORROW() ? 'Tomorrow' : prettyDate(date);
@@ -1034,24 +1058,25 @@ function fillPlanSales(){ const btn=document.getElementById('salesBtn'), list=do
 document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=planText(); try{ await navigator.clipboard.writeText(t); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(e){ const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand('copy'); setDot('dotP','syncP','ok','Copied plan to clipboard'); }catch(_){ setDot('dotP','syncP','err','Copy failed — long-press to select'); } ta.remove(); } });
 
 /* ============ VIEW SWITCH + POLL ============ */
-function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:POLL_PLAN; pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
+let boardTick=0;
+function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:POLL_PLAN; pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); boardTick++; if(boardTick%3===0) syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 function switchView(v){
   view=v;
   document.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on', x.getAttribute('data-view')===v));
   document.getElementById('boardView').hidden = v!=='board';
   document.getElementById('planView').hidden = v!=='plan';
-  if(v==='board' && !document.getElementById('supBoard').hidden) renderSupBoard();
+  if(v==='board'){ if(!document.getElementById('supBoard').hidden) renderSupBoard(); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); }
   if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
   startPoll();
 }
 document.querySelectorAll('.vtab').forEach(b=>b.addEventListener('click',()=>switchView(b.getAttribute('data-view'))));
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!modal.hidden) closeModal(); else if(e.key==='Enter'&&!modal.hidden&&goHandler) goHandler(); });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
-window.addEventListener('online',()=>{ if(view==='board') loadBoard(true); else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board'){ loadBoard(true); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); } else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
+window.addEventListener('online',()=>{ if(view==='board'){ loadBoard(true); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); } else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
 
 /* ===== init day-plan ===== */
-loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); renderPlan(); loadSupervisors(); syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); });
+loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); renderPlan(); loadSupervisors(); syncPlansFromServer().then(ok=>{ if(ok){ renderPlan(); if(view==='board'&&rows.length) renderBoard(); } });
 
 document.getElementById('grid').innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
 loadBoard(); startPoll();
