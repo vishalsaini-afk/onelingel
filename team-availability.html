@@ -61,7 +61,20 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .team.avail .ts{color:#86efac}.team:not(.avail):not(.na) .ts{color:#fda4a4}.team.na .ts{color:var(--amber)}
 .team .to{font-size:10px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono';line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .team.ahead{border-left-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(34,197,94,.03))}
-.team .tnext{margin-top:6px;display:block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:600;color:#1a1400;background:var(--amber);border-radius:6px;padding:3px 6px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team .tnext{margin-top:6px;display:block;font-family:'JetBrains Mono';font-size:9.5px;font-weight:600;color:#1a1400;background:var(--amber);border-radius:6px;padding:3px 6px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.team .tnext:active{filter:brightness(.92)}
+.uplist{display:flex;flex-direction:column;gap:8px}
+.uprow{display:flex;gap:10px;align-items:center;background:var(--panel-2);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;padding:9px 10px}
+.upinfo{flex:1;min-width:0}
+.upwhen{font-family:'JetBrains Mono';font-size:11px;color:var(--amber);font-weight:700}
+.upwhen .updd{color:var(--muted);font-weight:400;font-size:10px}
+.upsite{font-family:Archivo;font-weight:700;font-size:14px;margin-top:2px}
+.upmeta{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upacts{display:flex;gap:6px;flex-shrink:0}
+.upbtn{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:8px;padding:7px 9px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer}
+.upbtn.upre{border-color:var(--hivis);color:var(--hivis)}
+.upbtn.updel{border-color:var(--red);color:#fda4a4;min-width:34px}
+.upempty{color:var(--muted);text-align:center;padding:18px 8px;font-size:13px}
 .team.ahead .to::after{content:' · booked ahead';color:var(--amber)}
 .held{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
 .heldhd{font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--amber);display:flex;align-items:center;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
@@ -542,7 +555,7 @@ function teamChip(r,t){
   if(up.length){
     if(tm.status!=='booked' && tm.status!=='na') cls+=' ahead';
     const n0=up[0], extra=up.length>1?(' +'+(up.length-1)):'';
-    nextHtml='<div class="tnext">📅 '+esc(whenLabel(n0.date))+(n0.offer?(' · #'+esc(n0.offer)):(n0.holdBy?' · '+esc(n0.holdBy):''))+extra+'</div>';
+    nextHtml='<div class="tnext">📅 '+esc(whenLabel(n0.date))+(n0.offer?(' · #'+esc(n0.offer)):(n0.holdBy?' · '+esc(n0.holdBy):''))+extra+' ›</div>';
   }
   return '<div class="team'+cls+busy+'" data-name="'+esc(r.name)+'" data-team="'+t+'"><div class="tl">Team '+t+'</div><div class="ts">'+label+'</div><div class="to">'+sub+'</div>'+nextHtml+'</div>';
 }
@@ -745,7 +758,68 @@ function deletePlanEntry(id){
   const e=planById(id); if(e){ plans=plans.filter(p=>p.id!==id); savePlansLocal(); pushPlanDelete(id); }
   renderBoard(); renderPlan();
 }
-/* ===== DAY-PLAN report (tabular) ===== */
+/* ===== Upcoming jobs popup (tap the 📅 badge) ===== */
+let upCtx=null;
+function openUpcoming(name,team){ upCtx={name:name,team:team}; renderUpcoming(); }
+function renderUpcoming(){
+  if(!upCtx) return; const name=upCtx.name, team=upCtx.team;
+  const list=upcomingForTeam(name,team);
+  setBox('');
+  document.getElementById('mTtl').textContent='Upcoming · '+name;
+  document.getElementById('mSub').textContent='Team '+team+' · advance bookings';
+  if(!list.length){
+    document.getElementById('mBody').innerHTML='<div class="upempty">No upcoming bookings for this team.</div>';
+  } else {
+    document.getElementById('mBody').innerHTML='<div class="uplist">'+list.map(p=>{
+      const site=p.offer?('#'+esc(p.offer)):(p.holdBy?('HOLD · '+esc(p.holdBy)):'—');
+      const meta=[p.project?esc(p.project):'', p.city?esc(p.city):'', p.salesperson?('👤 '+esc(p.salesperson)):''].filter(Boolean).join(' · ');
+      return '<div class="uprow"><div class="upinfo">'
+        +'<div class="upwhen">📅 '+esc(whenLabel(p.date))+' <span class="updd">'+esc(prettyDate(p.date))+'</span></div>'
+        +'<div class="upsite">'+site+'</div>'+(meta?'<div class="upmeta">'+meta+'</div>':'')
+        +'</div><div class="upacts"><button class="upbtn upre" data-id="'+esc(p.id)+'">Reschedule</button>'
+        +'<button class="upbtn updel" data-id="'+esc(p.id)+'" title="Cancel booking">✕</button></div></div>';
+    }).join('')+'</div>';
+  }
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Done'; go.className='mbtn go'; modal.hidden=false;
+  goHandler=closeModal;
+  document.querySelectorAll('#mBody .updel').forEach(b=>b.onclick=()=>{
+    const id=b.getAttribute('data-id'), p=planById(id);
+    if(confirm('Cancel this booking for Team '+team+' on '+(p?whenLabel(p.date):'')+(p&&p.offer?(' · #'+p.offer):'')+'?')){
+      deletePlanEntry(id); renderUpcoming();
+    }
+  });
+  document.querySelectorAll('#mBody .upre').forEach(b=>b.onclick=()=>{ const p=planById(b.getAttribute('data-id')); if(p) rescheduleUpcoming(p); });
+}
+function rescheduleUpcoming(job){
+  if(!upCtx) return; const name=upCtx.name, team=upCtx.team;
+  setBox('');
+  document.getElementById('mTtl').textContent='Reschedule · '+name;
+  document.getElementById('mSub').textContent='Team '+team+(job.offer?(' · #'+esc(job.offer)):'')+' — currently '+whenLabel(job.date);
+  const daySel = job.date===TODAY()?'today':(job.date===TOMORROW()?'tomorrow':'later');
+  document.getElementById('mBody').innerHTML='<div class="fd"><label>Move to</label>'+planDateField(daySel, job.date)+'</div>'
+    +'<button type="button" id="upBack" class="mbtn ghost" style="width:100%;margin-top:2px">← Back to list</button>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Move →'; go.className='mbtn go'; modal.hidden=false;
+  wirePlanDate();
+  const bk=document.getElementById('upBack'); if(bk) bk.onclick=()=>renderUpcoming();
+  goHandler=()=>{
+    const nd=chosenPlanDate();
+    if(nd===job.date){ renderUpcoming(); return; }
+    if(nd===TODAY()){
+      const r=rows.find(x=>x.name===name), tm=r?teamOf(r,team):null;
+      if(tm && tm.status==='booked'){ showMErr('Team '+team+' is already working today — cancel that first.'); return; }
+      deletePlanEntry(job.id);
+      if(job.holdBy) holdNewSite(name,team,job.offer||'',job.project||'',job.holdBy,job.city||'',job.salesperson||'');
+      else book(name,team,job.offer||'',job.project||'','',job.city||'',job.salesperson||'');
+      closeModal(); return;
+    }
+    const newId='c|'+name+'|'+team+'|'+nd, prev=planById(newId);
+    if(prev && prev.id!==job.id){ if(!confirm('Team '+team+' already has a booking on '+whenLabel(nd)+' (#'+(prev.offer||prev.holdBy||'—')+'). Replace it?')) return; }
+    deletePlanEntry(job.id);
+    upsertPlan(Object.assign({},job,{id:newId,date:nd,at:new Date().toISOString()}));
+    renderBoard(); if(view==='plan') renderPlan();
+    renderUpcoming();
+  };
+}
 function dayTag(date){ return date===TODAY() ? 'Today' : (date===TOMORROW() ? 'Tomorrow' : 'Plan'); }
 function itemTag(p){ return p.held ? 'On hold' : dayTag(p.date); }
 function itemDateLabel(p){ return p.held ? (p.heldOn?shortDate(p.heldOn):'') : prettyDate(p.date); }
@@ -989,6 +1063,7 @@ document.getElementById('grid').addEventListener('click',e=>{
   const hh=e.target.closest('.heldhd'); if(hh){ const nm=hh.getAttribute('data-hname'); if(heldOpen.has(nm)) heldOpen.delete(nm); else heldOpen.add(nm); renderBoard(); return; }
   const rb=e.target.closest('.hresume'); if(rb){ resumeSite(rb.getAttribute('data-hname'), rb.getAttribute('data-hoffer'), rb.getAttribute('data-hheld')); return; }
   const cb=e.target.closest('.hcancel'); if(cb){ if(confirm('Remove this held site from '+cb.getAttribute('data-hname')+'? It will no longer show as pending work.')) cancelHeld(cb.getAttribute('data-hname'), cb.getAttribute('data-hoffer'), cb.getAttribute('data-hheld')); return; }
+  const up=e.target.closest('.tnext'); if(up){ const tb=up.closest('.team'); if(tb){ openUpcoming(tb.getAttribute('data-name'), tb.getAttribute('data-team')); } return; }
   const btn=e.target.closest('.team'); if(!btn) return;
   const name=btn.getAttribute('data-name'), team=btn.getAttribute('data-team');
   if(pending.has(name+'|'+team)) return;
