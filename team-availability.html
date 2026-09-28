@@ -549,7 +549,7 @@ async function loadSupervisors(){
 
 function setDot(id,txtId,kind,txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
 function normStatus(v){ const s=String(v||'').toLowerCase(); return s==='booked'?'booked':s==='na'?'na':'available'; }
-function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:String(t.offer||'').trim(), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'', salesperson:String(t.salesperson||'').trim(), city:String(t.city||'').trim() }; }
+function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:cleanOffer(t.offer), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'', salesperson:String(t.salesperson||'').trim(), city:String(t.city||'').trim() }; }
 function normHeld(h){ h=h||{}; return { offer:cleanOffer(h.offer), project:String(h.project||'').trim(), team:String(h.team||'').trim(), city:String(h.city||'').trim(), salesperson:String(h.salesperson||'').trim(), holdBy:String(h.holdBy||'').trim(), heldOn:String(h.heldOn||'') }; }
 function shortDate(v){ const d=new Date(v); return isNaN(d)?'' : d.toLocaleDateString([], {day:'2-digit',month:'short'}); }
 function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams, held:Array.isArray(c.held)?c.held.map(normHeld):[] }; }
