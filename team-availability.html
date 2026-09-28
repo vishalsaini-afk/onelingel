@@ -441,6 +441,7 @@ function inRegion(sales){ if(!planSalesList.length) return true; const n=normSal
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
 let carrySkip=new Set(); try{ carrySkip=new Set(JSON.parse(localStorage.getItem('lingel_carry_skip_v1')||'[]')); }catch(e){}
+let healedOffers=new Set(); // ids whose corrupted offer we've re-saved this session (no re-push loop)
 function saveCarrySkip(){ try{ localStorage.setItem('lingel_carry_skip_v1', JSON.stringify([...carrySkip].slice(-500))); }catch(e){} }
 function carryKey(c,t){ return 'c|'+c+'|'+t+'|'+TOMORROW(); }
 function saveTombstones(){ try{ localStorage.setItem('lingel_plan_tombstones_v1', JSON.stringify([...deletedPlanIds].slice(-500))); }catch(e){} }
@@ -480,7 +481,20 @@ function isoDateAny(v){
 function TODAY(){ return isoDate(new Date()); }
 function TOMORROW(){ const t=new Date(); t.setDate(t.getDate()+1); return isoDate(t); }
 function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.length<3) return iso||'—'; const dt=new Date(p[0],p[1]-1,p[2]); return dt.toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); }
-function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:isoDateAny(p.date), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:String(p.offer||''), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
+function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:isoDateAny(p.date), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:cleanOffer(p.offer), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
+function cleanOffer(v){
+  if(v==null) return '';
+  if(v instanceof Date) return isNaN(v)?'':String(v.getFullYear());
+  var s=String(v).trim(); if(!s) return '';
+  // legacy corruption: an offer that got saved as a JS Date string, e.g.
+  // "Sat Jul 08 82372 00:00:00 GMT+0530 (India Standard Time)" — the real offer is 82372
+  if(/GMT[+-]?\d/i.test(s) || /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\b/.test(s)){
+    var m=s.match(/\b[A-Za-z]{3}\s+\d{1,2}\s+(\d{3,})\b/);   // "Mon DD <offer>"
+    if(m) return m[1];
+    var d=s.match(/\d{3,}/); return d?d[0]:'';
+  }
+  return s;
+}
 function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
 function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
 function loadSalesLocal(){ DEFAULT_SALES.forEach(s=>salesSet.add(s)); NCR_SALES.forEach(s=>salesSet.add(s)); try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
@@ -492,6 +506,16 @@ async function syncPlansFromServer(){
     const d=await r.json();
     if(d&&d.ok!==false&&Array.isArray(d.plans)){
       const server=d.plans.map(normPlan).filter(p=>!deletedPlanIds.has(p.id));
+      // SELF-HEAL: any server row whose offer was a corrupted date string gets the
+      // cleaned value re-saved to the sheet — once per id per session, so no spam.
+      d.plans.forEach(function(rp){
+        try{
+          var np=normPlan(rp);
+          if(!np.id || deletedPlanIds.has(np.id) || healedOffers.has(np.id)) return;
+          var rawOffer=(rp&&rp.offer!=null)?String(rp.offer).trim():'';
+          if(rawOffer && rawOffer!==np.offer){ healedOffers.add(np.id); pushPlan(np); }
+        }catch(e){}
+      });
       const serverIds=new Set(server.map(p=>p.id));
       // preserve locally-added plans the server hasn't stored yet (and re-push them),
       // so a newly added supervisor/team plan is never wiped by a sync
@@ -526,7 +550,7 @@ async function loadSupervisors(){
 function setDot(id,txtId,kind,txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
 function normStatus(v){ const s=String(v||'').toLowerCase(); return s==='booked'?'booked':s==='na'?'na':'available'; }
 function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:String(t.offer||'').trim(), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'', salesperson:String(t.salesperson||'').trim(), city:String(t.city||'').trim() }; }
-function normHeld(h){ h=h||{}; return { offer:String(h.offer||'').trim(), project:String(h.project||'').trim(), team:String(h.team||'').trim(), city:String(h.city||'').trim(), salesperson:String(h.salesperson||'').trim(), holdBy:String(h.holdBy||'').trim(), heldOn:String(h.heldOn||'') }; }
+function normHeld(h){ h=h||{}; return { offer:cleanOffer(h.offer), project:String(h.project||'').trim(), team:String(h.team||'').trim(), city:String(h.city||'').trim(), salesperson:String(h.salesperson||'').trim(), holdBy:String(h.holdBy||'').trim(), heldOn:String(h.heldOn||'') }; }
 function shortDate(v){ const d=new Date(v); return isNaN(d)?'' : d.toLocaleDateString([], {day:'2-digit',month:'short'}); }
 function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams, held:Array.isArray(c.held)?c.held.map(normHeld):[] }; }
 function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
