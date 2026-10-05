@@ -1672,6 +1672,18 @@ window.addEventListener('load', soCheckPendingOnLoad);
   LD.save = async function(file, meta){            // meta: {offer, kind, customer, site, salesperson, positions, sqft, app}
     meta = Object.assign({by:who()}, meta||{});
     if (!key(meta.offer)) throw new Error('No Offer No to save under');
+    /* sq.ft log: a production sheet always carries its per-window areas, whichever app saves it */
+    if (meta.kind==='production' && !meta.items){
+      try{ var pr = await LD.parseProduction(file, {drawings:false});
+        var its = pr.positions.map(function(p){ return {ref:p.ref, w:Math.round(p.w||0), h:Math.round(p.h||0), qty:p.qty||1, sqft:+(p.sqft||0).toFixed(2), series:p.series||''}; });
+        meta.items = its;
+        if (!meta.sqft) meta.sqft = its.reduce(function(a,p){return a+p.sqft;},0).toFixed(2);
+        if (!meta.positions) meta.positions = String(its.length);
+        if (!meta.customer) meta.customer = pr.customer||'';
+        if (!meta.salesperson) meta.salesperson = pr.sales||'';
+      }catch(e){}
+    }
+    if (meta.items && typeof meta.items!=='string') meta.items = JSON.stringify(meta.items);
     await keep(meta.offer, meta.kind, file, Object.assign({}, meta, {name:file.name}));
     var data = await toB64(file);
     var r = await post(Object.assign({action:'docSave', data:data}, meta));
@@ -1693,6 +1705,7 @@ window.addEventListener('load', soCheckPendingOnLoad);
     var l2 = await local(offer,prefer); if (l2) return l2;
     throw new Error((r&&r.error)||('Nothing saved for '+offer));
   };
+  LD.api = api;
   LD.list = async function(){ try{ var r=await post({action:'docList'}); return (r&&r.ok&&r.list)||[]; }catch(e){ return []; } };
 
   /* "Load by Offer No" dialog. onLoaded(file, kind, meta, offline) */

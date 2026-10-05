@@ -1237,6 +1237,18 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
   LD.save = async function(file, meta){            // meta: {offer, kind, customer, site, salesperson, positions, sqft, app}
     meta = Object.assign({by:who()}, meta||{});
     if (!key(meta.offer)) throw new Error('No Offer No to save under');
+    /* sq.ft log: a production sheet always carries its per-window areas, whichever app saves it */
+    if (meta.kind==='production' && !meta.items){
+      try{ var pr = await LD.parseProduction(file, {drawings:false});
+        var its = pr.positions.map(function(p){ return {ref:p.ref, w:Math.round(p.w||0), h:Math.round(p.h||0), qty:p.qty||1, sqft:+(p.sqft||0).toFixed(2), series:p.series||''}; });
+        meta.items = its;
+        if (!meta.sqft) meta.sqft = its.reduce(function(a,p){return a+p.sqft;},0).toFixed(2);
+        if (!meta.positions) meta.positions = String(its.length);
+        if (!meta.customer) meta.customer = pr.customer||'';
+        if (!meta.salesperson) meta.salesperson = pr.sales||'';
+      }catch(e){}
+    }
+    if (meta.items && typeof meta.items!=='string') meta.items = JSON.stringify(meta.items);
     await keep(meta.offer, meta.kind, file, Object.assign({}, meta, {name:file.name}));
     var data = await toB64(file);
     var r = await post(Object.assign({action:'docSave', data:data}, meta));
@@ -1645,7 +1657,7 @@ async function afterBookWithQuote(q, b){
   woPut(w);
   setDot('dot','syncTxt','busy','Saving document & invoice…');
   let qOk=true;
-  try{ if(!q.fromLib) await LD.save(q.file,{offer:b.offer,kind:q.kind,customer:w.customer,site:b.project,salesperson:b.sales,positions:String(q.items.length),sqft:q.total.toFixed(2),by:SUP,app:'Team Availability'}); }
+  try{ if(!q.fromLib) await LD.save(q.file,{offer:b.offer,kind:q.kind,customer:w.customer,site:b.project,salesperson:b.sales,positions:String(q.items.length),sqft:q.total.toFixed(2),items:q.kind==='quotation'?q.items.map(i=>({ref:i.ref,w:Math.round(i.w||0),h:Math.round(i.h||0),qty:1,sqft:+(+i.sqft||0).toFixed(2)})):undefined,by:SUP,app:'Team Availability'}); }
   catch(e){ qOk=false; console.warn(e); }
   try{ await makeWorkOrder(w); setDot('dot','syncTxt',qOk?'ok':'err', qOk?('Invoice '+w.woNo+' ready · document saved'):('Invoice '+w.woNo+' ready · document NOT saved online ('+'kept on phone)')); }
   catch(e){ setDot('dot','syncTxt','err','Invoice failed: '+(e.message||e)); }
