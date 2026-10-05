@@ -154,6 +154,9 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .fd label{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+.qup{flex:1;width:100%;border:1px dashed var(--hivis);background:rgba(255,206,31,.08);color:var(--hivis);border-radius:8px;padding:11px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.qinfo{font-size:12px;color:var(--muted);min-height:0}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
+.msel{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .relinfo{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.7}
 .relinfo b{color:var(--hivis);font-family:'Archivo Narrow'}
 .relinfo .k{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -552,7 +555,7 @@ function normStatus(v){ const s=String(v||'').toLowerCase(); return s==='booked'
 function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:cleanOffer(t.offer), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'', salesperson:String(t.salesperson||'').trim(), city:String(t.city||'').trim() }; }
 function normHeld(h){ h=h||{}; return { offer:cleanOffer(h.offer), project:String(h.project||'').trim(), team:String(h.team||'').trim(), city:String(h.city||'').trim(), salesperson:String(h.salesperson||'').trim(), holdBy:String(h.holdBy||'').trim(), heldOn:String(h.heldOn||'') }; }
 function shortDate(v){ const d=new Date(v); return isNaN(d)?'' : d.toLocaleDateString([], {day:'2-digit',month:'short'}); }
-function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams, held:Array.isArray(c.held)?c.held.map(normHeld):[] }; }
+function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), phone:String(c.phone||'').trim(), addr:String(c.addr||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams, held:Array.isArray(c.held)?c.held.map(normHeld):[] }; }
 function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
 function loadCache(){ try{ var c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); return Array.isArray(c)?c.map(normRow):null; }catch(e){ return null; } }
 function teamOf(r,t){ return r.teams[Number(t)-1]; }
@@ -689,6 +692,7 @@ function openBook(name,team){
   document.getElementById('mTtl').textContent='Book '+name;
   document.getElementById('mSub').textContent='Team '+team+' · assign a job (stays until released/held)';
   document.getElementById('mBody').innerHTML=dutyRow(true)
+    +quoteFieldHTML()
     +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
     +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
@@ -696,7 +700,7 @@ function openBook(name,team){
     +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
     +planDateField('today');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
-  wireSegs(); wireDutySwitch(name,team); wirePlanDate();
+  wireSegs(); wireDutySwitch(name,team); wirePlanDate(); wireQuoteField();
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
   goHandler=()=>{
    try{
@@ -707,10 +711,14 @@ function openBook(name,team){
     const sales=(document.getElementById('mSales').value||'').trim();
     if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
     const date=chosenPlanDate();
+    const q=bookQ, woSvc=q?document.getElementById('mWoSvc').value:'', woBill=q?(segVal('segBill')||'lingel'):'';
+    if(q && !offer){ showMErr('Quotation uploaded — enter its Offer No. to make the invoice.'); return; }
+    const runWO=()=>{ if(q) afterBookWithQuote(q,{name,team,offer,project,city,sales,date,service:woSvc,billTo:woBill}); };
     rememberSalesperson(sales); closeModal();
     if(date===TODAY()){
       if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales);
       if(view==='plan') renderPlan();
+      runWO();
     } else {
       const planId='c|'+name+'|'+team+'|'+date;
       const prev=planById(planId);
@@ -718,6 +726,7 @@ function openBook(name,team){
         const ok=confirm('Team '+team+' is already planned for '+whenLabel(date)+' for #'+(prev.offer||prev.holdBy||'—')+'.\n\nReplace it with #'+(offer||holdBy||'—')+'?');
         if(!ok){ return; }
       }
+      runWO();
       upsertPlan({ id:planId, kind:'team', date:date, contractor:name, team:String(team), offer:offer, project:project, city:city, salesperson:sales, holdBy:holdBy||'', supervisor:'', task:'', by:SUP, at:new Date().toISOString() });
       // an active salesperson filter must not hide the booking the user just made
       if(!inRegion(sales)){ planSalesList=[]; saveSalesSel(); }
@@ -1055,9 +1064,11 @@ function openRelease(name,team,tm){
   document.getElementById('mTtl').textContent='Manage '+name;
   document.getElementById('mSub').textContent='Team '+team+' · release or put on hold';
   document.getElementById('mBody').innerHTML='<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
+    +(tm.offer?'<button type="button" class="qup" id="mWoBtn" style="margin-bottom:12px">📄 Invoice for #'+esc(tm.offer)+'</button>':'')
     +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ const v=b.getAttribute('data-val'); closeModal(); holdSite(name,team,v); });
+  const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
   goHandler=()=>{ closeModal(); release(name,team); };
 }
 function openNAModal(name,team){
@@ -1180,6 +1191,483 @@ loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); rende
 document.getElementById('grid').innerHTML=Array.from({length:6}).map(()=>'<div class="skel"></div>').join('');
 loadBoard(); startPoll();
 if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+<script>
+/* ===== LINGEL ORDER DOCUMENTS (shared by every app) ==========================
+   1) Library: a quotation or production sheet uploaded ONCE in any app is saved
+      by Offer No; every other app loads it with "Load by Offer No".
+   2) Reader: LD.kind(file) tells a production sheet from a quotation, and
+      LD.parseProduction(file) reads a production sheet exactly like Corner Check.
+   Backend: hub Apps Script actions docSave / docGet / docList.               */
+(function(){
+  if (window.LD) return;
+  var HUB = "https://script.google.com/macros/s/AKfycbzTi9ihe1YpDEIkX7IdAnDqNl61rU3IDecHUetV4mmwAVezMbJSu_Ruxg4_CJnscVEH/exec";
+  var CACHE = 'lingel-docs-v1';
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  var PDFJS_W = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var LD = window.LD = {};
+  function api(){ return HUB; }
+  function key(o){ return String(o||'').trim().toUpperCase().replace(/\s+/g,''); }
+  function cacheUrl(o,k){ return './__orderdoc__/'+encodeURIComponent(key(o))+'/'+k; }
+  function b64ToBlob(b64){ var bin=atob(b64), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return new Blob([u],{type:'application/pdf'}); }
+  function toB64(blob){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ var s=String(r.result); res(s.slice(s.indexOf(',')+1)); }; r.onerror=rej; r.readAsDataURL(blob); }); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];}); }
+  function who(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)||''; }catch(e){ return ''; } }
+
+  async function post(params){
+    var r = await fetch(api(), {method:'POST', body:new URLSearchParams(params)});
+    var t = (await r.text()).trim();
+    if (t.charAt(0)==='<') throw new Error('Backend not reachable. Check the hub script deployment.');
+    var d; try{ d=JSON.parse(t); }catch(e){ throw new Error('Backend reply not understood'); }
+    if (d && d.ok===false && !d.notFound && /supervisor list|unknown|password|pin/i.test(d.error||'')) throw new Error('Hub script not updated yet: install the document library and redeploy.');
+    return d;
+  }
+  async function keep(offer,kind,file,meta){ try{ var c=await caches.open(CACHE); await c.put(cacheUrl(offer,kind), new Response(file,{headers:{'Content-Type':'application/pdf','X-Meta':encodeURIComponent(JSON.stringify(meta||{}))}})); }catch(e){} }
+  async function local(offer,prefer){
+    var order = prefer==='quotation' ? ['quotation','production'] : ['production','quotation'];
+    try{ var c=await caches.open(CACHE);
+      for (var i=0;i<order.length;i++){ var r=await c.match(cacheUrl(offer,order[i])); if(!r) continue;
+        var meta=JSON.parse(decodeURIComponent(r.headers.get('X-Meta')||'%7B%7D')); var b=await r.blob();
+        return {file:new File([b], meta.name||(order[i]+'_'+key(offer)+'.pdf'), {type:'application/pdf'}), kind:order[i], meta:meta, offline:true}; }
+    }catch(e){}
+    return null;
+  }
+
+  /* ---------- library ---------- */
+  LD.save = async function(file, meta){            // meta: {offer, kind, customer, site, salesperson, positions, sqft, app}
+    meta = Object.assign({by:who()}, meta||{});
+    if (!key(meta.offer)) throw new Error('No Offer No to save under');
+    await keep(meta.offer, meta.kind, file, Object.assign({}, meta, {name:file.name}));
+    var data = await toB64(file);
+    var r = await post(Object.assign({action:'docSave', data:data}, meta));
+    if (!r || !r.ok) throw new Error((r&&r.error)||'Save failed');
+    return r;
+  };
+  /* save quietly after an app reads a PDF; never blocks or throws */
+  LD.saveQuiet = function(file, meta){ try{ LD.save(file, meta).catch(function(e){ console.warn('Library save failed:', e.message); }); }catch(e){} };
+  LD.load = async function(offer, prefer){         // → {file, kind, meta, offline}
+    if (!key(offer)) throw new Error('Enter an Offer No.');
+    var r;
+    try{ r = await post({action:'docGet', offer:offer, prefer:prefer||'production'}); }
+    catch(e){ var l=await local(offer,prefer); if(l) return l; throw e; }
+    if (r && r.ok && r.data){
+      var file = new File([b64ToBlob(r.data)], r.name||(r.kind+'_'+key(offer)+'.pdf'), {type:'application/pdf'});
+      delete r.data; await keep(offer, r.kind, file, r);
+      return {file:file, kind:r.kind, meta:r, offline:false};
+    }
+    var l2 = await local(offer,prefer); if (l2) return l2;
+    throw new Error((r&&r.error)||('Nothing saved for '+offer));
+  };
+  LD.api = api;
+  LD.list = async function(){ try{ var r=await post({action:'docList'}); return (r&&r.ok&&r.list)||[]; }catch(e){ return []; } };
+
+  /* "Load by Offer No" dialog. onLoaded(file, kind, meta, offline) */
+  LD.openLoader = function(onLoaded, preset, prefer){
+    var old=document.getElementById('ldDlg'); if(old) old.remove();
+    var w=document.createElement('div'); w.id='ldDlg';
+    w.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+    w.innerHTML='<div style="background:#1a1e25;color:#e8e4d9;border:1px solid #2a2f3a;border-top:4px solid #ffce1f;border-radius:12px;padding:18px;width:100%;max-width:380px;font-family:\'Spline Sans\',system-ui,sans-serif">'
+      +'<div style="font-family:Archivo,sans-serif;font-weight:900;font-size:17px;margin-bottom:4px">Load by Offer No</div>'
+      +'<div style="font-size:12px;color:#7c8694;margin-bottom:12px">Uses the production sheet or quotation already uploaded in any app</div>'
+      +'<input id="ldOff" list="ldDl" autocomplete="off" placeholder="e.g. 79173/3" style="width:100%;box-sizing:border-box;padding:11px 13px;font-size:16px;border-radius:8px;border:1px solid #2a2f3a;background:#222732;color:#e8e4d9">'
+      +'<datalist id="ldDl"></datalist>'
+      +'<div id="ldMsg" style="min-height:18px;font-size:12px;margin:8px 0;color:#7c8694"></div>'
+      +'<div style="display:flex;gap:8px"><button id="ldX" type="button" style="flex:1;padding:11px;border-radius:8px;border:1px solid #2a2f3a;background:transparent;color:#7c8694;font-weight:700">Cancel</button>'
+      +'<button id="ldGo" type="button" style="flex:1;padding:11px;border-radius:8px;border:none;background:#ffce1f;color:#111;font-weight:700">Load →</button></div></div>';
+    document.body.appendChild(w);
+    var inp=w.querySelector('#ldOff'), msg=w.querySelector('#ldMsg'), go=w.querySelector('#ldGo');
+    if (preset) inp.value=preset;
+    setTimeout(function(){ inp.focus(); },50);
+    LD.list().then(function(list){ w.querySelector('#ldDl').innerHTML=list.map(function(x){
+      var tag=(x.kinds||[]).map(function(k){return k==='production'?'Production sheet':'Quotation';}).join(' + ');
+      return '<option value="'+esc(x.offer)+'">'+esc((x.customer||'')+(tag?' · '+tag:''))+'</option>'; }).join(''); });
+    function close(){ w.remove(); }
+    w.querySelector('#ldX').onclick=close;
+    w.addEventListener('click',function(e){ if(e.target===w) close(); });
+    async function run(){
+      var off=inp.value.trim(); if(!off){ msg.style.color='#ef4444'; msg.textContent='Enter an Offer No.'; return; }
+      go.disabled=true; msg.style.color='#7c8694'; msg.textContent='Loading…';
+      try{ var res=await LD.load(off, prefer); close(); await onLoaded(res.file, res.kind, Object.assign({offer:off}, res.meta||{}), res.offline); }
+      catch(e){ go.disabled=false; msg.style.color='#ef4444'; msg.textContent=e.message||String(e); }
+    }
+    go.onclick=run; inp.addEventListener('keydown',function(e){ if(e.key==='Enter') run(); });
+  };
+
+  /* ---------- reading PDFs ---------- */
+  function loadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){rej(new Error('Could not load '+src));}; document.head.appendChild(s); }); }
+  LD.pdfjs = async function(){
+    if (!window.pdfjsLib) await loadScript(PDFJS);
+    try{ if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_W; }catch(e){}
+    return window.pdfjsLib;
+  };
+  /* 'production' if the PDF is a Lingel production sheet, else 'quotation' */
+  LD.kind = async function(file){
+    var lib = await LD.pdfjs();
+    var pdf = await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    var tc = await (await pdf.getPage(1)).getTextContent();
+    var t = tc.items.map(function(i){return i.str;}).join(' ');
+    return /Order-Pos\.?\s*:/.test(t) || /Dokument-Nr\.?\s*:/.test(t) ? 'production' : 'quotation';
+  };
+
+  /* Production sheet reader — same rules as Corner Check.
+     → {offer, customer, admin, sales, color, material, positions:[{ref,no,qty,w,h,sqft,nS,nM,fixed,system,frameType,series,method,connector,frame,sashes,mW,mH,mArt,drawing}], drawings:Promise} */
+  var NUM=/^\d{2,5}[,.]\d{1,2}$/;
+  function num(s){ return parseFloat(String(s).replace(',','.')); }
+  LD.parseProduction = async function(file, opts){
+    opts = opts||{};
+    var lib = await LD.pdfjs();
+    var pdf = await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    var lines=[];
+    for (var pn=1; pn<=pdf.numPages; pn++){
+      if (opts.progress) opts.progress('Reading page '+pn+' of '+pdf.numPages+'…');
+      var page=await pdf.getPage(pn), vp=page.getViewport({scale:1}), tc=await page.getTextContent(), toks=[];
+      tc.items.forEach(function(it){ if(!it.str||!it.str.trim()) return; var x=it.transform[4], y=vp.height-it.transform[5], cw=(it.width||0)/Math.max(1,it.str.length);
+        var idx=0; it.str.split(/(\s+)/).forEach(function(part){ if(part.trim()) toks.push({s:part,x:x+idx*cw,y:y,page:pn}); idx+=part.length; }); });
+      toks.sort(function(a,b){return a.y-b.y||a.x-b.x;});
+      var rows=[]; toks.forEach(function(t){ var r=rows.find(function(r){return Math.abs(r.y-t.y)<2.5;}); r?r.toks.push(t):rows.push({y:t.y,toks:[t]}); });
+      rows.sort(function(a,b){return a.y-b.y;}).forEach(function(r){ r.toks.sort(function(a,b){return a.x-b.x;});
+        lines.push({page:pn,y:r.y,toks:r.toks,text:r.toks.map(function(t){return t.s;}).join(' ')}); });
+    }
+    var full=lines.map(function(l){return l.text;}).join('\n');
+    var g=function(re,s){ var m=(s==null?full:s).match(re); return m?m[1].trim():''; };
+    var out={offer:g(/Dokument-Nr\.?\s*:\s*(\S+)/), customer:g(/Customer:\s*(.+?)\s+Administrator:/), admin:g(/Administrator:\s*([^\n]+)/),
+      sales:g(/Sales by:\s*([^\n]+)/), color:'', material:/System\s*:\s*u?PVC/i.test(full)?'upvc':'alu', positions:[]};
+    var ops=lines.map(function(l,i){return /Order-Pos\.?\s*:/.test(l.text)?i:-1;}).filter(function(i){return i>=0;});
+    var blocks=[];
+    ops.forEach(function(oi,k){
+      var end=k+1<ops.length?ops[k+1]:lines.length, bl=lines.slice(oi,end), L0=lines[oi];
+      var txt=bl.map(function(l){return l.text;}).join('\n');
+      var ref=g(/Order-Pos\.?\s*:\s*(.*?)\s*(?:Color:|Quantity:|$)/,L0.text), contY=L0.y;
+      var nx=lines[oi+1];
+      if (nx&&nx.page===L0.page&&nx.y-L0.y<14&&nx.text.indexOf(':')<0&&nx.text.length<=24){ ref+=' '+nx.text.trim(); contY=nx.y; }
+      if (!out.color) out.color=g(/Color:\s*(\S+)/,L0.text);
+      var p={ref:ref, qty:+g(/Quantity:\s*(\d+)/,L0.text)||1,
+        system:g(/System\s*:\s*(?:Aluminium\s*-\s*)?([^\n]+?)(?:\s{2,}|$)/m,txt), series:g(/Lingel\s*([\d.]+)/,txt),
+        frameType:g(/Frame\s*:\s*([^\n]+)/,txt), method:g(/Method\s*:\s*([A-Za-z ]+?)(?:,|\n|$)/,txt), connector:g(/Corner Connector\s*:\s*(\S+)/,txt),
+        frame:null, fixed:false, sashes:[], nS:0, nM:0, drawing:''};
+      var hi=bl.findIndex(function(l){return /^Nr\b/.test(l.text)&&l.text.indexOf('Artikel')>=0;});
+      if (hi>=0){ var H=bl[hi], arts=H.toks.filter(function(t){return t.s==='Artikel';}), nrMax=arts[0].x-3, colMax=arts[1]?arts[1].x-3:arts[0].x+150;
+        var tl=[]; for (var i=hi+1;i<bl.length;i++){ var l=bl[i]; if(l.page!==H.page||/^(Connectors|Sliding|Shutter|Hardware|ISO|Production)/.test(l.text)) break; tl.push.apply(tl, l.toks.filter(function(t){return t.x<colMax;})); }
+        var nums=tl.filter(function(t){return NUM.test(t.s);}), rws=[];
+        nums.forEach(function(t){ var r=rws.find(function(r){return Math.abs(r.y-t.y)<2.5;}); r?r.n.push(t):rws.push({y:t.y,n:[t]}); });
+        rws.sort(function(a,b){return a.y-b.y;});
+        rws.forEach(function(r,i){ if(r.n.length<2) return; r.n.sort(function(a,b){return a.x-b.x;}); var ny=rws[i+1]?rws[i+1].y:1e9, lim=Math.min(ny-2.5,r.y+16);
+          var art=tl.filter(function(t){return /[A-Za-z]/.test(t.s)&&t.x<r.n[0].x-1&&t.y>=r.y-3&&t.y<lim;}).sort(function(a,b){return a.y-b.y||a.x-b.x;}).map(function(t){return t.s;}).join('');
+          var nr=tl.find(function(t){return t.x<nrMax+6&&/^\d{1,2}$/.test(t.s)&&t.y>=r.y-3&&t.y<lim;});
+          var o={art:art,w:num(r.n[0].s),h:num(r.n[1].s),nr:nr?+nr.s:0};
+          if (o.nr) p.sashes.push(o); else if (!p.frame) p.frame=o; });
+        if (!p.frame&&p.sashes.length===1){ p.frame=p.sashes[0]; p.frame.nr=0; p.sashes=[]; p.fixed=true; }
+      }
+      if (!p.frame) p.frame={art:'',w:0,h:0};
+      p.nS=p.sashes.length;
+      var cut=function(name){ var re=new RegExp(name+'[^\\n]*?(\\d{2,5}[,.]\\d)\\s+45\\s+45\\s+([UOLR])\\b','g'), m, w=0, h=0, n=0;
+        while((m=re.exec(txt))){ n++; if(/[UO]/.test(m[2])) w=w||num(m[1]); else h=h||num(m[1]); } return {n:n,w:w,h:h}; };
+      var ms=cut('Aluminium Sliding Sash');
+      p.nM=Math.ceil(ms.n/4); p.mW=ms.w; p.mH=ms.h; p.mArt=g(/(\S+?-FB-\S+)/,txt);
+      p.no=parseInt(ref,10)||k+1;
+      p.w=p.frame.w; p.h=p.frame.h;
+      p.sqft=p.w&&p.h ? p.w*p.h*p.qty/92903.04 : 0;          // mm² → sq.ft, times quantity
+      blocks.push({p:p,page:L0.page,y0:contY+6});
+      out.positions.push(p);
+    });
+    out.positions.sort(function(a,b){return a.no-b.no;});
+    out.drawings = opts.drawings===false ? Promise.resolve() : extractDrawings(pdf,blocks);
+    return out;
+  };
+  async function extractDrawings(pdf,blocks){
+    var byPage={}; blocks.forEach(function(b){ (byPage[b.page]=byPage[b.page]||[]).push(b); });
+    for (var pg in byPage){
+      var page=await pdf.getPage(+pg), S=2, vp=page.getViewport({scale:S});
+      var cv=document.createElement('canvas'); cv.width=vp.width; cv.height=vp.height; var ctx=cv.getContext('2d');
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); await page.render({canvasContext:ctx,viewport:vp}).promise;
+      byPage[pg].forEach(function(b){ try{ var x0=25,x1=188,y0=b.y0,y1=Math.min(vp.height/S,y0+330); if(y1-y0<30) return;
+        var c=document.createElement('canvas'); c.width=(x1-x0)*S; c.height=Math.round((y1-y0)*S); var cx=c.getContext('2d'); cx.drawImage(cv,x0*S,y0*S,c.width,c.height,0,0,c.width,c.height);
+        var d=cx.getImageData(0,0,c.width,c.height).data, first=-1, blank=0, cutY=c.height;
+        for (var y=0;y<c.height;y++){ var ink=false; for (var x=0;x<c.width;x+=2){ var i=(y*c.width+x)*4; if(d[i]+d[i+1]+d[i+2]<600){ink=true;break;} }
+          if (ink){ if(first<0) first=y; blank=0; } else if (first>=0){ blank++; if(y-first>100*S&&blank>=7*S){ cutY=y-blank+1; break; } } }
+        var o=document.createElement('canvas'); o.width=c.width; o.height=cutY; o.getContext('2d').drawImage(c,0,0);
+        var t=trimWhite(o); if(t) b.p.drawing=t; }catch(e){} });
+    }
+  }
+  function trimWhite(c){ var x=c.getContext('2d'), d=x.getImageData(0,0,c.width,c.height).data, a=c.width, b=c.height, r=-1, s=-1;
+    for (var y=0;y<c.height;y++) for (var X=0;X<c.width;X++){ var i=(y*c.width+X)*4; if(d[i]+d[i+1]+d[i+2]<690){ if(X<a)a=X; if(X>r)r=X; if(y<b)b=y; if(y>s)s=y; } }
+    if (r<0) return ''; var P=6; a=Math.max(0,a-P); b=Math.max(0,b-P); r=Math.min(c.width,r+P); s=Math.min(c.height,s+P);
+    var w=r-a, h=s-b, k=Math.min(1,560/Math.max(w,h)); var o=document.createElement('canvas'); o.width=Math.round(w*k); o.height=Math.round(h*k);
+    var ox=o.getContext('2d'); ox.fillStyle='#fff'; ox.fillRect(0,0,o.width,o.height); ox.drawImage(c,a,b,w,h,0,0,o.width,o.height); return o.toDataURL('image/jpeg',.82); }
+
+  /* one-line description used by apps that show a "spec" */
+  LD.describe = function(p){
+    var parts=[];
+    if (p.system) parts.push(p.system);
+    parts.push(p.fixed ? 'Fixed' : (p.nS ? p.nS+' sash'+(p.nS>1?'es':'') : ''));
+    if (p.nM) parts.push(p.nM+' mesh');
+    return parts.filter(Boolean).join(' · ');
+  };
+})();
+
+</script>
+<script>
+/* ===== QUOTATION + WORK ORDER at booking ===================================
+   Upload a quotation in the Book popup → fills Offer/Site, saves it to the
+   quotation library (any app can load it by Offer No), and makes a WORK ORDER
+   in the same layout as the Contractor Invoice. Not logged to the Invoices
+   sheet — the real INV number is raised in the invoice app when work is done. */
+const WO_RATES={'Aluminium Windows & Doors':45,'UPVC Windows & Doors':25,'Skylight':55,'Glass House':60,'Georgian Bars':15,'Dismantling Old Windows':35,'Outstation (beyond 200km)':60};
+const WO_CO={lingel:{n:'Lingel Windows & Doors Technology Pvt. Ltd',a:'Kapriwas Sec-14, Kapriwas, Haryana 123110',g:'06AABCL1537B2Z3'},fensterbau:{n:'Fensterbau Lingel India Private Limited',a:'1st floor, 12A & 22, near Subhash chowk, Central Park II, Sector 48, Gurugram, Haryana 122018',g:'06AACCF0423D1ZI'}};
+const WO_STORE='lingel_workorders_v1';
+let bookQ=null;   // parsed quotation in the open Book popup
+
+function woAll(){ try{ return JSON.parse(localStorage.getItem(WO_STORE)||'{}'); }catch(e){ return {}; } }
+function woPut(o){ try{ const a=woAll(); a[String(o.offer).toUpperCase()]=o; const ks=Object.keys(a); if(ks.length>200) delete a[ks[0]]; localStorage.setItem(WO_STORE,JSON.stringify(a)); }catch(e){} }
+function woGet(offer){ return woAll()[String(offer||'').toUpperCase()]||null; }
+function inr(n){ return '₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2}); }
+
+async function ensurePdfjsTA(){
+  if(window.pdfjsLib) return;
+  await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+/* same parser as the Contractor Invoice app (agreed position rule) */
+async function parseQuotationTA(file){
+  let kind='quotation'; try{ kind=await LD.kind(file); }catch(e){}
+  if(kind==='production'){
+    const r=await LD.parseProduction(file,{drawings:false});
+    const items=r.positions.map(p=>({ref:p.ref,w:p.w,h:p.h,sqft:p.sqft}));
+    return {kind,offer:r.offer,client:r.customer,items,total:items.reduce((s,q)=>s+q.sqft,0),
+      service:r.material==='upvc'?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
+  }
+  const q=await parseQuotationTA_q(file); q.kind='quotation'; return q;
+}
+async function parseQuotationTA_q(file){
+  await ensurePdfjsTA();
+  const normNum=v=>{const n=parseFloat(String(v).replace(/\./g,'').replace(',','.'));return isFinite(n)?n:null;};
+  const RE_LBL=/^(?:\d{1,3}-|Add-|ADD-)/i, RE_MEAS=/([A-Za-z]\d?)=([\d.,]+)/g;
+  const qLabel=l=>{const mi=l.search(/\s+[A-Za-z]\d?=[\d.,]+;/);return (mi>=0?l.slice(0,mi):l).trim();};
+  const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+  const all=[]; let offer='', client='', text='';
+  for(let pn=1;pn<=pdf.numPages;pn++){
+    const tc=await (await pdf.getPage(pn)).getTextContent();
+    const sp=[]; tc.items.forEach(it=>{ if(it.str) sp.push({x:it.transform[4],y:it.transform[5],str:it.str}); });
+    sp.sort((a,b)=>b.y-a.y);
+    const bk=[]; for(const s of sp){ let p=false; for(const b of bk){ if(Math.abs(s.y-b.y)<5){ b.items.push(s); p=true; break; } } if(!p) bk.push({y:s.y,items:[s]}); }
+    const lines=bk.sort((a,b)=>b.y-a.y).map(b=>b.items.sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim());
+    for(const ln of lines){
+      text+=' '+ln;
+      const nr=ln.match(/(?:Nr|Offer|Quotation)[^0-9]*([0-9]{4,7}\/[0-9]{1,3})/i)||ln.match(/\b([0-9]{4,7}\/[0-9]{1,3})\b/);
+      if(nr&&!offer&&!/Tel|Fax|Phone/i.test(ln)) offer=nr[1];
+      const cl=ln.match(/(Mr|Mrs|Ms|M\/s)\.?\s+\S.*/i);
+      if(cl&&!client&&!/Sales|Manager|Sr\./i.test(ln)) client=ln.trim();
+      all.push(ln);
+    }
+  }
+  let cur=null; const blocks=[];
+  for(const ln of all){ if(RE_LBL.test(ln)){ cur={label:qLabel(ln),text:ln}; blocks.push(cur); } else if(cur) cur.text+=' '+ln; }
+  const items=[], seen={};
+  for(const b of blocks){
+    const tk={}; let m; RE_MEAS.lastIndex=0;
+    while((m=RE_MEAS.exec(b.text))){ if(tk[m[1]]==null) tk[m[1]]=normNum(m[2]); }
+    let W=null,H=null;
+    if(tk.B!=null&&tk.H!=null){W=tk.B;H=tk.H;} else if(tk.L!=null&&tk.A!=null){W=tk.L;H=tk.A;}
+    if(W==null||H==null) continue;
+    let ref=b.label||('Position '+(items.length+1));
+    if(seen[ref]==null) seen[ref]=1; else { seen[ref]++; ref+=' ('+seen[ref]+')'; }
+    items.push({ref,w:W,h:H,sqft:(W*H)/(304.8*304.8)});
+  }
+  client=client.replace(/^(M\/s|Mr|Mrs|Ms)\.?\s*/i,'').split(/\s{2,}|,|\|/)[0].trim().slice(0,60);
+  const upvc=/u\s*pvc|\bpvc\b/i.test(text), alu=/alumin/i.test(text);
+  return {offer,client,items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
+}
+
+/* HTML for the Book popup */
+function quoteFieldHTML(){
+  return '<div class="fd"><label>Quotation or production sheet (fills offer &amp; site · makes invoice)</label>'
+    +'<div style="display:flex;gap:8px"><button type="button" class="qup" id="mQBtn">📄 Upload PDF</button><button type="button" class="qup" id="mQLoad">🔎 By Offer No</button></div>'
+    +'<input type="file" id="mQFile" accept="application/pdf,.pdf" hidden>'
+    +'<div class="qinfo" id="mQInfo"></div></div>'
+    +'<div id="mWo" hidden>'
+    +'<div class="fd"><label>Invoice — rate</label><select id="mWoSvc" class="msel">'+Object.keys(WO_RATES).map(s=>'<option value="'+esc(s)+'">'+esc(s)+' (₹'+WO_RATES[s]+'/sqft)</option>').join('')+'</select></div>'
+    +'<div class="fd"><label>Bill to</label>'+seg('segBill',[{v:'lingel',l:'Lingel'},{v:'fensterbau',l:'Fensterbau'}],'lingel')+'</div>'
+    +'</div>';
+}
+function wireQuoteField(){
+  bookQ=null;
+  const b=document.getElementById('mQBtn'), f=document.getElementById('mQFile'), info=document.getElementById('mQInfo');
+  if(!b) return;
+  b.onclick=()=>f.click();
+  const lb=document.getElementById('mQLoad');
+  if(lb) lb.onclick=()=>LD.openLoader(async(file)=>{ await useFile(file,true); }, (document.getElementById('mOffer').value||'').trim(), 'production');
+  f.onchange=async()=>{ const file=f.files[0]; f.value=''; if(file) await useFile(file,false); };
+  async function useFile(file,fromLib){
+    info.className='qinfo'; info.textContent='Reading '+file.name+'…';
+    try{
+      const q=await parseQuotationTA(file); q.file=file; q.fromLib=fromLib; bookQ=q;
+      const o=document.getElementById('mOffer'), p=document.getElementById('mProject');
+      if(q.offer) o.value=q.offer;
+      if(q.client && !p.value) p.value=q.client;
+      document.getElementById('mWoSvc').value=q.service;
+      document.getElementById('mWo').hidden=false;
+      info.className='qinfo ok';
+      info.textContent='✓ '+(q.kind==='production'?'Production sheet · ':'Quotation · ')+(q.offer?('#'+q.offer+' · '):'')+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft';
+      b.textContent='📄 Change PDF';
+    }catch(e){ bookQ=null; info.className='qinfo err'; info.textContent='⚠ '+(e.message||"Couldn't read PDF"); }
+  }
+}
+
+function workOrderHTML(w){
+  const bill=WO_CO[w.billTo]||WO_CO.lingel, inst=w.sqft*w.rate;
+  const td='padding:6px 12px;border-bottom:1px solid #eee;font-size:11px';
+  const posRows=(w.items||[]).map((q,i)=>`<tr><td style="${td}">${i+1}</td><td style="${td}">${esc(q.ref)}</td><td style="${td};text-align:center">${Math.round(q.w)} × ${Math.round(q.h)}</td><td style="${td};text-align:right">${q.sqft.toFixed(2)}</td></tr>`).join('');
+  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;width:100%;padding:40px 45px;background:#fff">
+    <div style="text-align:center;margin-bottom:30px">
+      <div style="font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:2px">${esc(w.contractor)}</div>
+      <div style="font-size:13px;color:#666;margin-top:4px;text-transform:uppercase;letter-spacing:1px">UPVC & Aluminium Window & Door Installation</div>
+      <div style="font-size:12px;color:#888;margin-top:6px">${esc(w.addr||'')} ${w.phone?'· '+esc(w.phone):''}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #1a1a1a">
+      <div>
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Bill To</div>
+        <div style="font-weight:700;font-size:14px">${bill.n}</div>
+        <div style="font-size:12px;color:#555;max-width:280px;line-height:1.5">${bill.a}</div>
+        <div style="font-size:12px;color:#555;margin-top:4px"><span style="color:#888">GSTIN:</span> <b>${bill.g}</b></div>
+        ${w.customer?`<div style="font-size:12px;color:#555;margin-top:8px"><span style="color:#888">Customer:</span> <b>${esc(w.customer)}</b></div>`:''}
+        <div style="font-size:12px;color:#555"><span style="color:#888">Offer No.:</span> <b>${esc(w.offer)}</b></div>
+        ${w.city?`<div style="font-size:12px;color:#555"><span style="color:#888">City:</span> <b>${esc(w.city)}</b></div>`:''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:30px;font-weight:900;color:#1a1a1a;letter-spacing:1px">INVOICE</div>
+        <table style="margin-left:auto;font-size:12px;margin-top:8px">
+          <tr><td style="color:#888;text-align:right;padding:2px 10px">Invoice No.</td><td style="font-weight:700">${esc(w.woNo)}</td></tr>
+          <tr><td style="color:#888;text-align:right;padding:2px 10px">Date</td><td style="font-weight:700">${esc(w.date)}</td></tr>
+          <tr><td style="color:#888;text-align:right;padding:2px 10px">Team</td><td style="font-weight:700">Team ${esc(w.team)}</td></tr>
+          ${w.salesperson?`<tr><td style="color:#888;text-align:right;padding:2px 10px">Salesperson</td><td style="font-weight:700">${esc(w.salesperson)}</td></tr>`:''}
+          ${w.by?`<tr><td style="color:#888;text-align:right;padding:2px 10px">Assigned by</td><td style="font-weight:700">${esc(w.by)}</td></tr>`:''}
+        </table>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:6px">
+      <thead><tr style="background:#1a1a1a;color:#fff">
+        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase">#</th>
+        <th style="padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase">Description</th>
+        <th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase">Sq.ft</th>
+        <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase">Rate</th>
+        <th style="padding:10px 12px;text-align:right;font-size:11px;text-transform:uppercase">Amount</th></tr></thead>
+      <tbody><tr style="background:#f8f9fa">
+        <td style="padding:12px;border-bottom:1px solid #ddd">1</td>
+        <td style="padding:12px;border-bottom:1px solid #ddd;font-weight:600">${esc(w.service)} — Window & Door Installation</td>
+        <td style="padding:12px;border-bottom:1px solid #ddd;text-align:center;font-weight:700">${w.sqft.toFixed(2)}</td>
+        <td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">₹${w.rate.toLocaleString('en-IN')}/sqft</td>
+        <td style="padding:12px;border-bottom:1px solid #ddd;text-align:right;font-weight:700;font-size:15px">${inr(inst)}</td></tr></tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-top:20px">
+      <table style="min-width:280px;font-size:13px">
+        <tr><td style="padding:6px 16px;color:#666">Installation</td><td style="padding:6px 16px;text-align:right;font-weight:600">${inr(inst)}</td></tr>
+        <tr><td style="padding:6px 16px;color:#666">Additional charges</td><td style="padding:6px 16px;text-align:right;font-weight:600">₹0</td></tr>
+        <tr style="font-size:18px;font-weight:900;border-top:2px solid #1a1a1a"><td style="padding:12px 16px">GRAND TOTAL</td><td style="padding:12px 16px;text-align:right">${inr(inst)}</td></tr>
+      </table>
+    </div>
+    ${posRows?`<div style="margin-top:22px;margin-bottom:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888">Positions (${w.items.length})</div>
+    <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f1f1f1">
+      <th style="padding:7px 12px;text-align:left;font-size:10px;color:#666">#</th><th style="padding:7px 12px;text-align:left;font-size:10px;color:#666">POSITION</th>
+      <th style="padding:7px 12px;text-align:center;font-size:10px;color:#666">W × H (MM)</th><th style="padding:7px 12px;text-align:right;font-size:10px;color:#666">SQ.FT</th></tr></thead>
+      <tbody>${posRows}</tbody></table>`:''}
+    <div style="margin-top:16px;padding:12px 16px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:6px">Notes / Terms</div>
+      <div style="font-size:12px;line-height:1.6;color:#444">Installation charged on quotation sizes at the rate-card rate. Additional charges only as approved by Padam Singh. Penalties as per the contractor rate card.</div>
+    </div>
+    <div style="margin-top:40px;display:flex;justify-content:space-between">
+      <div style="text-align:center;width:200px"><div style="border-top:1px solid #999;padding-top:8px;font-size:11px;color:#888">Contractor Signature</div></div>
+      <div style="text-align:center;width:200px"><div style="border-top:1px solid #999;padding-top:8px;font-size:11px;color:#888">Authorized Signature</div></div>
+    </div>
+    <div style="margin-top:30px;text-align:center;font-size:10px;color:#aaa">Generated on ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</div>
+  </div>`;
+}
+async function workOrderPdf(w){
+  await ensurePdfLib();
+  const holder=document.createElement('div');
+  holder.style.cssText='position:fixed;left:-10000px;top:0;width:760px;background:#fff;z-index:-1';
+  holder.innerHTML=workOrderHTML(w); document.body.appendChild(holder);
+  await new Promise(r=>setTimeout(r,80));
+  const cv=await window.html2canvas(holder,{scale:2.5,backgroundColor:'#ffffff'});
+  document.body.removeChild(holder);
+  const pdf=new window.jspdf.jsPDF({unit:'pt',format:'a4',compress:true});
+  const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+  const pxPerPage=Math.floor(cv.width*ph/pw);           // long position lists flow onto extra pages
+  for(let y=0,pg=0;y<cv.height;y+=pxPerPage,pg++){
+    const h=Math.min(pxPerPage,cv.height-y), c=document.createElement('canvas'); c.width=cv.width; c.height=h;
+    c.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h);
+    if(pg) pdf.addPage();
+    pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw,h*pw/cv.width,undefined,'FAST');
+  }
+  return pdf;
+}
+function contractorInfo(name){
+  const r=rows.find(x=>x.name===name)||{};
+  const code=r.code||String(name).split(/\s+/).map(s=>s[0]).join('').toUpperCase();
+  return {code, phone:r.phone||'', addr:r.addr||''};
+}
+/* Real invoice number from the Invoice sheet (same as the Contractor Invoice app),
+   logged once to the Invoices tab. Re-downloads reuse the same number. */
+async function ensureInvoiceNo(w){
+  if(w.invNo){ w.woNo=w.invNo; return; }
+  let next=null;
+  try{ const r=await fetch(INVOICE_EXEC+'?action=next&contractor='+encodeURIComponent(w.code)+'&t='+Date.now(),{cache:'no-store'}); const d=await r.json();
+       if(d&&typeof d.next==='number') next=d.next; }catch(e){}
+  if(next==null) next=parseInt(localStorage.getItem('linv_seq_'+w.code)||'0',10)+1;   // offline fallback
+  w.invNo='INV-'+w.code+'-'+String(next).padStart(3,'0'); w.woNo=w.invNo;
+  localStorage.setItem('linv_seq_'+w.code,String(next));
+  const inst=w.sqft*w.rate;
+  const payload={action:'log',timestamp:new Date().toISOString(),contractor:w.contractor,code:w.code,invoiceNo:w.invNo,date:w.date,
+    billTo:(WO_CO[w.billTo]||WO_CO.lingel).n,workType:'Regular Installation',offerNo:w.offer,customer:w.customer||'',
+    totalSqft:Number(w.sqft.toFixed(2)),rate:w.rate,installation:inst,additional:0,grandTotal:inst,charges:[],
+    notes:'Raised at booking - Team '+w.team+(w.by?(' - by '+w.by):'')};
+  try{ await fetch(INVOICE_EXEC,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}); }catch(e){}
+  woPut(w);
+}
+async function makeWorkOrder(w, opts){
+  opts=opts||{};
+  await ensureInvoiceNo(w);
+  const fname='Invoice_'+w.woNo.replace(/[^\w-]+/g,'-')+'.pdf';
+  const pdf=await workOrderPdf(w);
+  pdf.save(fname);
+  try{   // same per-order Drive folder as the other apps (hub action=upload)
+    const dataUri=pdf.output('datauristring'); const b64=dataUri.slice(dataUri.indexOf(',')+1);
+    const hub=LD.api();
+    if(hub){ await fetch(hub,{method:'POST',body:new URLSearchParams({action:'upload',folder:w.offer,name:fname,mime:'application/pdf',data:b64})}); }
+  }catch(e){ console.warn('WO Drive upload failed',e); }
+}
+/* called from the Book popup after the team is booked/planned */
+async function afterBookWithQuote(q, b){
+  const ci=contractorInfo(b.name), svc=b.service, rate=WO_RATES[svc]||45;
+  const w={woNo:'', offer:b.offer, customer:b.project||q.client, city:b.city,
+    salesperson:b.sales, contractor:b.name, team:b.team, phone:ci.phone, addr:ci.addr, code:ci.code, by:SUP,
+    date:new Date(b.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
+    service:svc, rate, billTo:b.billTo, items:q.items, sqft:q.total};
+  woPut(w);
+  setDot('dot','syncTxt','busy','Saving document & invoice…');
+  let qOk=true;
+  try{ if(!q.fromLib) await LD.save(q.file,{offer:b.offer,kind:q.kind,customer:w.customer,site:b.project,salesperson:b.sales,positions:String(q.items.length),sqft:q.total.toFixed(2),by:SUP,app:'Team Availability'}); }
+  catch(e){ qOk=false; console.warn(e); }
+  try{ await makeWorkOrder(w); setDot('dot','syncTxt',qOk?'ok':'err', qOk?('Invoice '+w.woNo+' ready · document saved'):('Invoice '+w.woNo+' ready · document NOT saved online ('+'kept on phone)')); }
+  catch(e){ setDot('dot','syncTxt','err','Invoice failed: '+(e.message||e)); }
+}
+/* "Work order" button on a booked team */
+async function reprintWorkOrder(name,team,offer){
+  let w=woGet(offer);
+  if(!w){
+    try{
+      setDot('dot','syncTxt','busy','Loading quotation #'+offer+'…');
+      const res=await LD.load(offer,'production'); const q=await parseQuotationTA(res.file); const ci=contractorInfo(name);
+      w={woNo:'',offer,customer:res.meta.customer||q.client,city:res.meta.city||'',salesperson:res.meta.salesperson||'',
+        contractor:name,team,phone:ci.phone,addr:ci.addr,code:ci.code,by:SUP,date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
+        service:q.service,rate:WO_RATES[q.service],billTo:'lingel',items:q.items,sqft:q.total};
+      woPut(w);
+    }catch(e){ setDot('dot','syncTxt','err','No quotation saved for #'+offer); alert('No quotation found for #'+offer+'.\n\nUpload it while booking to create an invoice.'); return; }
+  }
+  w.contractor=name; w.team=team;
+  try{ await makeWorkOrder(w); setDot('dot','syncTxt','ok','Invoice '+w.woNo+' downloaded'); }
+  catch(e){ setDot('dot','syncTxt','err','Invoice failed: '+(e.message||e)); }
+}
+
 </script>
 </body>
 </html>
