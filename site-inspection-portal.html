@@ -245,6 +245,7 @@
     </div>
     <button class="btn btn-ghost" id="trBtn" title="Translate Hindi dictation to English">🌐 →EN</button>
     <button class="btn btn-ghost" id="importBtn">📄 Import quotation(s)</button>
+    <button class="btn btn-ghost" id="offerLoadBtn" onclick="slLoadByOffer()">🔎 Offer No</button>
     <input type="file" id="importFile" accept="application/pdf,.pdf" multiple hidden>
     <button class="btn btn-ghost" id="backupBtn">⬇ Backup</button>
     <label class="btn btn-ghost" for="restoreFile" style="cursor:pointer">⬆ Restore<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
@@ -1739,4 +1740,260 @@ function p2d(d){return String(d.getDate()).padStart(2,'0');}
   };
   window.addEventListener("online",flush); flush();
 })();
+</script>
+
+<script>
+/* ===== LINGEL ORDER DOCUMENTS (shared by every app) ==========================
+   1) Library: a quotation or production sheet uploaded ONCE in any app is saved
+      by Offer No; every other app loads it with "Load by Offer No".
+   2) Reader: LD.kind(file) tells a production sheet from a quotation, and
+      LD.parseProduction(file) reads a production sheet exactly like Corner Check.
+   Backend: hub Apps Script actions docSave / docGet / docList.               */
+(function(){
+  if (window.LD) return;
+  var HUB = "https://script.google.com/macros/s/AKfycbzTi9ihe1YpDEIkX7IdAnDqNl61rU3IDecHUetV4mmwAVezMbJSu_Ruxg4_CJnscVEH/exec";
+  var CACHE = 'lingel-docs-v1';
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  var PDFJS_W = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var LD = window.LD = {};
+  function api(){ return HUB; }
+  function key(o){ return String(o||'').trim().toUpperCase().replace(/\s+/g,''); }
+  function cacheUrl(o,k){ return './__orderdoc__/'+encodeURIComponent(key(o))+'/'+k; }
+  function b64ToBlob(b64){ var bin=atob(b64), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return new Blob([u],{type:'application/pdf'}); }
+  function toB64(blob){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ var s=String(r.result); res(s.slice(s.indexOf(',')+1)); }; r.onerror=rej; r.readAsDataURL(blob); }); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];}); }
+  function who(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); return (s&&s.name)||''; }catch(e){ return ''; } }
+
+  async function post(params){
+    var r = await fetch(api(), {method:'POST', body:new URLSearchParams(params)});
+    var t = (await r.text()).trim();
+    if (t.charAt(0)==='<') throw new Error('Backend not reachable. Check the hub script deployment.');
+    var d; try{ d=JSON.parse(t); }catch(e){ throw new Error('Backend reply not understood'); }
+    if (d && d.ok===false && !d.notFound && /supervisor list|unknown|password|pin/i.test(d.error||'')) throw new Error('Hub script not updated yet: install the document library and redeploy.');
+    return d;
+  }
+  async function keep(offer,kind,file,meta){ try{ var c=await caches.open(CACHE); await c.put(cacheUrl(offer,kind), new Response(file,{headers:{'Content-Type':'application/pdf','X-Meta':encodeURIComponent(JSON.stringify(meta||{}))}})); }catch(e){} }
+  async function local(offer,prefer){
+    var order = prefer==='quotation' ? ['quotation','production'] : ['production','quotation'];
+    try{ var c=await caches.open(CACHE);
+      for (var i=0;i<order.length;i++){ var r=await c.match(cacheUrl(offer,order[i])); if(!r) continue;
+        var meta=JSON.parse(decodeURIComponent(r.headers.get('X-Meta')||'%7B%7D')); var b=await r.blob();
+        return {file:new File([b], meta.name||(order[i]+'_'+key(offer)+'.pdf'), {type:'application/pdf'}), kind:order[i], meta:meta, offline:true}; }
+    }catch(e){}
+    return null;
+  }
+
+  /* ---------- library ---------- */
+  LD.save = async function(file, meta){            // meta: {offer, kind, customer, site, salesperson, positions, sqft, app}
+    meta = Object.assign({by:who()}, meta||{});
+    if (!key(meta.offer)) throw new Error('No Offer No to save under');
+    await keep(meta.offer, meta.kind, file, Object.assign({}, meta, {name:file.name}));
+    var data = await toB64(file);
+    var r = await post(Object.assign({action:'docSave', data:data}, meta));
+    if (!r || !r.ok) throw new Error((r&&r.error)||'Save failed');
+    return r;
+  };
+  /* save quietly after an app reads a PDF; never blocks or throws */
+  LD.saveQuiet = function(file, meta){ try{ LD.save(file, meta).catch(function(e){ console.warn('Library save failed:', e.message); }); }catch(e){} };
+  LD.load = async function(offer, prefer){         // → {file, kind, meta, offline}
+    if (!key(offer)) throw new Error('Enter an Offer No.');
+    var r;
+    try{ r = await post({action:'docGet', offer:offer, prefer:prefer||'production'}); }
+    catch(e){ var l=await local(offer,prefer); if(l) return l; throw e; }
+    if (r && r.ok && r.data){
+      var file = new File([b64ToBlob(r.data)], r.name||(r.kind+'_'+key(offer)+'.pdf'), {type:'application/pdf'});
+      delete r.data; await keep(offer, r.kind, file, r);
+      return {file:file, kind:r.kind, meta:r, offline:false};
+    }
+    var l2 = await local(offer,prefer); if (l2) return l2;
+    throw new Error((r&&r.error)||('Nothing saved for '+offer));
+  };
+  LD.list = async function(){ try{ var r=await post({action:'docList'}); return (r&&r.ok&&r.list)||[]; }catch(e){ return []; } };
+
+  /* "Load by Offer No" dialog. onLoaded(file, kind, meta, offline) */
+  LD.openLoader = function(onLoaded, preset, prefer){
+    var old=document.getElementById('ldDlg'); if(old) old.remove();
+    var w=document.createElement('div'); w.id='ldDlg';
+    w.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+    w.innerHTML='<div style="background:#1a1e25;color:#e8e4d9;border:1px solid #2a2f3a;border-top:4px solid #ffce1f;border-radius:12px;padding:18px;width:100%;max-width:380px;font-family:\'Spline Sans\',system-ui,sans-serif">'
+      +'<div style="font-family:Archivo,sans-serif;font-weight:900;font-size:17px;margin-bottom:4px">Load by Offer No</div>'
+      +'<div style="font-size:12px;color:#7c8694;margin-bottom:12px">Uses the production sheet or quotation already uploaded in any app</div>'
+      +'<input id="ldOff" list="ldDl" autocomplete="off" placeholder="e.g. 79173/3" style="width:100%;box-sizing:border-box;padding:11px 13px;font-size:16px;border-radius:8px;border:1px solid #2a2f3a;background:#222732;color:#e8e4d9">'
+      +'<datalist id="ldDl"></datalist>'
+      +'<div id="ldMsg" style="min-height:18px;font-size:12px;margin:8px 0;color:#7c8694"></div>'
+      +'<div style="display:flex;gap:8px"><button id="ldX" type="button" style="flex:1;padding:11px;border-radius:8px;border:1px solid #2a2f3a;background:transparent;color:#7c8694;font-weight:700">Cancel</button>'
+      +'<button id="ldGo" type="button" style="flex:1;padding:11px;border-radius:8px;border:none;background:#ffce1f;color:#111;font-weight:700">Load →</button></div></div>';
+    document.body.appendChild(w);
+    var inp=w.querySelector('#ldOff'), msg=w.querySelector('#ldMsg'), go=w.querySelector('#ldGo');
+    if (preset) inp.value=preset;
+    setTimeout(function(){ inp.focus(); },50);
+    LD.list().then(function(list){ w.querySelector('#ldDl').innerHTML=list.map(function(x){
+      var tag=(x.kinds||[]).map(function(k){return k==='production'?'Production sheet':'Quotation';}).join(' + ');
+      return '<option value="'+esc(x.offer)+'">'+esc((x.customer||'')+(tag?' · '+tag:''))+'</option>'; }).join(''); });
+    function close(){ w.remove(); }
+    w.querySelector('#ldX').onclick=close;
+    w.addEventListener('click',function(e){ if(e.target===w) close(); });
+    async function run(){
+      var off=inp.value.trim(); if(!off){ msg.style.color='#ef4444'; msg.textContent='Enter an Offer No.'; return; }
+      go.disabled=true; msg.style.color='#7c8694'; msg.textContent='Loading…';
+      try{ var res=await LD.load(off, prefer); close(); await onLoaded(res.file, res.kind, Object.assign({offer:off}, res.meta||{}), res.offline); }
+      catch(e){ go.disabled=false; msg.style.color='#ef4444'; msg.textContent=e.message||String(e); }
+    }
+    go.onclick=run; inp.addEventListener('keydown',function(e){ if(e.key==='Enter') run(); });
+  };
+
+  /* ---------- reading PDFs ---------- */
+  function loadScript(src){ return new Promise(function(res,rej){ var s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=function(){rej(new Error('Could not load '+src));}; document.head.appendChild(s); }); }
+  LD.pdfjs = async function(){
+    if (!window.pdfjsLib) await loadScript(PDFJS);
+    try{ if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_W; }catch(e){}
+    return window.pdfjsLib;
+  };
+  /* 'production' if the PDF is a Lingel production sheet, else 'quotation' */
+  LD.kind = async function(file){
+    var lib = await LD.pdfjs();
+    var pdf = await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    var tc = await (await pdf.getPage(1)).getTextContent();
+    var t = tc.items.map(function(i){return i.str;}).join(' ');
+    return /Order-Pos\.?\s*:/.test(t) || /Dokument-Nr\.?\s*:/.test(t) ? 'production' : 'quotation';
+  };
+
+  /* Production sheet reader — same rules as Corner Check.
+     → {offer, customer, admin, sales, color, material, positions:[{ref,no,qty,w,h,sqft,nS,nM,fixed,system,frameType,series,method,connector,frame,sashes,mW,mH,mArt,drawing}], drawings:Promise} */
+  var NUM=/^\d{2,5}[,.]\d{1,2}$/;
+  function num(s){ return parseFloat(String(s).replace(',','.')); }
+  LD.parseProduction = async function(file, opts){
+    opts = opts||{};
+    var lib = await LD.pdfjs();
+    var pdf = await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    var lines=[];
+    for (var pn=1; pn<=pdf.numPages; pn++){
+      if (opts.progress) opts.progress('Reading page '+pn+' of '+pdf.numPages+'…');
+      var page=await pdf.getPage(pn), vp=page.getViewport({scale:1}), tc=await page.getTextContent(), toks=[];
+      tc.items.forEach(function(it){ if(!it.str||!it.str.trim()) return; var x=it.transform[4], y=vp.height-it.transform[5], cw=(it.width||0)/Math.max(1,it.str.length);
+        var idx=0; it.str.split(/(\s+)/).forEach(function(part){ if(part.trim()) toks.push({s:part,x:x+idx*cw,y:y,page:pn}); idx+=part.length; }); });
+      toks.sort(function(a,b){return a.y-b.y||a.x-b.x;});
+      var rows=[]; toks.forEach(function(t){ var r=rows.find(function(r){return Math.abs(r.y-t.y)<2.5;}); r?r.toks.push(t):rows.push({y:t.y,toks:[t]}); });
+      rows.sort(function(a,b){return a.y-b.y;}).forEach(function(r){ r.toks.sort(function(a,b){return a.x-b.x;});
+        lines.push({page:pn,y:r.y,toks:r.toks,text:r.toks.map(function(t){return t.s;}).join(' ')}); });
+    }
+    var full=lines.map(function(l){return l.text;}).join('\n');
+    var g=function(re,s){ var m=(s==null?full:s).match(re); return m?m[1].trim():''; };
+    var out={offer:g(/Dokument-Nr\.?\s*:\s*(\S+)/), customer:g(/Customer:\s*(.+?)\s+Administrator:/), admin:g(/Administrator:\s*([^\n]+)/),
+      sales:g(/Sales by:\s*([^\n]+)/), color:'', material:/System\s*:\s*u?PVC/i.test(full)?'upvc':'alu', positions:[]};
+    var ops=lines.map(function(l,i){return /Order-Pos\.?\s*:/.test(l.text)?i:-1;}).filter(function(i){return i>=0;});
+    var blocks=[];
+    ops.forEach(function(oi,k){
+      var end=k+1<ops.length?ops[k+1]:lines.length, bl=lines.slice(oi,end), L0=lines[oi];
+      var txt=bl.map(function(l){return l.text;}).join('\n');
+      var ref=g(/Order-Pos\.?\s*:\s*(.*?)\s*(?:Color:|Quantity:|$)/,L0.text), contY=L0.y;
+      var nx=lines[oi+1];
+      if (nx&&nx.page===L0.page&&nx.y-L0.y<14&&nx.text.indexOf(':')<0&&nx.text.length<=24){ ref+=' '+nx.text.trim(); contY=nx.y; }
+      if (!out.color) out.color=g(/Color:\s*(\S+)/,L0.text);
+      var p={ref:ref, qty:+g(/Quantity:\s*(\d+)/,L0.text)||1,
+        system:g(/System\s*:\s*(?:Aluminium\s*-\s*)?([^\n]+?)(?:\s{2,}|$)/m,txt), series:g(/Lingel\s*([\d.]+)/,txt),
+        frameType:g(/Frame\s*:\s*([^\n]+)/,txt), method:g(/Method\s*:\s*([A-Za-z ]+?)(?:,|\n|$)/,txt), connector:g(/Corner Connector\s*:\s*(\S+)/,txt),
+        frame:null, fixed:false, sashes:[], nS:0, nM:0, drawing:''};
+      var hi=bl.findIndex(function(l){return /^Nr\b/.test(l.text)&&l.text.indexOf('Artikel')>=0;});
+      if (hi>=0){ var H=bl[hi], arts=H.toks.filter(function(t){return t.s==='Artikel';}), nrMax=arts[0].x-3, colMax=arts[1]?arts[1].x-3:arts[0].x+150;
+        var tl=[]; for (var i=hi+1;i<bl.length;i++){ var l=bl[i]; if(l.page!==H.page||/^(Connectors|Sliding|Shutter|Hardware|ISO|Production)/.test(l.text)) break; tl.push.apply(tl, l.toks.filter(function(t){return t.x<colMax;})); }
+        var nums=tl.filter(function(t){return NUM.test(t.s);}), rws=[];
+        nums.forEach(function(t){ var r=rws.find(function(r){return Math.abs(r.y-t.y)<2.5;}); r?r.n.push(t):rws.push({y:t.y,n:[t]}); });
+        rws.sort(function(a,b){return a.y-b.y;});
+        rws.forEach(function(r,i){ if(r.n.length<2) return; r.n.sort(function(a,b){return a.x-b.x;}); var ny=rws[i+1]?rws[i+1].y:1e9, lim=Math.min(ny-2.5,r.y+16);
+          var art=tl.filter(function(t){return /[A-Za-z]/.test(t.s)&&t.x<r.n[0].x-1&&t.y>=r.y-3&&t.y<lim;}).sort(function(a,b){return a.y-b.y||a.x-b.x;}).map(function(t){return t.s;}).join('');
+          var nr=tl.find(function(t){return t.x<nrMax+6&&/^\d{1,2}$/.test(t.s)&&t.y>=r.y-3&&t.y<lim;});
+          var o={art:art,w:num(r.n[0].s),h:num(r.n[1].s),nr:nr?+nr.s:0};
+          if (o.nr) p.sashes.push(o); else if (!p.frame) p.frame=o; });
+        if (!p.frame&&p.sashes.length===1){ p.frame=p.sashes[0]; p.frame.nr=0; p.sashes=[]; p.fixed=true; }
+      }
+      if (!p.frame) p.frame={art:'',w:0,h:0};
+      p.nS=p.sashes.length;
+      var cut=function(name){ var re=new RegExp(name+'[^\\n]*?(\\d{2,5}[,.]\\d)\\s+45\\s+45\\s+([UOLR])\\b','g'), m, w=0, h=0, n=0;
+        while((m=re.exec(txt))){ n++; if(/[UO]/.test(m[2])) w=w||num(m[1]); else h=h||num(m[1]); } return {n:n,w:w,h:h}; };
+      var ms=cut('Aluminium Sliding Sash');
+      p.nM=Math.ceil(ms.n/4); p.mW=ms.w; p.mH=ms.h; p.mArt=g(/(\S+?-FB-\S+)/,txt);
+      p.no=parseInt(ref,10)||k+1;
+      p.w=p.frame.w; p.h=p.frame.h;
+      p.sqft=p.w&&p.h ? p.w*p.h*p.qty/92903.04 : 0;          // mm² → sq.ft, times quantity
+      blocks.push({p:p,page:L0.page,y0:contY+6});
+      out.positions.push(p);
+    });
+    out.positions.sort(function(a,b){return a.no-b.no;});
+    out.drawings = opts.drawings===false ? Promise.resolve() : extractDrawings(pdf,blocks);
+    return out;
+  };
+  async function extractDrawings(pdf,blocks){
+    var byPage={}; blocks.forEach(function(b){ (byPage[b.page]=byPage[b.page]||[]).push(b); });
+    for (var pg in byPage){
+      var page=await pdf.getPage(+pg), S=2, vp=page.getViewport({scale:S});
+      var cv=document.createElement('canvas'); cv.width=vp.width; cv.height=vp.height; var ctx=cv.getContext('2d');
+      ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height); await page.render({canvasContext:ctx,viewport:vp}).promise;
+      byPage[pg].forEach(function(b){ try{ var x0=25,x1=188,y0=b.y0,y1=Math.min(vp.height/S,y0+330); if(y1-y0<30) return;
+        var c=document.createElement('canvas'); c.width=(x1-x0)*S; c.height=Math.round((y1-y0)*S); var cx=c.getContext('2d'); cx.drawImage(cv,x0*S,y0*S,c.width,c.height,0,0,c.width,c.height);
+        var d=cx.getImageData(0,0,c.width,c.height).data, first=-1, blank=0, cutY=c.height;
+        for (var y=0;y<c.height;y++){ var ink=false; for (var x=0;x<c.width;x+=2){ var i=(y*c.width+x)*4; if(d[i]+d[i+1]+d[i+2]<600){ink=true;break;} }
+          if (ink){ if(first<0) first=y; blank=0; } else if (first>=0){ blank++; if(y-first>100*S&&blank>=7*S){ cutY=y-blank+1; break; } } }
+        var o=document.createElement('canvas'); o.width=c.width; o.height=cutY; o.getContext('2d').drawImage(c,0,0);
+        var t=trimWhite(o); if(t) b.p.drawing=t; }catch(e){} });
+    }
+  }
+  function trimWhite(c){ var x=c.getContext('2d'), d=x.getImageData(0,0,c.width,c.height).data, a=c.width, b=c.height, r=-1, s=-1;
+    for (var y=0;y<c.height;y++) for (var X=0;X<c.width;X++){ var i=(y*c.width+X)*4; if(d[i]+d[i+1]+d[i+2]<690){ if(X<a)a=X; if(X>r)r=X; if(y<b)b=y; if(y>s)s=y; } }
+    if (r<0) return ''; var P=6; a=Math.max(0,a-P); b=Math.max(0,b-P); r=Math.min(c.width,r+P); s=Math.min(c.height,s+P);
+    var w=r-a, h=s-b, k=Math.min(1,560/Math.max(w,h)); var o=document.createElement('canvas'); o.width=Math.round(w*k); o.height=Math.round(h*k);
+    var ox=o.getContext('2d'); ox.fillStyle='#fff'; ox.fillRect(0,0,o.width,o.height); ox.drawImage(c,a,b,w,h,0,0,o.width,o.height); return o.toDataURL('image/jpeg',.82); }
+
+  /* one-line description used by apps that show a "spec" */
+  LD.describe = function(p){
+    var parts=[];
+    if (p.system) parts.push(p.system);
+    parts.push(p.fixed ? 'Fixed' : (p.nS ? p.nS+' sash'+(p.nS>1?'es':'') : ''));
+    if (p.nM) parts.push(p.nM+' mesh');
+    return parts.filter(Boolean).join(' · ');
+  };
+})();
+
+/* ===== SiteLog: read quotation OR production sheet, save once, load by Offer No ===== */
+const _slImportQuote = importQuotation;
+let _slFromLib = false;
+async function slImportProduction(file){
+  toast("📄 Reading production sheet…");
+  const r = await LD.parseProduction(file);
+  await r.drawings;                               // drawings land on each position
+  if (!r.positions.length) { toast("⚠ No positions found in this production sheet"); return; }
+  const seen = {}; positions.forEach(p => { seen[p.ref] = 1; });
+  const newPos = [];
+  for (const p of r.positions){
+    let lbl = p.ref || ('Position '+p.no); if (seen[lbl]) { seen[lbl]++; lbl += ' ('+seen[lbl]+')'; } else seen[lbl] = 1;
+    let designId = "";
+    if (p.drawing){ designId = uid(); imgCache[designId] = p.drawing; await savePhoto(designId, p.drawing); }
+    const spec = [Math.round(p.w)+' × '+Math.round(p.h)+' mm', p.qty>1 ? 'Qty '+p.qty : '', LD.describe(p)].filter(Boolean).join(' · ');
+    newPos.push({id:uid(), ref:lbl, status:"notstarted", onrType:"", resp:"", obs:"", spec, photos:designId?[designId]:[], audios:[]});
+  }
+  for (const p of newPos){ positions.push(p); await savePos(p); }
+  if (r.offer && !$("#o_no").value) $("#o_no").value = r.offer;
+  if (r.customer && !$("#o_client").value) $("#o_client").value = r.customer;
+  if (r.sales && !$("#o_sales").value) $("#o_sales").value = r.sales;
+  await saveMeta(); render();
+  toast("✓ Imported "+newPos.length+" position"+(newPos.length>1?"s":"")+" from production sheet");
+}
+importQuotation = async function(file){
+  let kind = 'quotation';
+  try { kind = await LD.kind(file); } catch(e) {}
+  if (kind === 'production') await slImportProduction(file); else await _slImportQuote(file);
+  if (!_slFromLib){
+    const offer = ($("#o_no").value||'').trim();
+    if (offer) LD.saveQuiet(file, {offer, kind, customer:($("#o_client").value||'').trim(), site:($("#o_loc").value||'').trim(), salesperson:($("#o_sales").value||'').trim(), positions:String(positions.length), app:'SiteLog'});
+  }
+};
+function slLoadByOffer(){
+  const el = document.getElementById('o_no'); const cur = el ? el.value.trim() : '';
+  LD.openLoader(async function(file, kind, meta, offline){
+    _slFromLib = true;
+    try { await importQuotation(file); if (offline) toast('Loaded from phone copy (offline)'); }
+    catch(e){ console.error(e); toast('⚠ '+((e&&e.message)||"couldn't read")); }
+    finally { _slFromLib = false; }
+  }, cur, 'production');
+}
 </script>
