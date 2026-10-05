@@ -1525,6 +1525,27 @@ function wireQuoteField(){
   }
 }
 
+/* ---- contractor payment / KYC from the Contractors sheet (Aadhaar arrives masked) ---- */
+const KYC_KEY='lingel-kyc-7Q2';     // must match KYC_KEY in the Invoice Apps Script
+async function fetchKyc(code,name){
+  const ck='lingel_kyc_'+(code||name);
+  try{
+    const r=await fetch(INVOICE_EXEC+'?action=kyc&code='+encodeURIComponent(code||'')+'&name='+encodeURIComponent(name||'')+'&key='+encodeURIComponent(KYC_KEY)+'&t='+Date.now(),{cache:'no-store'});
+    const d=await r.json();
+    if(d&&d.ok&&d.kyc){ localStorage.setItem(ck,JSON.stringify(d.kyc)); return d.kyc; }
+  }catch(e){}
+  try{ return JSON.parse(localStorage.getItem(ck)||'null'); }catch(e){ return null; }
+}
+function payBlock(k){
+  if(!k) return '';
+  const rows=[['Account Holder',k.holder],['Bank',k.bank],['A/C No.',k.acct],['IFSC',k.ifsc],['PAN',k.pan],['Aadhaar',k.aadhaar],['GSTIN',k.gstin]].filter(r=>r[1]);
+  if(!rows.length) return '';
+  return '<div style="margin-top:20px;padding:12px 16px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb">'
+    +'<div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:8px">Payment Details</div>'
+    +'<table style="font-size:12px;color:#444;line-height:1.8;border-collapse:collapse">'
+    +rows.map(r=>'<tr><td style="color:#888;padding-right:20px;vertical-align:top">'+r[0]+'</td><td style="font-weight:600">'+esc(r[1])+'</td></tr>').join('')
+    +'</table></div>';
+}
 function workOrderHTML(w){
   const bill=WO_CO[w.billTo]||WO_CO.lingel, inst=w.sqft*w.rate;
   const td='padding:6px 12px;border-bottom:1px solid #eee;font-size:11px';
@@ -1582,6 +1603,7 @@ function workOrderHTML(w){
       <th style="padding:7px 12px;text-align:left;font-size:10px;color:#666">#</th><th style="padding:7px 12px;text-align:left;font-size:10px;color:#666">POSITION</th>
       <th style="padding:7px 12px;text-align:center;font-size:10px;color:#666">W × H (MM)</th><th style="padding:7px 12px;text-align:right;font-size:10px;color:#666">SQ.FT</th></tr></thead>
       <tbody>${posRows}</tbody></table>`:''}
+    ${payBlock(w.kyc)}
     <div style="margin-top:16px;padding:12px 16px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:6px">Notes / Terms</div>
       <div style="font-size:12px;line-height:1.6;color:#444">Installation charged on quotation sizes at the rate-card rate. Additional charges only as approved by Padam Singh. Penalties as per the contractor rate card.</div>
@@ -1638,6 +1660,7 @@ async function ensureInvoiceNo(w){
 async function makeWorkOrder(w, opts){
   opts=opts||{};
   await ensureInvoiceNo(w);
+  w.kyc = await fetchKyc(w.code, w.contractor) || w.kyc || null;
   const fname='Invoice_'+w.woNo.replace(/[^\w-]+/g,'-')+'.pdf';
   const pdf=await workOrderPdf(w);
   pdf.save(fname);
