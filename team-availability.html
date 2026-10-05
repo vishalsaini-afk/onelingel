@@ -1343,7 +1343,7 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
     var full=lines.map(function(l){return l.text;}).join('\n');
     var g=function(re,s){ var m=(s==null?full:s).match(re); return m?m[1].trim():''; };
     var out={offer:g(/Dokument-Nr\.?\s*:\s*(\S+)/), customer:g(/Customer:\s*(.+?)\s+Administrator:/), admin:g(/Administrator:\s*([^\n]+)/),
-      sales:g(/Sales by:\s*([^\n]+)/), color:'', material:/System\s*:\s*u?PVC/i.test(full)?'upvc':'alu', positions:[]};
+      sales:g(/Sales by:\s*([^\n]+)/), addr:g(/Delivery Address:\s*([^\n]*)/).replace(/^[,\s]+|[,\s]+$/g,''), color:'', material:/System\s*:\s*u?PVC/i.test(full)?'upvc':'alu', positions:[]};
     var ops=lines.map(function(l,i){return /Order-Pos\.?\s*:/.test(l.text)?i:-1;}).filter(function(i){return i>=0;});
     var blocks=[];
     ops.forEach(function(oi,k){
@@ -1440,12 +1440,28 @@ async function ensurePdfjsTA(){
   window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 /* same parser as the Contractor Invoice app (agreed position rule) */
+/* ---- city + salesperson from the PDF ---- */
+const TA_CITIES=['New Delhi','Delhi','Gurugram','Gurgaon','Greater Noida','Noida','Faridabad','Ghaziabad','Manesar','Sohna','Sonipat','Panipat','Karnal','Rohtak','Rewari','Bahadurgarh','Jhajjar','Jaipur','Chandigarh','Mohali','Panchkula','Zirakpur','Ludhiana','Amritsar','Jalandhar','Patiala','Bathinda','Dehradun','Haridwar','Rishikesh','Shimla','Solan','Kasauli','Lucknow','Kanpur','Agra','Meerut','Patna','Jehanabad','Gaya','Jammu','Srinagar','Mumbai','Pune','Bengaluru','Bangalore','Hyderabad','Chennai','Kolkata','Ahmedabad','Indore','Bhopal'];
+function taCity(txt){
+  const t=String(txt||'');
+  for(const c of TA_CITIES){ if(new RegExp('\\b'+c.replace(/ /g,'\\s+')+'\\b','i').test(t)) return c; }
+  const m=t.match(/([A-Za-z][A-Za-z .]{2,30}?)\s*[-,]?\s*\b\d{6}\b/);          // word before a PIN code
+  return m ? m[1].trim().split(/[,]/).pop().trim() : '';
+}
+function taSales(raw){
+  let s=String(raw||'').replace(/^(Mr|Mrs|Ms|Sh|Shri)\.?\s+/i,'').split(/\s{2,}|[|,:]|\+?\d{6,}|Mob|Phone|Tel|E-?mail/i)[0].trim();
+  if(!s) return '';
+  try{ const known=allSalesNames(), first=s.split(/\s+/)[0].toLowerCase();       // match a name already in the list
+       const hit=known.find(n=>n.toLowerCase()===s.toLowerCase())||known.find(n=>n.split(/\s+/)[0].toLowerCase()===first);
+       if(hit) return hit; }catch(e){}
+  return s.slice(0,40);
+}
 async function parseQuotationTA(file){
   let kind='quotation'; try{ kind=await LD.kind(file); }catch(e){}
   if(kind==='production'){
     const r=await LD.parseProduction(file,{drawings:false});
     const items=r.positions.map(p=>({ref:p.ref,w:p.w,h:p.h,sqft:p.sqft}));
-    return {kind,offer:r.offer,client:r.customer,items,total:items.reduce((s,q)=>s+q.sqft,0),
+    return {kind,offer:r.offer,client:r.customer,sales:taSales(r.sales),city:taCity(r.addr),items,total:items.reduce((s,q)=>s+q.sqft,0),
       service:r.material==='upvc'?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
   }
   const q=await parseQuotationTA_q(file); q.kind='quotation'; return q;
@@ -1456,7 +1472,7 @@ async function parseQuotationTA_q(file){
   const RE_LBL=/^(?:\d{1,3}-|Add-|ADD-)/i, RE_MEAS=/([A-Za-z]\d?)=([\d.,]+)/g;
   const qLabel=l=>{const mi=l.search(/\s+[A-Za-z]\d?=[\d.,]+;/);return (mi>=0?l.slice(0,mi):l).trim();};
   const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
-  const all=[]; let offer='', client='', text='';
+  const all=[]; let offer='', client='', text='', salesRaw='', addrFrom=-1;
   for(let pn=1;pn<=pdf.numPages;pn++){
     const tc=await (await pdf.getPage(pn)).getTextContent();
     const sp=[]; tc.items.forEach(it=>{ if(it.str) sp.push({x:it.transform[4],y:it.transform[5],str:it.str}); });
@@ -1468,7 +1484,9 @@ async function parseQuotationTA_q(file){
       const nr=ln.match(/(?:Nr|Offer|Quotation)[^0-9]*([0-9]{4,7}\/[0-9]{1,3})/i)||ln.match(/\b([0-9]{4,7}\/[0-9]{1,3})\b/);
       if(nr&&!offer&&!/Tel|Fax|Phone/i.test(ln)) offer=nr[1];
       const cl=ln.match(/(Mr|Mrs|Ms|M\/s)\.?\s+\S.*/i);
-      if(cl&&!client&&!/Sales|Manager|Sr\./i.test(ln)) client=ln.trim();
+      if(cl&&!client&&!/Sales|Manager|Sr\./i.test(ln)){ client=ln.trim(); addrFrom=all.length; }
+      const sm=ln.match(/Sales\s*(?:Manager|Person|Executive|by|Engineer)?\s*[:\-]\s*(.+)/i)||ln.match(/Sales\s+(?:Manager|Person|Executive)\s+(.+)/i);
+      if(sm&&!salesRaw) salesRaw=sm[1];
       all.push(ln);
     }
   }
@@ -1487,7 +1505,8 @@ async function parseQuotationTA_q(file){
   }
   client=client.replace(/^(M\/s|Mr|Mrs|Ms)\.?\s*/i,'').split(/\s{2,}|,|\|/)[0].trim().slice(0,60);
   const upvc=/u\s*pvc|\bpvc\b/i.test(text), alu=/alumin/i.test(text);
-  return {offer,client,items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
+  const addrTxt=addrFrom>=0?all.slice(addrFrom,addrFrom+6).join(', '):'';
+  return {offer,client,sales:taSales(salesRaw),city:taCity(addrTxt)||taCity(text.slice(0,1500)),items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
 }
 
 /* HTML for the Book popup */
@@ -1507,19 +1526,23 @@ function wireQuoteField(){
   if(!b) return;
   b.onclick=()=>f.click();
   const lb=document.getElementById('mQLoad');
-  if(lb) lb.onclick=()=>LD.openLoader(async(file)=>{ await useFile(file,true); }, (document.getElementById('mOffer').value||'').trim(), 'production');
+  if(lb) lb.onclick=()=>LD.openLoader(async(file,kind,meta)=>{ await useFile(file,true,meta); }, (document.getElementById('mOffer').value||'').trim(), 'production');
   f.onchange=async()=>{ const file=f.files[0]; f.value=''; if(file) await useFile(file,false); };
-  async function useFile(file,fromLib){
+  async function useFile(file,fromLib,meta){
     info.className='qinfo'; info.textContent='Reading '+file.name+'…';
     try{
       const q=await parseQuotationTA(file); q.file=file; q.fromLib=fromLib; bookQ=q;
       const o=document.getElementById('mOffer'), p=document.getElementById('mProject');
       if(q.offer) o.value=q.offer;
       if(q.client && !p.value) p.value=q.client;
+      const sEl=document.getElementById('mSales'), cEl=document.getElementById('mCity');
+      const sales=q.sales||(meta&&taSales(meta.salesperson))||'', city=q.city||(meta&&taCity(meta.site))||'';
+      if(sEl && sales && !sEl.value) sEl.value=sales;
+      if(cEl && city && !cEl.value) cEl.value=city;
       document.getElementById('mWoSvc').value=q.service;
       document.getElementById('mWo').hidden=false;
       info.className='qinfo ok';
-      info.textContent='✓ '+(q.kind==='production'?'Production sheet · ':'Quotation · ')+(q.offer?('#'+q.offer+' · '):'')+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft';
+      info.textContent='✓ '+(q.kind==='production'?'Production sheet · ':'Quotation · ')+(q.offer?('#'+q.offer+' · '):'')+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft'+(sales?' · '+sales:'')+(city?' · '+city:'');
       b.textContent='📄 Change PDF';
     }catch(e){ bookQ=null; info.className='qinfo err'; info.textContent='⚠ '+(e.message||"Couldn't read PDF"); }
   }
