@@ -1440,6 +1440,22 @@ async function ensurePdfjsTA(){
   window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 /* same parser as the Contractor Invoice app (agreed position rule) */
+/* ---- dealer or person? → who the bill goes to ----
+   Dealer (business name) → bill to Lingel · Person → bill to Fensterbau · always changeable.
+   DEALER_NAMES: dealers who trade under a person's own name — add them here.            */
+const DEALER_NAMES=['Rajesh Chawla'];
+const BIZ_RE=/\b(m\/s|enterprises?|traders?|trading|associates|agenc(y|ies)|industr(y|ies)|fabricat\w*|interiors?|builders?|developers?|construct\w*|infra\w*|glass|alumin\w*|windows?|doors?|fa[cç]ade|systems|solutions|corporation|corp|company|co\.|& ?co|group|pvt|private|ltd|limited|llp|inc|estate|realty|projects?|hardware|studio|architects?|consultants?|exports?|imports?|sales|marketing|services|works|store|mart|center|centre)\b/i;
+const PERSON_RE=/^\s*(mr|mrs|ms|miss|dr|smt|shri|sh)\.?\s+[a-z]/i;
+function partyType(name){
+  const n=String(name||'').trim(); if(!n) return '';
+  if(DEALER_NAMES.some(d=>n.toLowerCase().includes(d.toLowerCase()))) return 'dealer';
+  if(/^\s*m\/s\b/i.test(n)||BIZ_RE.test(n)) return 'dealer';
+  if(PERSON_RE.test(n)) return 'person';
+  return n.split(/\s+/).length<=4 ? 'person' : '';
+}
+function setBillTo(v){ const box=document.getElementById('segBill'); if(!box) return;
+  box.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.getAttribute('data-val')===v)); }
+
 /* ---- city + salesperson from the PDF ---- */
 const TA_CITIES=['New Delhi','Delhi','Gurugram','Gurgaon','Greater Noida','Noida','Faridabad','Ghaziabad','Manesar','Sohna','Sonipat','Panipat','Karnal','Rohtak','Rewari','Bahadurgarh','Jhajjar','Jaipur','Chandigarh','Mohali','Panchkula','Zirakpur','Ludhiana','Amritsar','Jalandhar','Patiala','Bathinda','Dehradun','Haridwar','Rishikesh','Shimla','Solan','Kasauli','Lucknow','Kanpur','Agra','Meerut','Patna','Jehanabad','Gaya','Jammu','Srinagar','Mumbai','Pune','Bengaluru','Bangalore','Hyderabad','Chennai','Kolkata','Ahmedabad','Indore','Bhopal'];
 function taCity(txt){
@@ -1461,7 +1477,7 @@ async function parseQuotationTA(file){
   if(kind==='production'){
     const r=await LD.parseProduction(file,{drawings:false});
     const items=r.positions.map(p=>({ref:p.ref,w:p.w,h:p.h,sqft:p.sqft}));
-    return {kind,offer:r.offer,client:r.customer,sales:taSales(r.sales),city:taCity(r.addr),items,total:items.reduce((s,q)=>s+q.sqft,0),
+    return {kind,offer:r.offer,client:r.customer,party:partyType(r.customer),sales:taSales(r.sales),city:taCity(r.addr),items,total:items.reduce((s,q)=>s+q.sqft,0),
       service:r.material==='upvc'?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
   }
   const q=await parseQuotationTA_q(file); q.kind='quotation'; return q;
@@ -1503,10 +1519,11 @@ async function parseQuotationTA_q(file){
     if(seen[ref]==null) seen[ref]=1; else { seen[ref]++; ref+=' ('+seen[ref]+')'; }
     items.push({ref,w:W,h:H,sqft:(W*H)/(304.8*304.8)});
   }
+  const rawClient=client.split(/\s{2,}|,|\|/)[0].trim();
   client=client.replace(/^(M\/s|Mr|Mrs|Ms)\.?\s*/i,'').split(/\s{2,}|,|\|/)[0].trim().slice(0,60);
   const upvc=/u\s*pvc|\bpvc\b/i.test(text), alu=/alumin/i.test(text);
   const addrTxt=addrFrom>=0?all.slice(addrFrom,addrFrom+6).join(', '):'';
-  return {offer,client,sales:taSales(salesRaw),city:taCity(addrTxt)||taCity(text.slice(0,1500)),items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
+  return {offer,client,party:partyType(rawClient),sales:taSales(salesRaw),city:taCity(addrTxt)||taCity(text.slice(0,1500)),items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
 }
 
 /* HTML for the Book popup */
@@ -1517,7 +1534,7 @@ function quoteFieldHTML(){
     +'<div class="qinfo" id="mQInfo"></div></div>'
     +'<div id="mWo" hidden>'
     +'<div class="fd"><label>Invoice — rate</label><select id="mWoSvc" class="msel">'+Object.keys(WO_RATES).map(s=>'<option value="'+esc(s)+'">'+esc(s)+' (₹'+WO_RATES[s]+'/sqft)</option>').join('')+'</select></div>'
-    +'<div class="fd"><label>Bill to</label>'+seg('segBill',[{v:'lingel',l:'Lingel'},{v:'fensterbau',l:'Fensterbau'}],'lingel')+'</div>'
+    +'<div class="fd"><label>Bill to</label>'+seg('segBill',[{v:'lingel',l:'Lingel'},{v:'fensterbau',l:'Fensterbau'}],'lingel')+'<div class="qinfo" id="mBillHint"></div></div>'
     +'</div>';
 }
 function wireQuoteField(){
@@ -1541,6 +1558,9 @@ function wireQuoteField(){
       if(cEl && city && !cEl.value) cEl.value=city;
       document.getElementById('mWoSvc').value=q.service;
       document.getElementById('mWo').hidden=false;
+      if(q.party==='dealer') setBillTo('lingel'); else if(q.party==='person') setBillTo('fensterbau');
+      const bh=document.getElementById('mBillHint');
+      if(bh) bh.textContent=q.party==='dealer'?'Dealer order → Lingel (tap to change)':q.party==='person'?'Direct customer → Fensterbau (tap to change)':'Could not tell dealer or customer — please choose';
       info.className='qinfo ok';
       info.textContent='✓ '+(q.kind==='production'?'Production sheet · ':'Quotation · ')+(q.offer?('#'+q.offer+' · '):'')+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft'+(sales?' · '+sales:'')+(city?' · '+city:'');
       b.textContent='📄 Change PDF';
