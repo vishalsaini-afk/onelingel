@@ -131,6 +131,15 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
       </div>
       <div class="arr">→</div>
     </a>
+
+    <a class="tile" href="contractor-ledger.html" id="ledgerTile" style="display:none">
+      <div class="ic">📒</div>
+      <div class="txt">
+        <div class="tt">Contractor Ledger</div>
+        <div class="td">Office only · handover check · shifting &amp; deductions · net payable · payment statements</div>
+      </div>
+      <div class="arr">→</div>
+    </a>
   </div>
 
   <div class="foot">Lingel Field Operations · Works offline after first load</div>
@@ -181,8 +190,12 @@ async function doLogin(){
     btn.textContent='Login →';btn.disabled=false;
   }
 }
+/* Office-only tiles: shown only when one of these names is signed in (exactly as in the login list; capitals don't matter) */
+const OFFICE_USERS = ['Vishal Saini'];
+function isOffice(name){ const n=String(name||'').trim().toLowerCase(); return OFFICE_USERS.some(u=>u.trim().toLowerCase()===n); }
 function showLoggedIn(name){
   document.getElementById('loginOverlay').style.display='none';
+  const lt=document.getElementById('ledgerTile'); if(lt) lt.style.display=isOffice(name)?'':'none';
   document.getElementById('whoami').innerHTML='<span>Signed in as</span> <b>'+name+'</b> <button class="logout" onclick="doLogout()">Logout</button>';
 }
 function doLogout(){
