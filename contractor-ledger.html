@@ -141,8 +141,19 @@ const DED_TYPES = [
   {v:'Glass damage',  l:'Glass damaged at site (50% of cost)', per:'cost', rate:0.5},
   {v:'Other',         l:'Other (fixed amount)',             per:'fixed', rate:1}
 ];
+const ADD_TYPES = [   // from the rate card · every charge needs an approver (Padam Singh)
+  {v:'Shifting',        l:'Shifting (₹800 / labour)',          rate:800,  q:'Labours'},
+  {v:'Unloading',       l:'Unloading (₹800 / labour)',         rate:800,  q:'Labours'},
+  {v:'Masking tape',    l:'Masking tape (₹100 / piece)',       rate:100,  q:'Pieces'},
+  {v:'Chain pulley',    l:'Chain pulley (₹2,000)',             rate:2000, q:'Times'},
+  {v:'Crane / Hydra',   l:'Crane / Hydra (actual GST bill)',   rate:0,    q:'Bill amount ₹'},
+  {v:'Hotel & food',    l:'Hotel & food (₹1,500 / team / day)',rate:1500, q:'Team-days'},
+  {v:'Georgian bars',   l:'Georgian bars (₹15 / sq.ft)',       rate:15,   q:'Sq.ft'},
+  {v:'Service extended',l:'Service within 100 km (₹2,500)',    rate:2500, q:'Visits'},
+  {v:'Other',           l:'Other (fixed amount)',              rate:0,    q:'Amount ₹'}
+];
 const CO = {lingel:'Lingel Windows & Doors Technology Pvt. Ltd', fensterbau:'Fensterbau Lingel India Private Limited'};
-let D = {invoices:[], deductions:[], contractors:[]}, fStat='', sWhich='ready';
+let D = {invoices:[], deductions:[], additions:[], contractors:[]}, fStat='', sWhich='ready';
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const inr = n => '₹' + Number(n||0).toLocaleString('en-IN', {maximumFractionDigits:2});
@@ -168,7 +179,7 @@ async function api(params){
   return d;
 }
 function take(d){
-  D = {invoices:d.invoices||[], deductions:d.deductions||[], contractors:d.contractors||[], linked:d.linked||{}};
+  D = {invoices:d.invoices||[], deductions:d.deductions||[], additions:d.additions||[], contractors:d.contractors||[], linked:d.linked||{}};
   try{ localStorage.setItem(CACHE_LS, JSON.stringify(D)); }catch(e){}
   renderAll();
 }
@@ -260,21 +271,24 @@ function renderCons(){
 function openInv(no){
   const i = D.invoices.find(x => x.invoiceNo===no); if (!i) return;
   const deds = D.deductions.filter(d => String(d['Invoice No']).trim()===no);
+  const adds = (D.additions||[]).filter(d => String(d['Invoice No']).trim()===no);
   const s = stateOf(i);
   $('mbox').innerHTML =
-    '<div class="mh"><div><h2>'+esc(i.invoiceNo)+'</h2><div class="sub">'+esc(i.contractor)+' · #'+esc(i.offer)+' · '+esc(i.customer)+'</div></div><button class="x" onclick="closeM()">✕</button></div>'
+    '<div class="mh"><div><h2>'+esc(i.invoiceNo)+'</h2><div class="sub">'+esc(i.contractor)+' · #'+esc(i.offer)+' · '+esc(i.customer)+'</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="openPdf(\''+esc(i.invoiceNo)+'\')">📄 Invoice PDF</button><button class="x" onclick="closeM()">✕</button></div></div>'
   + '<div class="sec"><div class="sl">Handover</div>'
   + (/done/i.test(i.handover) ? '<div>✅ Handover done on <b>'+esc(i.handoverDate||'—')+'</b>'+(i.handoverUrl?' · <a href="'+esc(i.handoverUrl)+'" target="_blank" style="color:var(--hivis)">open PDF</a>':'')+'</div>'
      : '<div style="color:var(--muted)">⏳ Not handed over yet. This ticks itself when the supervisor submits the Handover form for #'+esc(i.offer)+'.</div>')
   + '</div>'
   + '<div class="sec"><div class="sl">Bill</div>'
   + '<div class="line"><span>Installation · '+i.sqft.toFixed(2)+' sq.ft × '+inr(i.rate)+'</span><span>'+inr(i.gross)+'</span></div>'
+  + '<div class="line" style="color:var(--green)"><span>Approved additional charges</span><span>+'+inr(i.additions||0)+'</span></div>'
+  + (adds.length ? '<table class="mini"><tr><th>Charge</th><th>Approved by</th><th class="r">Amount</th><th></th></tr>'+adds.map(d=>'<tr><td>'+esc(d.Type)+(d.Reason?' · '+esc(d.Reason):'')+'</td><td>'+esc(d['Approved By'])+'</td><td class="r">'+inr(d.Amount)+'</td><td>'+(s!=='paid'?'<button class="del" title="Remove" onclick="delAdd(\''+esc(d.ID)+'\',\''+esc(no)+'\')">✕</button>':'')+'</td></tr>').join('')+'</table>' : '')
   + '<div class="line neg"><span>Shifting share (50% of labour log)</span><span>−'+inr(i.shifting)+'</span></div>'
   + (i.shiftEntries.length ? '<table class="mini"><tr><th>Date</th><th>Labours</th><th class="r">Shifting cost</th><th class="r">50%</th></tr>'+i.shiftEntries.map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+e.labours+'</td><td class="r">'+inr(e.amount)+'</td><td class="r">'+inr(e.share)+'</td></tr>').join('')+'</table>' : '')
   + '<div class="line neg"><span>Office deductions</span><span>−'+inr(i.other)+'</span></div>'
   + (deds.length ? '<table class="mini"><tr><th>Type</th><th>Reason</th><th class="r">Amount</th><th></th></tr>'+deds.map(d=>'<tr><td>'+esc(d.Type)+'</td><td>'+esc(d.Reason)+'</td><td class="r">'+inr(d.Amount)+'</td><td>'+(s!=='paid'?'<button class="del" title="Remove" onclick="delDed(\''+esc(d.ID)+'\',\''+esc(no)+'\')">✕</button>':'')+'</td></tr>').join('')+'</table>' : '')
   + '<div class="line tot"><span>Net payable</span><span>'+inr(i.net)+'</span></div></div>'
-  + (s!=='paid' ? dedForm(i) : '')
+  + (s!=='paid' ? addForm(i) + dedForm(i) : '')
   + '<div class="sec"><div class="sl">Payment</div>'
   + (s==='paid' ? '<div>✓ Paid on <b>'+esc(i.paidOn)+'</b>'+(i.payRef?' · Ref '+esc(i.payRef):'')+'</div><div class="acts"><button class="btn red" onclick="unpay(\''+esc(no)+'\')">Undo paid</button></div>'
      : s==='wait' ? '<div style="color:var(--amber)">🔒 Payment is locked until the Handover form for #'+esc(i.offer)+' is submitted. Add deductions now if needed; the amount is decided after handover.</div>'
@@ -282,7 +296,40 @@ function openInv(no){
        + '<div class="acts"><button class="btn grn" onclick="pay(\''+esc(no)+'\')">Mark paid '+inr(i.net)+'</button></div>')
   + '</div>';
   $('modal').hidden = false;
-  if (s!=='paid') wireDed(i);
+  if (s!=='paid'){ wireDed(i); wireAdd(i); }
+}
+function addForm(i){
+  return '<div class="sec"><div class="sl" style="color:var(--green)">Add additional charge</div><div class="g2">'
+   + '<div class="fd s2"><label>Charge</label><select id="aType">'+ADD_TYPES.map(t=>'<option value="'+t.v+'">'+t.l+'</option>').join('')+'</select></div>'
+   + '<div class="fd"><label id="aQl">Labours</label><input type="number" step="0.01" id="aQty" value="1"></div>'
+   + '<div class="fd"><label>Amount ₹</label><input type="number" step="0.01" id="aAmt"></div>'
+   + '<div class="fd"><label>Approved by</label><input id="aBy" value="Padam Singh"></div>'
+   + '<div class="fd"><label>Note</label><input id="aWhy" placeholder="e.g. 2nd floor, no lift"></div>'
+   + '</div><div class="acts"><button class="btn grn" onclick="addAdd(\''+esc(i.invoiceNo)+'\')">Add charge</button></div></div>';
+}
+function wireAdd(i){
+  const t=$('aType'), q=$('aQty'), a=$('aAmt'), ql=$('aQl');
+  const T=()=>ADD_TYPES.find(x=>x.v===t.value);
+  const calc=()=>{ const x=T(); a.value = x.rate ? (Number(q.value||0)*x.rate).toFixed(2) : (q.value||''); };
+  t.onchange=()=>{ const x=T(); ql.textContent=x.q; q.value = x.v==='Georgian bars' ? i.sqft.toFixed(2) : (x.rate?'1':''); calc(); };
+  q.oninput=calc; calc();
+}
+async function addAdd(no){
+  const i=D.invoices.find(x=>x.invoiceNo===no), x=ADD_TYPES.find(t=>t.v===$('aType').value);
+  const amt=Number($('aAmt').value||0); if(!(amt>0)){ alert('Enter the charge amount'); return; }
+  const by=$('aBy').value.trim(); if(!by){ alert('Who approved this charge?'); return; }
+  if (await act({action:'ledgerAdd', invoiceNo:no, offer:i.offer, contractor:i.contractor, code:i.code, type:x.v,
+     qty:$('aQty').value||'', rate:x.rate||'', amount:amt, reason:$('aWhy').value.trim(), approvedBy:by, by:supName()}, 'Charge added')) openInv(no);
+}
+async function delAdd(id,no){ if (!confirm('Remove this charge?')) return; if (await act({action:'ledgerAddDel', id}, 'Charge removed')) openInv(no); }
+async function openPdf(no){
+  const w = window.open('', '_blank');   // open now so pop-up blockers allow it
+  setDot('busy','Finding invoice PDF…');
+  try{
+    const d = await api({action:'ledgerPdf', invoiceNo:no});
+    if (d.files && d.files.length){ setDot('ok','Opened '+d.files[0].name); if (w) w.location = d.files[0].url; else location.href = d.files[0].url; }
+    else { if (w) w.close(); setDot('err','No PDF found in Drive for '+no); alert('No PDF found in Drive for '+no+'.\n\nRe-download it from Team Availability: tap the booked team, then 📄 Invoice.'); }
+  }catch(e){ if (w) w.close(); setDot('err', e.message); alert(e.message); }
 }
 function dedForm(i){
   return '<div class="sec"><div class="sl">Add deduction</div><div class="g2">'
@@ -331,7 +378,7 @@ function stmRows(){
 }
 function statementHTML(){
   const c = $('sCon').value, con = D.contractors.find(x=>x.name===c) || {}, L = stmRows();
-  const g = L.reduce((s,i)=>s+i.gross,0), sh = L.reduce((s,i)=>s+i.shifting,0), od = L.reduce((s,i)=>s+i.other,0), n = L.reduce((s,i)=>s+i.net,0);
+  const ad = L.reduce((s,i)=>s+(i.additions||0),0), g = L.reduce((s,i)=>s+i.gross,0), sh = L.reduce((s,i)=>s+i.shifting,0), od = L.reduce((s,i)=>s+i.other,0), n = L.reduce((s,i)=>s+i.net,0);
   const td = 'padding:7px 8px;border-bottom:1px solid #e5e5e5;font-size:12px';
   const dedLines = L.flatMap(i => D.deductions.filter(d=>String(d['Invoice No']).trim()===i.invoiceNo).map(d => '<tr><td style="'+td+'">'+esc(i.invoiceNo)+'</td><td style="'+td+'">'+esc(d.Type)+'</td><td style="'+td+'">'+esc(d.Reason)+'</td><td style="'+td+';text-align:right">'+inr(d.Amount)+'</td></tr>'));
   return '<div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;padding:32px 36px;max-width:820px;margin:0 auto">'
@@ -340,9 +387,9 @@ function statementHTML(){
    + '<div style="display:flex;gap:24px;margin-bottom:16px;font-size:12px;line-height:1.7"><div style="flex:1"><div style="color:#888;text-transform:uppercase;font-size:10px;letter-spacing:1px">Contractor</div><b style="font-size:14px">'+esc(c)+'</b> ('+esc(con.code||'')+')<br>'+esc(con.addr||'')+' '+esc(con.phone||'')+'</div>'
    + '<div style="flex:1;background:#f6f7f8;border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px"><div style="color:#888;text-transform:uppercase;font-size:10px;letter-spacing:1px">Pay to</div>'
    + (con['A/C No'] ? '<b>'+esc(con['Account Holder'])+'</b><br>'+esc(con['Bank'])+'<br>A/C '+esc(con['A/C No'])+' · IFSC '+esc(con['IFSC'])+'<br>PAN '+esc(con['PAN'])+(con['GSTIN']?' · GSTIN '+esc(con['GSTIN']):'') : '<span style="color:#c00">Bank / KYC details missing</span>')+'</div></div>'
-   + '<table style="width:100%;border-collapse:collapse"><tr style="background:#1a1a1a;color:#fff">'+['Invoice','Offer · Customer','Handover','Gross','Shifting 50%','Deductions','Net'].map((h,k)=>'<th style="padding:8px;font-size:10px;text-transform:uppercase;text-align:'+(k>2?'right':'left')+'">'+h+'</th>').join('')+'</tr>'
-   + (L.length ? L.map(i => '<tr><td style="'+td+'">'+esc(i.invoiceNo)+'<br><span style="color:#888">'+esc(i.date)+'</span></td><td style="'+td+'">#'+esc(i.offer)+'<br><span style="color:#888">'+esc(i.customer)+'</span></td><td style="'+td+'">'+(/done/i.test(i.handover)?'Done '+esc(i.handoverDate):'Pending')+'</td><td style="'+td+';text-align:right">'+inr(i.gross)+'</td><td style="'+td+';text-align:right">−'+inr(i.shifting)+'</td><td style="'+td+';text-align:right">−'+inr(i.other)+'</td><td style="'+td+';text-align:right;font-weight:700">'+inr(i.net)+'</td></tr>').join('') : '<tr><td colspan="7" style="'+td+';text-align:center;color:#888">Nothing to pay</td></tr>')
-   + '<tr style="font-weight:700"><td colspan="3" style="padding:10px 8px;font-size:13px">TOTAL</td><td style="padding:10px 8px;text-align:right">'+inr(g)+'</td><td style="padding:10px 8px;text-align:right">−'+inr(sh)+'</td><td style="padding:10px 8px;text-align:right">−'+inr(od)+'</td><td style="padding:10px 8px;text-align:right;font-size:16px">'+inr(n)+'</td></tr></table>'
+   + '<table style="width:100%;border-collapse:collapse"><tr style="background:#1a1a1a;color:#fff">'+['Invoice','Offer · Customer','Handover','Gross','Additions','Shifting 50%','Deductions','Net'].map((h,k)=>'<th style="padding:8px;font-size:10px;text-transform:uppercase;text-align:'+(k>2?'right':'left')+'">'+h+'</th>').join('')+'</tr>'
+   + (L.length ? L.map(i => '<tr><td style="'+td+'">'+esc(i.invoiceNo)+'<br><span style="color:#888">'+esc(i.date)+'</span></td><td style="'+td+'">#'+esc(i.offer)+'<br><span style="color:#888">'+esc(i.customer)+'</span></td><td style="'+td+'">'+(/done/i.test(i.handover)?'Done '+esc(i.handoverDate):'Pending')+'</td><td style="'+td+';text-align:right">'+inr(i.gross)+'</td><td style="'+td+';text-align:right">+'+inr(i.additions||0)+'</td><td style="'+td+';text-align:right">−'+inr(i.shifting)+'</td><td style="'+td+';text-align:right">−'+inr(i.other)+'</td><td style="'+td+';text-align:right;font-weight:700">'+inr(i.net)+'</td></tr>').join('') : '<tr><td colspan="8" style="'+td+';text-align:center;color:#888">Nothing to pay</td></tr>')
+   + '<tr style="font-weight:700"><td colspan="3" style="padding:10px 8px;font-size:13px">TOTAL</td><td style="padding:10px 8px;text-align:right">'+inr(g)+'</td><td style="padding:10px 8px;text-align:right">+'+inr(ad)+'</td><td style="padding:10px 8px;text-align:right">−'+inr(sh)+'</td><td style="padding:10px 8px;text-align:right">−'+inr(od)+'</td><td style="padding:10px 8px;text-align:right;font-size:16px">'+inr(n)+'</td></tr></table>'
    + (dedLines.length ? '<div style="margin-top:16px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888">Deduction details</div><table style="width:100%;border-collapse:collapse">'+dedLines.join('')+'</table>' : '')
    + '<div style="margin-top:10px;font-size:11px;color:#666">Shifting share = 50% of shifting labour recorded in the Labour Log for each offer.</div>'
    + '<div style="margin-top:44px;display:flex;justify-content:space-between;font-size:11px;color:#888"><div style="border-top:1px solid #999;padding-top:6px;width:200px;text-align:center">Prepared by</div><div style="border-top:1px solid #999;padding-top:6px;width:200px;text-align:center">Approved by</div><div style="border-top:1px solid #999;padding-top:6px;width:200px;text-align:center">Contractor</div></div></div>';
