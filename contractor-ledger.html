@@ -248,7 +248,7 @@ function renderInv(){
       + '<td class="mono">'+esc(i.invoiceNo)+'<br><span style="color:var(--muted)">'+esc(i.date)+'</span></td>'
       + '<td>'+esc(i.contractor)+'</td>'
       + '<td class="hide-m">#'+esc(i.offer)+'<br><span style="color:var(--muted)">'+esc(i.customer)+'</span></td>'
-      + '<td>'+(/done/i.test(i.handover) ? '<span class="pill ho">✅ Done</span><br><span class="mono" style="color:var(--muted)">'+esc(i.handoverDate)+'</span>' : '<span class="pill nho">⏳ Pending</span>')+'</td>'
+      + '<td>'+(/done/i.test(i.handover) ? '<span class="pill ho">✅ Done</span><br><span class="mono" style="color:var(--muted)">'+esc(i.handoverDate)+'</span>' : '<span class="pill nho">⏳ '+(/partial/i.test(i.handover)?esc(i.handover):'Pending')+'</span>')+'</td>'
       + '<td class="r">'+inr(i.gross)+'</td>'
       + '<td class="r neg hide-m">'+((i.shifting+i.other) ? '−'+inr(i.shifting+i.other) : '—')+'</td>'
       + '<td class="r"><b>'+inr(i.net)+'</b></td>'
@@ -284,7 +284,7 @@ function openInv(no){
   + '<div class="line" style="color:var(--green)"><span>Approved additional charges</span><span>+'+inr(i.additions||0)+'</span></div>'
   + (adds.length ? '<table class="mini"><tr><th>Charge</th><th>Approved by</th><th class="r">Amount</th><th></th></tr>'+adds.map(d=>'<tr><td>'+esc(d.Type)+(d.Reason?' · '+esc(d.Reason):'')+'</td><td>'+esc(d['Approved By'])+'</td><td class="r">'+inr(d.Amount)+'</td><td>'+(s!=='paid'?'<button class="del" title="Remove" onclick="delAdd(\''+esc(d.ID)+'\',\''+esc(no)+'\')">✕</button>':'')+'</td></tr>').join('')+'</table>' : '')
   + '<div class="line neg"><span>Shifting share (50% of labour log)</span><span>−'+inr(i.shifting)+'</span></div>'
-  + (i.shiftEntries.length ? '<table class="mini"><tr><th>Date</th><th>Labours</th><th class="r">Shifting cost</th><th class="r">50%</th></tr>'+i.shiftEntries.map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+e.labours+'</td><td class="r">'+inr(e.amount)+'</td><td class="r">'+inr(e.share)+'</td></tr>').join('')+'</table>' : '')
+  + (i.shiftEntries.length ? '<table class="mini"><tr><th>Date</th><th>Labours</th><th class="r">Shifting cost</th><th class="r">50%</th></tr>'+i.shiftEntries.map(e=>'<tr><td>'+esc(e.date)+(e.offer?' · '+esc(e.offer):'')+'</td><td>'+e.labours+'</td><td class="r">'+inr(e.amount)+'</td><td class="r">'+inr(e.share)+'</td></tr>').join('')+'</table>' : '')
   + '<div class="line neg"><span>Office deductions</span><span>−'+inr(i.other)+'</span></div>'
   + (deds.length ? '<table class="mini"><tr><th>Type</th><th>Reason</th><th class="r">Amount</th><th></th></tr>'+deds.map(d=>'<tr><td>'+esc(d.Type)+'</td><td>'+esc(d.Reason)+'</td><td class="r">'+inr(d.Amount)+'</td><td>'+(s!=='paid'?'<button class="del" title="Remove" onclick="delDed(\''+esc(d.ID)+'\',\''+esc(no)+'\')">✕</button>':'')+'</td></tr>').join('')+'</table>' : '')
   + '<div class="line tot"><span>Net payable</span><span>'+inr(i.net)+'</span></div></div>'
