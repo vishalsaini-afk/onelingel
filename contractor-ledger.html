@@ -274,7 +274,7 @@ function openInv(no){
   const adds = (D.additions||[]).filter(d => String(d['Invoice No']).trim()===no);
   const s = stateOf(i);
   $('mbox').innerHTML =
-    '<div class="mh"><div><h2>'+esc(i.invoiceNo)+'</h2><div class="sub">'+esc(i.contractor)+' · #'+esc(i.offer)+' · '+esc(i.customer)+'</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="openPdf(\''+esc(i.invoiceNo)+'\')">📄 Invoice PDF</button><button class="x" onclick="closeM()">✕</button></div></div>'
+    '<div class="mh"><div><h2>'+esc(i.invoiceNo)+'</h2><div class="sub">'+esc(i.contractor)+' · #'+esc(i.offer)+' · '+esc(i.customer)+'</div></div><div style="display:flex;gap:6px"><button class="btn" onclick="openPdf(\''+esc(i.invoiceNo)+'\')">📄 Invoice PDF</button>'+(s!=='wait'?'<button class="btn go" onclick="finalInvoice(\''+esc(i.invoiceNo)+'\')">📄 Final invoice</button>':'')+'<button class="x" onclick="closeM()">✕</button></div></div>'
   + '<div class="sec"><div class="sl">Handover</div>'
   + (/done/i.test(i.handover) ? '<div>✅ Handover done on <b>'+esc(i.handoverDate||'—')+'</b>'+(i.handoverUrl?' · <a href="'+esc(i.handoverUrl)+'" target="_blank" style="color:var(--hivis)">open PDF</a>':'')+'</div>'
      : '<div style="color:var(--muted)">⏳ Not handed over yet. This ticks itself when the supervisor submits the Handover form for #'+esc(i.offer)+'.</div>')
@@ -327,9 +327,99 @@ async function openPdf(no){
   setDot('busy','Finding invoice PDF…');
   try{
     const d = await api({action:'ledgerPdf', invoiceNo:no});
-    if (d.files && d.files.length){ setDot('ok','Opened '+d.files[0].name); if (w) w.location = d.files[0].url; else location.href = d.files[0].url; }
+    const fl = (d.files||[]).slice().sort((a,b)=>/_FINAL/i.test(a.name)-/_FINAL/i.test(b.name));
+    if (fl.length){ setDot('ok','Opened '+fl[0].name); if (w) w.location = fl[0].url; else location.href = fl[0].url; }
     else { if (w) w.close(); setDot('err','No PDF found in Drive for '+no); alert('No PDF found in Drive for '+no+'.\n\nRe-download it from Team Availability: tap the booked team, then 📄 Invoice.'); }
   }catch(e){ if (w) w.close(); setDot('err', e.message); alert(e.message); }
+}
+/* ---------- FINAL INVOICE (after handover): same layout, same number, with additions & deductions ---------- */
+const CO_FULL = {
+  'lingel':    {n:'Lingel Windows & Doors Technology Pvt. Ltd', a:'Kapriwas Sec-14, Kapriwas, Haryana 123110', g:'06AABCL1537B2Z3'},
+  'fensterbau':{n:'Fensterbau Lingel India Private Limited', a:'1st floor, 12A & 22, near Subhash chowk, Central Park II, Sector 48, Gurugram, Haryana 122018', g:'06AACCF0423D1ZI'}
+};
+function coOf(billTo){ return /fenster/i.test(billTo||'') ? CO_FULL.fensterbau : CO_FULL.lingel; }
+function loadJs(src){ return new Promise((res,rej)=>{ if([...document.scripts].some(x=>x.src===src)) return res(); const e=document.createElement('script'); e.src=src; e.onload=res; e.onerror=()=>rej(new Error('Could not load '+src+' (need internet)')); document.head.appendChild(e); }); }
+function finalHTML(i){
+  const con = D.contractors.find(c=>c.name===i.contractor||c.code===i.code) || {};
+  const bill = coOf(i.billTo), no = i.invoiceNo;
+  const adds = (D.additions||[]).filter(d=>String(d['Invoice No']).trim()===no);
+  const deds = D.deductions.filter(d=>String(d['Invoice No']).trim()===no);
+  const td='padding:9px 12px;border-bottom:1px solid #e5e5e5;font-size:12px', tr=(a,b,c,d,e,col)=>'<tr><td style="'+td+'">'+a+'</td><td style="'+td+'">'+b+'</td><td style="'+td+';text-align:center">'+c+'</td><td style="'+td+';text-align:right">'+d+'</td><td style="'+td+';text-align:right;font-weight:700'+(col?';color:'+col:'')+'">'+e+'</td></tr>';
+  let n=1, rows = tr(n++,'<b>'+esc(i.workType||'Installation')+'</b> — Window &amp; Door Installation', i.sqft?i.sqft.toFixed(2)+' sq.ft':'', i.rate?'₹'+i.rate+'/sqft':'', inr(i.gross));
+  adds.forEach(d=> rows += tr(n++, esc(d.Type)+(d.Reason?' · '+esc(d.Reason):'')+'<br><span style="color:#888;font-size:10px">Approved by '+esc(d['Approved By']||'')+'</span>', d.Qty||'', d.Rate?'₹'+d.Rate:'', '+'+inr(d.Amount), '#1a7f37'));
+  if (i.shifting) rows += tr(n++, 'Shifting labour — 50% contractor share<br><span style="color:#888;font-size:10px">'+(i.shiftEntries||[]).map(e=>esc(e.date)+': '+e.labours+' labour').join(' · ')+'</span>', '', '50%', '−'+inr(i.shifting), '#b42318');
+  deds.forEach(d=> rows += tr(n++, esc(d.Type)+(d.Reason?' · '+esc(d.Reason):''), d.Qty||'', d.Rate?(Number(d.Rate)<1?(d.Rate*100)+'%':'₹'+d.Rate):'', '−'+inr(d.Amount), '#b42318'));
+  const add = i.additions||0, ded = (i.shifting||0)+(i.other||0);
+  const pay = [['Account Holder',con['Account Holder']],['Bank',con['Bank']],['A/C No.',con['A/C No']],['IFSC',con['IFSC']],['PAN',con['PAN']],['Aadhaar',con['Aadhaar Last 4']],['GSTIN',con['GSTIN']]].filter(r=>r[1]);
+  return `<div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;width:100%;padding:40px 45px;background:#fff">
+    <div style="text-align:center;margin-bottom:26px">
+      <div style="font-size:28px;font-weight:900;text-transform:uppercase;letter-spacing:2px">${esc(i.contractor)}</div>
+      <div style="font-size:13px;color:#666;margin-top:4px;text-transform:uppercase;letter-spacing:1px">UPVC &amp; Aluminium Window &amp; Door Installation</div>
+      <div style="font-size:12px;color:#888;margin-top:6px">${esc(con.addr||'')} ${con.phone?'· '+esc(con.phone):''}</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:16px;border-bottom:2px solid #1a1a1a">
+      <div>
+        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Bill To</div>
+        <div style="font-weight:700;font-size:14px">${bill.n}</div>
+        <div style="font-size:12px;color:#555;max-width:280px;line-height:1.5">${bill.a}</div>
+        <div style="font-size:12px;color:#555;margin-top:4px"><span style="color:#888">GSTIN:</span> <b>${bill.g}</b></div>
+        ${i.customer?`<div style="font-size:12px;color:#555;margin-top:8px"><span style="color:#888">Customer:</span> <b>${esc(i.customer)}</b></div>`:''}
+        <div style="font-size:12px;color:#555"><span style="color:#888">Offer No.:</span> <b>${esc(i.offer)}</b></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:28px;font-weight:900;letter-spacing:1px">FINAL INVOICE</div>
+        <table style="margin-left:auto;font-size:12px;margin-top:8px">
+          <tr><td style="color:#888;text-align:right;padding:2px 10px">Invoice No.</td><td style="font-weight:700">${esc(no)}</td></tr>
+          <tr><td style="color:#888;text-align:right;padding:2px 10px">Raised on</td><td style="font-weight:700">${esc(i.date)}</td></tr>
+          <tr><td style="color:#888;text-align:right;padding:2px 10px">Handover</td><td style="font-weight:700">${esc(i.handoverDate||'Done')}</td></tr>
+          <tr><td style="color:#888;text-align:right;padding:2px 10px">Settled on</td><td style="font-weight:700">${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td></tr>
+        </table>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:#1a1a1a;color:#fff">${['#','Description','Qty','Rate','Amount'].map((h,k)=>'<th style="padding:10px 12px;font-size:11px;text-transform:uppercase;text-align:'+(k>=3?'right':k==2?'center':'left')+'">'+h+'</th>').join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-top:18px">
+      <table style="min-width:300px;font-size:13px">
+        <tr><td style="padding:5px 16px;color:#666">Installation</td><td style="padding:5px 16px;text-align:right;font-weight:600">${inr(i.gross)}</td></tr>
+        <tr><td style="padding:5px 16px;color:#666">Approved additional charges</td><td style="padding:5px 16px;text-align:right;font-weight:600;color:#1a7f37">+${inr(add)}</td></tr>
+        <tr><td style="padding:5px 16px;color:#666">Deductions (incl. shifting 50%)</td><td style="padding:5px 16px;text-align:right;font-weight:600;color:#b42318">−${inr(ded)}</td></tr>
+        <tr style="font-size:18px;font-weight:900;border-top:2px solid #1a1a1a"><td style="padding:12px 16px">NET PAYABLE</td><td style="padding:12px 16px;text-align:right">${inr(i.net)}</td></tr>
+      </table>
+    </div>
+    ${pay.length?'<div style="margin-top:20px;padding:12px 16px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb"><div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;margin-bottom:8px">Payment Details</div><table style="font-size:12px;color:#444;line-height:1.8">'+pay.map(r=>'<tr><td style="color:#888;padding-right:20px">'+r[0]+'</td><td style="font-weight:600">'+esc(r[1])+'</td></tr>').join('')+'</table></div>':''}
+    <div style="margin-top:14px;padding:12px 16px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb;font-size:11.5px;line-height:1.6;color:#444">This final invoice replaces the amount on invoice ${esc(no)} raised at booking. Additional charges as approved; shifting labour charged at 50% as per the Labour Log; deductions as per the contractor rate card.</div>
+    <div style="margin-top:40px;display:flex;justify-content:space-between">
+      <div style="text-align:center;width:200px"><div style="border-top:1px solid #999;padding-top:8px;font-size:11px;color:#888">Contractor Signature</div></div>
+      <div style="text-align:center;width:200px"><div style="border-top:1px solid #999;padding-top:8px;font-size:11px;color:#888">Authorized Signature</div></div>
+    </div>
+  </div>`;
+}
+async function finalInvoice(no){
+  const i = D.invoices.find(x=>x.invoiceNo===no); if(!i) return;
+  if (stateOf(i)==='wait'){ alert('Final invoice is made after the handover is done.'); return; }
+  setDot('busy','Making final invoice…');
+  try{
+    await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const holder=document.createElement('div'); holder.style.cssText='position:fixed;left:-10000px;top:0;width:760px;background:#fff';
+    holder.innerHTML=finalHTML(i); document.body.appendChild(holder);
+    await new Promise(r=>setTimeout(r,80));
+    const cv=await window.html2canvas(holder,{scale:2.5,backgroundColor:'#ffffff'}); holder.remove();
+    const pdf=new window.jspdf.jsPDF({unit:'pt',format:'a4',compress:true});
+    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), per=Math.floor(cv.width*ph/pw);
+    for(let y=0,pg=0;y<cv.height;y+=per,pg++){ const h=Math.min(per,cv.height-y), c=document.createElement('canvas'); c.width=cv.width; c.height=h;
+      c.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h); if(pg) pdf.addPage();
+      pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw,h*pw/cv.width,undefined,'FAST'); }
+    const name='Invoice_'+no.replace(/[^\w-]+/g,'-')+'_FINAL.pdf';
+    pdf.save(name);
+    const uri=pdf.output('datauristring');
+    let saved=false;
+    try{ const r=await fetch(LEDGER_API,{method:'POST',body:new URLSearchParams({action:'upload',folder:i.offer,name,mime:'application/pdf',data:uri.slice(uri.indexOf(',')+1)})});
+         const d=JSON.parse(await r.text()); saved=!!(d&&d.ok); }catch(e){}
+    setDot(saved?'ok':'err', saved?('Final invoice saved to Drive · '+i.offer):'Final invoice downloaded — Drive save failed, tap again when online');
+  }catch(e){ setDot('err', e.message); alert(e.message); }
 }
 function dedForm(i){
   return '<div class="sec"><div class="sl">Add deduction</div><div class="g2">'
