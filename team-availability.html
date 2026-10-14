@@ -155,7 +155,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
 .qup{flex:1;width:100%;border:1px dashed var(--hivis);background:rgba(255,206,31,.08);color:var(--hivis);border-radius:8px;padding:11px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
-.qinfo{font-size:12px;color:var(--muted);min-height:0}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
+.qinfo{font-size:12px;color:var(--muted);min-height:0}.pk-list{display:flex;flex-direction:column;gap:6px;margin:8px 0 6px}.pk-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--green);border-radius:8px;background:rgba(46,204,113,.08);font-size:12.5px}.pk-row .tk{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.pk-row .tx{flex:1;min-width:0;line-height:1.35}.pk-row .tx b{color:var(--text,#fff)}.pk-row .tx span{color:var(--muted);display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pk-row .rm{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 6px;cursor:pointer}.pk-row.busy{border-color:var(--muted);background:none}.pk-row.busy .tk{background:var(--muted)}.pk-add{display:flex;gap:8px}.pk-add .qup.plus{font-size:20px;flex:0 0 56px;padding:6px}.pk-tot{font-size:12px;color:var(--green);font-weight:700;margin-top:2px}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
 .msel{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .relinfo{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.7}
 .relinfo b{color:var(--hivis);font-family:'Archivo Narrow'}
@@ -1064,16 +1064,19 @@ function openRelease(name,team,tm){
   document.getElementById('mTtl').textContent='Manage '+name;
   document.getElementById('mSub').textContent='Team '+team+' · release or put on hold';
   document.getElementById('mBody').innerHTML='<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:12px">'
-    +'<button type="button" class="qup" id="mUpBtn">📤 Upload quotation / production sheet</button>'
-    +(tm.offer?'<button type="button" class="qup" id="mWoBtn">📄 Invoice for #'+esc(tm.offer)+'</button>':'')
-    +'</div><input type="file" id="mUpFile" accept="application/pdf,.pdf" hidden><div class="qinfo" id="mUpInfo" style="margin:-6px 0 10px"></div>'
+    +(tm.offer?'<div style="margin-bottom:10px"><button type="button" class="qup" id="mWoBtn">📄 Invoice for #'+esc(tm.offer)+'</button></div>':'')
+    +'<div class="fd"><label>Quotation / production sheet</label><div id="mUpPick"></div>'
+    +'<button type="button" class="mbtn" id="mUpGo" style="width:100%;margin-top:8px" hidden>Save &amp; make invoice</button>'
+    +'<div class="qinfo" id="mUpInfo"></div></div>'
     +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ const v=b.getAttribute('data-val'); closeModal(); holdSite(name,team,v); });
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
-  const ub=document.getElementById('mUpBtn'), uf=document.getElementById('mUpFile');
-  if(ub){ ub.onclick=()=>uf.click(); uf.onchange=()=>{ const file=uf.files[0]; uf.value=''; if(file) uploadForBooked(name,team,tm,file); }; }
+  const upRoot=document.getElementById('mUpPick'), upGo=document.getElementById('mUpGo');
+  if(upRoot){ let upQ=null;
+    pdfPicker(upRoot,{onChange:q=>{ upQ=q; upGo.hidden=!q; if(q) upGo.textContent='Save & make invoice'+(q.parts?' ('+q.parts.length+' parts · '+q.total.toFixed(0)+' sq.ft)':' · '+q.total.toFixed(0)+' sq.ft'); }});
+    upGo.onclick=()=>{ if(upQ) uploadForBooked(name,team,tm,upQ); };
+  }
   goHandler=()=>{ closeModal(); release(name,team); };
 }
 function openNAModal(name,team){
@@ -1706,12 +1709,62 @@ async function parseQuotationTA_q(file){
   return {offer,client,party:partyType(rawClient),sales:taSales(salesRaw),city:taCity(addrTxt)||taCity(text.slice(0,1500)),items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
 }
 
+
+/* PDF picker: every PDF read shows as a ✓ row; "+" adds more parts of the same order; ✕ removes one.
+   onChange(combined-or-null) runs after every change. */
+function pdfPicker(root, opts){
+  const list=[]; let busy=0;
+  root.innerHTML='<div class="pk-list"></div>'
+    +'<div class="pk-add"><button type="button" class="qup pk-up">📄 Upload PDF</button><button type="button" class="qup pk-lib">🔎 By Offer No</button></div>'
+    +'<input type="file" class="pk-file" accept="application/pdf,.pdf" multiple hidden><div class="qinfo pk-msg" style="margin-top:6px"></div>';
+  const L=root.querySelector('.pk-list'), up=root.querySelector('.pk-up'), lib=root.querySelector('.pk-lib'), f=root.querySelector('.pk-file'), msg=root.querySelector('.pk-msg');
+  const say=(t,c)=>{ msg.className='qinfo pk-msg'+(c?' '+c:''); msg.textContent=t||''; };
+  const short=o=>{ const pp=LD.parts(o||''); return pp.parts.length?'/'+pp.parts.join('/'):''; };
+  function draw(){
+    L.innerHTML=list.map((q,i)=>'<div class="pk-row"><div class="tk">✓</div><div class="tx"><b>'+(q.offer?'#'+esc(q.offer):'No Offer No')+'</b> · '+(q.kind==='production'?'Production sheet':'Quotation')+' · uploaded'
+      +'<span>'+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft'+(q.fromLib?' · from library':'')+(q.file&&q.file.name?' · '+esc(q.file.name):'')+'</span></div>'
+      +'<button type="button" class="rm" data-i="'+i+'" title="Remove">✕</button></div>').join('')
+      +(busy?'<div class="pk-row busy"><div class="tk">…</div><div class="tx">Reading '+busy+' PDF'+(busy>1?'s':'')+'…</div></div>':'');
+    L.querySelectorAll('.rm').forEach(b=>b.onclick=()=>{ list.splice(+b.getAttribute('data-i'),1); changed(); });
+    // first time: two big buttons; after a PDF is in: a "+" to add the next part
+    if(list.length){ up.textContent='+'; up.title='Add another part (e.g. /8, /9)'; up.classList.add('plus'); lib.textContent='🔎 Add by Offer No'; }
+    else { up.textContent='📄 Upload PDF'; up.title=''; up.classList.remove('plus'); lib.textContent='🔎 By Offer No'; }
+  }
+  function combined(){ return list.length?combineQs(list.slice()):null; }
+  function changed(){
+    draw(); const q=combined();
+    if(q && list.length>1) say('Total '+list.length+' parts · #'+q.offer+' · '+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft','ok'); else say('');
+    if(opts.onChange) opts.onChange(q);
+  }
+  async function add(arr){
+    busy+=arr.length; draw(); say('');
+    const got=[];
+    for(const a of arr){
+      try{ const one=await parseQuotationTA(a.file); one.file=a.file; one.fromLib=!!a.fromLib; if(!one.offer&&a.meta) one.offer=a.meta.offer; one.meta=a.meta; got.push(one); }
+      catch(e){ say('⚠ '+(a.file&&a.file.name?a.file.name+': ':'')+(e.message||"Couldn't read PDF"),'err'); }
+      busy--; draw();
+    }
+    for(const one of got){
+      const dup=list.findIndex(x=>x.offer && one.offer && cleanOffer(x.offer).toUpperCase()===cleanOffer(one.offer).toUpperCase());
+      if(dup>=0){ if(confirm('#'+one.offer+' is already added.\n\nOK = replace it with this PDF\nCancel = keep the one already added')) list[dup]=one; continue; }
+      const bases=[...new Set(list.concat([one]).map(x=>LD.parts(x.offer).base).filter(Boolean))];
+      if(bases.length>1 && !confirm('#'+one.offer+' is a different order ('+bases.join(', ')+').\n\nAdd it to this booking anyway?')) continue;
+      list.push(one);
+    }
+    changed();
+  }
+  up.onclick=()=>f.click();
+  f.onchange=async()=>{ const fs=[...f.files]; f.value=''; if(fs.length) await add(fs.map(x=>({file:x,fromLib:false}))); };
+  lib.onclick=()=>LD.openLoader(async(file,kind,meta)=>{ await add([{file,fromLib:true,meta}]); },
+    list.length?LD.parts(list[0].offer).base:((opts.offerEl&&opts.offerEl.value)||'').trim(), 'production',
+    {onMany:async(docs)=>{ await add(docs.map(d=>({file:d.file,fromLib:true,meta:d.meta}))); }});
+  draw();
+  return {list, combined, say};
+}
 /* HTML for the Book popup */
 function quoteFieldHTML(){
   return '<div class="fd"><label>Quotation or production sheet (fills offer &amp; site · makes invoice)</label>'
-    +'<div style="display:flex;gap:8px"><button type="button" class="qup" id="mQBtn">📄 Upload PDF</button><button type="button" class="qup" id="mQLoad">🔎 By Offer No</button></div>'
-    +'<input type="file" id="mQFile" accept="application/pdf,.pdf" multiple hidden>'
-    +'<div class="qinfo" id="mQInfo"></div></div>'
+    +'<div id="mQPick"></div><div class="qinfo" id="mQInfo"></div></div>'
     +'<div id="mWo" hidden>'
     +'<div class="fd"><label>Invoice — rate</label><select id="mWoSvc" class="msel">'+Object.keys(WO_RATES).map(s=>'<option value="'+esc(s)+'">'+esc(s)+' (₹'+WO_RATES[s]+'/sqft)</option>').join('')+'</select></div>'
     +'<div class="fd"><label>Bill to</label>'+seg('segBill',[{v:'lingel',l:'Lingel'},{v:'fensterbau',l:'Fensterbau'}],'lingel')+'<div class="qinfo" id="mBillHint"></div></div>'
@@ -1719,39 +1772,27 @@ function quoteFieldHTML(){
 }
 function wireQuoteField(){
   bookQ=null;
-  const b=document.getElementById('mQBtn'), f=document.getElementById('mQFile'), info=document.getElementById('mQInfo');
-  if(!b) return;
-  b.onclick=()=>f.click();
-  const lb=document.getElementById('mQLoad');
-  if(lb) lb.onclick=()=>LD.openLoader(async(file,kind,meta)=>{ await useFiles([{file,fromLib:true,meta}]); }, (document.getElementById('mOffer').value||'').trim(), 'production',
-    {onMany:async(docs)=>{ await useFiles(docs.map(d=>({file:d.file,fromLib:true,meta:d.meta}))); }});
-  f.onchange=async()=>{ const fs=[...f.files]; f.value=''; if(fs.length) await useFiles(fs.map(x=>({file:x,fromLib:false}))); };
-  async function useFiles(arr){
-    const meta=arr[0].meta;
-    info.className='qinfo'; info.textContent='Reading '+arr.length+' PDF'+(arr.length>1?'s':'')+'…';
-    try{
-      const qs=[]; for(const a of arr){ const one=await parseQuotationTA(a.file); one.file=a.file; one.fromLib=a.fromLib; if(!one.offer&&a.meta) one.offer=a.meta.offer; qs.push(one); }
-      const bases=[...new Set(qs.map(x=>LD.parts(x.offer).base))];
-      if(bases.length>1 && !confirm('These PDFs belong to different orders ('+bases.join(', ')+').\n\nCombine them into one booking anyway?')){ info.textContent=''; return; }
-      const q=combineQs(qs); bookQ=q; if(!q.parts) q.parts=null;
-      const o=document.getElementById('mOffer'), p=document.getElementById('mProject');
-      if(q.offer) o.value=q.offer;
-      if(q.client && !p.value) p.value=q.client;
-      const sEl=document.getElementById('mSales'), cEl=document.getElementById('mCity');
-      const sales=q.sales||(meta&&taSales(meta.salesperson))||'', city=q.city||(meta&&taCity(meta.site))||'';
-      if(sEl && sales && !sEl.value) sEl.value=sales;
-      if(cEl && city && !cEl.value) cEl.value=city;
-      document.getElementById('mWoSvc').value=q.service;
-      document.getElementById('mWo').hidden=false;
-      if(q.party==='dealer') setBillTo('lingel'); else if(q.party==='person') setBillTo('fensterbau');
-      const bh=document.getElementById('mBillHint');
-      if(bh) bh.textContent=q.party==='dealer'?'Dealer order → Lingel (tap to change)':q.party==='person'?'Direct customer → Fensterbau (tap to change)':'Could not tell dealer or customer — please choose';
-      info.className='qinfo ok';
-      info.textContent='✓ '+(q.parts?q.parts.length+' parts · ':(q.kind==='production'?'Production sheet · ':'Quotation · '))+(q.offer?('#'+q.offer+' · '):'')+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft'+(sales?' · '+sales:'')+(city?' · '+city:'')
-        +(q.parts?' ('+q.parts.map(p=>'/'+LD.parts(p.offer).parts.join('/')+' '+p.sqft.toFixed(0)).join(', ')+')':'');
-      b.textContent='📄 Change PDF';
-    }catch(e){ bookQ=null; info.className='qinfo err'; info.textContent='⚠ '+(e.message||"Couldn't read PDF"); }
-  }
+  const root=document.getElementById('mQPick'), info=document.getElementById('mQInfo');
+  if(!root) return;
+  pdfPicker(root,{offerEl:document.getElementById('mOffer'), onChange:q=>{
+    bookQ=q;
+    if(!q){ document.getElementById('mWo').hidden=true; info.textContent=''; return; }
+    if(!q.parts) q.parts=null;
+    const meta=q.meta||null;
+    const o=document.getElementById('mOffer'), p=document.getElementById('mProject');
+    if(q.offer) o.value=q.offer;
+    if(q.client && !p.value) p.value=q.client;
+    const sEl=document.getElementById('mSales'), cEl=document.getElementById('mCity');
+    const sales=q.sales||(meta&&taSales(meta.salesperson))||'', city=q.city||(meta&&taCity(meta.site))||'';
+    if(sEl && sales && !sEl.value) sEl.value=sales;
+    if(cEl && city && !cEl.value) cEl.value=city;
+    document.getElementById('mWoSvc').value=q.service;
+    document.getElementById('mWo').hidden=false;
+    if(q.party==='dealer') setBillTo('lingel'); else if(q.party==='person') setBillTo('fensterbau');
+    const bh=document.getElementById('mBillHint');
+    if(bh) bh.textContent=q.party==='dealer'?'Dealer order → Lingel (tap to change)':q.party==='person'?'Direct customer → Fensterbau (tap to change)':'Could not tell dealer or customer — please choose';
+    info.className='qinfo'; info.textContent=[sales,city].filter(Boolean).join(' · ');
+  }});
 }
 
 /* ---- contractor payment / KYC from the Contractors sheet (Aadhaar arrives masked) ---- */
@@ -1923,10 +1964,9 @@ async function afterBookWithQuote(q, b){
 /* "Work order" button on a booked team */
 /* PDF uploaded AFTER the team was booked: read it, save it once to the library, raise the invoice
    for this booking (same rules as booking with the PDF). An invoice already made for the offer is not duplicated. */
-async function uploadForBooked(name,team,tm,file){
+async function uploadForBooked(name,team,tm,q){
   const info=document.getElementById('mUpInfo'); const say=(t,c)=>{ if(info){ info.className='qinfo'+(c?' '+c:''); info.textContent=t; } };
-  say('Reading '+file.name+'…');
-  let q; try{ q=await parseQuotationTA(file); q.file=file; }catch(e){ say('⚠ '+(e.message||"Couldn't read PDF"),'err'); return; }
+  if(!q.parts) q.parts=null;
   const booked=cleanOffer(tm.offer||''), pdfOffer=cleanOffer(q.offer||'');
   let offer=booked||pdfOffer;
   if(!offer){ say('⚠ No Offer No on this booking or in the PDF','err'); return; }
@@ -1935,8 +1975,9 @@ async function uploadForBooked(name,team,tm,file){
   }
   const prev=woGet(offer);
   if(prev && prev.invNo && !confirm('Invoice '+prev.invNo+' already exists for #'+offer+'.\n\nOK = make a NEW invoice from this PDF\nCancel = keep the existing one (just saves the PDF)')){
-    try{ const r=await LD.save(file,{offer,kind:q.kind,customer:q.client,salesperson:q.sales,site:q.city,positions:String(q.items.length),sqft:q.total.toFixed(2),app:'Team Availability'});
-      say(r&&r.skipped?'✓ Already in the library — kept existing invoice '+prev.invNo:'✓ PDF saved — kept existing invoice '+prev.invNo,'ok'); }catch(e){ say('⚠ '+e.message,'err'); }
+    try{ const each=q.parts?q.parts:[{offer,kind:q.kind,positions:q.items.length,sqft:q.total,file:q.file,fromLib:q.fromLib}]; let n=0;
+      for(const pt of each){ if(pt.fromLib) continue; const r=await LD.save(pt.file,{offer:pt.offer||offer,kind:pt.kind,customer:q.client,salesperson:q.sales,site:q.city,positions:String(pt.positions),sqft:(+pt.sqft).toFixed(2),app:'Team Availability'}); if(!(r&&r.skipped)) n++; }
+      say(n?'✓ PDF saved — kept existing invoice '+prev.invNo:'✓ Already in the library — kept existing invoice '+prev.invNo,'ok'); }catch(e){ say('⚠ '+e.message,'err'); }
     return;
   }
   closeModal();
