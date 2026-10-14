@@ -155,7 +155,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
 .qup{flex:1;width:100%;border:1px dashed var(--hivis);background:rgba(255,206,31,.08);color:var(--hivis);border-radius:8px;padding:11px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
-.qinfo{font-size:12px;color:var(--muted);min-height:0}.pk-list{display:flex;flex-direction:column;gap:6px;margin:8px 0 6px}.pk-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--green);border-radius:8px;background:rgba(46,204,113,.08);font-size:12.5px}.pk-row .tk{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.pk-row .tx{flex:1;min-width:0;line-height:1.35}.pk-row .tx b{color:var(--text,#fff)}.pk-row .tx span{color:var(--muted);display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pk-row .rm{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 6px;cursor:pointer}.pk-row.busy{border-color:var(--muted);background:none}.pk-row.busy .tk{background:var(--muted)}.pk-add{display:flex;gap:8px}.pk-add .qup.plus{font-size:20px;flex:0 0 56px;padding:6px}.pk-tot{font-size:12px;color:var(--green);font-weight:700;margin-top:2px}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
+.qinfo{font-size:12px;color:var(--muted);min-height:0}.pk-list{display:flex;flex-direction:column;gap:6px;margin:8px 0 6px}.pk-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--green);border-radius:8px;background:rgba(46,204,113,.08);font-size:12.5px}.pk-row .tk{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.pk-row .tx{flex:1;min-width:0;line-height:1.35}.pk-row .tx b{color:var(--text,#fff)}.pk-row .tx span{color:var(--muted);display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pk-row .rm{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 6px;cursor:pointer}.pk-row.busy{border-color:var(--muted);background:none}.pk-row.busy .tk{background:var(--muted)}.pk-add{display:flex;gap:8px}.pk-add .qup.plus{font-size:20px;flex:0 0 56px;padding:6px}.pk-row.none{border-color:var(--hivis);background:rgba(255,206,31,.06)}.pk-row.none .tk{background:none;border:1.5px solid var(--hivis);color:var(--hivis)}.pk-tot{font-size:12px;color:var(--green);font-weight:700;margin-top:2px}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
 .msel{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .relinfo{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.7}
 .relinfo b{color:var(--hivis);font-family:'Archivo Narrow'}
@@ -1065,7 +1065,7 @@ function openRelease(name,team,tm){
   document.getElementById('mSub').textContent='Team '+team+' · release or put on hold';
   document.getElementById('mBody').innerHTML='<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
     +(tm.offer?'<div style="margin-bottom:10px"><button type="button" class="qup" id="mWoBtn">📄 Invoice for #'+esc(tm.offer)+'</button></div>':'')
-    +'<div class="fd"><label>Quotation / production sheet</label><div id="mUpPick"></div>'
+    +'<div class="fd"><label>Quotation / production sheet</label><div id="mUpSaved" class="pk-list"></div><div id="mUpPick"></div>'
     +'<button type="button" class="mbtn" id="mUpGo" style="width:100%;margin-top:8px" hidden>Save &amp; make invoice</button>'
     +'<div class="qinfo" id="mUpInfo"></div></div>'
     +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
@@ -1073,9 +1073,21 @@ function openRelease(name,team,tm){
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ const v=b.getAttribute('data-val'); closeModal(); holdSite(name,team,v); });
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
   const upRoot=document.getElementById('mUpPick'), upGo=document.getElementById('mUpGo');
-  if(upRoot){ let upQ=null;
-    pdfPicker(upRoot,{onChange:q=>{ upQ=q; upGo.hidden=!q; if(q) upGo.textContent='Save & make invoice'+(q.parts?' ('+q.parts.length+' parts · '+q.total.toFixed(0)+' sq.ft)':' · '+q.total.toFixed(0)+' sq.ft'); }});
-    upGo.onclick=()=>{ if(upQ) uploadForBooked(name,team,tm,upQ); };
+  if(upRoot){ let upQ=null, saved=[];
+    const pk=pdfPicker(upRoot,{onChange:q=>{ upQ=q; upGo.hidden=!q; if(q) upGo.textContent=(saved.length?'Save & make invoice with saved parts':'Save & make invoice')+' · '+(q.parts?q.parts.length+' new parts · ':'')+q.total.toFixed(0)+' sq.ft new'; }});
+    upGo.onclick=async()=>{ if(!upQ) return;
+      /* parts already saved for this order go into the same invoice */
+      const have=new Set(pk.list.map(x=>cleanOffer(x.offer).toUpperCase())), extra=saved.filter(s=>!have.has(cleanOffer(s.offer).toUpperCase()));
+      let q=upQ;
+      if(extra.length){
+        const info=document.getElementById('mUpInfo'); info.className='qinfo'; info.textContent='Adding '+extra.length+' saved part'+(extra.length>1?'s':'')+'…';
+        const all=pk.list.slice();
+        for(const s of extra){ try{ const r=await LD.load(s.offer,'production'); const one=await parseQuotationTA(r.file); one.file=r.file; one.fromLib=true; if(!one.offer) one.offer=s.offer; all.push(one); }catch(e){} }
+        q=combineQs(all); info.textContent='';
+      }
+      uploadForBooked(name,team,tm,q);
+    };
+    if(tm.offer) showSavedDocs(tm.offer, document.getElementById('mUpSaved'), list=>{ saved=list; pk.setPlus(list.length>0); });
   }
   goHandler=()=>{ closeModal(); release(name,team); };
 }
@@ -1713,7 +1725,7 @@ async function parseQuotationTA_q(file){
 /* PDF picker: every PDF read shows as a ✓ row; "+" adds more parts of the same order; ✕ removes one.
    onChange(combined-or-null) runs after every change. */
 function pdfPicker(root, opts){
-  const list=[]; let busy=0;
+  const list=[]; let busy=0, extPlus=!!opts.plus;
   root.innerHTML='<div class="pk-list"></div>'
     +'<div class="pk-add"><button type="button" class="qup pk-up">📄 Upload PDF</button><button type="button" class="qup pk-lib">🔎 By Offer No</button></div>'
     +'<input type="file" class="pk-file" accept="application/pdf,.pdf" multiple hidden><div class="qinfo pk-msg" style="margin-top:6px"></div>';
@@ -1727,7 +1739,7 @@ function pdfPicker(root, opts){
       +(busy?'<div class="pk-row busy"><div class="tk">…</div><div class="tx">Reading '+busy+' PDF'+(busy>1?'s':'')+'…</div></div>':'');
     L.querySelectorAll('.rm').forEach(b=>b.onclick=()=>{ list.splice(+b.getAttribute('data-i'),1); changed(); });
     // first time: two big buttons; after a PDF is in: a "+" to add the next part
-    if(list.length){ up.textContent='+'; up.title='Add another part (e.g. /8, /9)'; up.classList.add('plus'); lib.textContent='🔎 Add by Offer No'; }
+    if(list.length||extPlus){ up.textContent='+'; up.title='Add another part (e.g. /8, /9)'; up.classList.add('plus'); lib.textContent='🔎 Add by Offer No'; }
     else { up.textContent='📄 Upload PDF'; up.title=''; up.classList.remove('plus'); lib.textContent='🔎 By Offer No'; }
   }
   function combined(){ return list.length?combineQs(list.slice()):null; }
@@ -1759,7 +1771,38 @@ function pdfPicker(root, opts){
     list.length?LD.parts(list[0].offer).base:((opts.offerEl&&opts.offerEl.value)||'').trim(), 'production',
     {onMany:async(docs)=>{ await add(docs.map(d=>({file:d.file,fromLib:true,meta:d.meta}))); }});
   draw();
-  return {list, combined, say};
+  return {list, combined, say, setPlus:v=>{ extPlus=!!v; draw(); }};
+}
+
+/* Manage popup: which quotation / production sheets are already saved for the booked offer (all its parts) */
+function woFind(offer){
+  const w=woGet(offer); if(w) return w;
+  const want=LD.parts(offer), all=woAll();
+  return Object.values(all).find(x=>{ const p=LD.parts(x.offer); return p.base===want.base && (!want.parts.length||!p.parts.length||p.parts.some(q=>want.parts.includes(q))); })||null;
+}
+async function showSavedDocs(offer, box, done){
+  if(!box) return;
+  box.innerHTML='<div class="pk-row busy"><div class="tk">…</div><div class="tx">Checking saved documents for #'+esc(offer)+'…</div></div>';
+  const want=LD.parts(offer); let list=[], offline=false;
+  try{
+    const all=await LD.list();
+    list=all.filter(x=>{ const p=LD.parts(x.offer); return p.base===want.base && (!want.parts.length||!p.parts.length||p.parts.some(q=>want.parts.includes(q))); });
+    if(!all.length){ const hq=await LD.has(offer,'production'); offline=!!hq.offline; if(hq.exists) list=[{offer,kinds:hq.kinds||['production']}]; }
+  }catch(e){ offline=true; }
+  list.sort((a,b)=>(+LD.parts(a.offer).parts[0]||0)-(+LD.parts(b.offer).parts[0]||0));
+  const w=woFind(offer), inv=w&&(w.invNo||w.woNo);
+  const kindTxt=k=>(k||[]).map(x=>x==='production'?'Production sheet':'Quotation').join(' + ')||'Document';
+  let html=list.map(x=>'<div class="pk-row"><div class="tk">✓</div><div class="tx"><b>#'+esc(x.offer)+'</b> · '+kindTxt(x.kinds)+' · uploaded'
+      +'<span>'+(x.customer?esc(x.customer)+' · ':'')+'saved in library</span></div></div>').join('');
+  const got=[]; list.forEach(x=>LD.parts(x.offer).parts.forEach(q=>{ if(!got.includes(q)) got.push(q); }));
+  const miss=want.parts.filter(q=>!got.includes(q));
+  if(!list.length) html='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>Not uploaded yet</b>'
+      +'<span>'+(offline?'Offline — could not check the library':'No quotation or production sheet saved for #'+esc(offer))+'</span></div></div>';
+  else if(miss.length) html+='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>Part /'+miss.join(', /')+' not uploaded</b><span>Tap + to add it</span></div></div>';
+  if(inv) html+='<div class="pk-row"><div class="tk">✓</div><div class="tx"><b>Invoice '+esc(inv)+'</b> · made'
+      +'<span>#'+esc(w.offer)+' · '+(+w.sqft||0).toFixed(2)+' sq.ft'+(w.parts?' · '+w.parts.length+' parts':'')+'</span></div></div>';
+  box.innerHTML=html;
+  if(done) done(list);
 }
 /* HTML for the Book popup */
 function quoteFieldHTML(){
@@ -1970,10 +2013,11 @@ async function uploadForBooked(name,team,tm,q){
   const booked=cleanOffer(tm.offer||''), pdfOffer=cleanOffer(q.offer||'');
   let offer=booked||pdfOffer;
   if(!offer){ say('⚠ No Offer No on this booking or in the PDF','err'); return; }
-  if(booked && pdfOffer && booked.toUpperCase()!==pdfOffer.toUpperCase()){
+  if(booked && pdfOffer && q.parts && LD.parts(booked).base===LD.parts(pdfOffer).base) offer=pdfOffer;   // parts of the same order → invoice for all of them
+  else if(booked && pdfOffer && booked.toUpperCase()!==pdfOffer.toUpperCase()){
     if(!confirm('This PDF is for #'+pdfOffer+', but Team '+team+' is booked for #'+booked+'.\n\nUse it for this booking anyway?')){ say('Cancelled — PDF is for a different order','err'); return; }
   }
-  const prev=woGet(offer);
+  const prev=woFind(offer);
   if(prev && prev.invNo && !confirm('Invoice '+prev.invNo+' already exists for #'+offer+'.\n\nOK = make a NEW invoice from this PDF\nCancel = keep the existing one (just saves the PDF)')){
     try{ const each=q.parts?q.parts:[{offer,kind:q.kind,positions:q.items.length,sqft:q.total,file:q.file,fromLib:q.fromLib}]; let n=0;
       for(const pt of each){ if(pt.fromLib) continue; const r=await LD.save(pt.file,{offer:pt.offer||offer,kind:pt.kind,customer:q.client,salesperson:q.sales,site:q.city,positions:String(pt.positions),sqft:(+pt.sqft).toFixed(2),app:'Team Availability'}); if(!(r&&r.skipped)) n++; }
