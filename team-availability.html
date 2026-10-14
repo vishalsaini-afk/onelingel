@@ -1317,7 +1317,9 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
   LD.parts = function(o){
     var t=String(o==null?'':o).trim(), m=t.match(/\d{3,7}/);
     if (!m) return {base:key(t), parts:[]};
-    var parts=[]; (t.slice(m.index+m[0].length).match(/\d{1,4}/g)||[]).forEach(function(x){ x=String(+x); if(parts.indexOf(x)<0) parts.push(x); });
+    /* every number after a "/" or "," is its own part: 23456/7/8, 23456/7,8, 23456/7, 23456/8 → 7, 8 (a repeated base is skipped) */
+    var parts=[]; t.slice(m.index+m[0].length).split(/[\/,&+]|\band\b/i).forEach(function(tok){
+      var d=(tok.match(/\d+/g)||[]); d.forEach(function(x){ if(x===m[0]||x.length>4) return; x=String(+x); if(parts.indexOf(x)<0) parts.push(x); }); });
     return {base:m[0], parts:parts};
   };
   LD.joinParts = function(base, parts){ return parts.length ? base+'/'+parts.join('/') : base; };
