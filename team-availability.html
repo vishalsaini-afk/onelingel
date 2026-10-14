@@ -1297,8 +1297,41 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
   LD.api = api;
   LD.list = async function(){ try{ var r=await post({action:'docList'}); return (r&&r.ok&&r.list)||[]; }catch(e){ return []; } };
 
-  /* "Load by Offer No" dialog. onLoaded(file, kind, meta, offline) */
-  LD.openLoader = function(onLoaded, preset, prefer){
+  /* ---------- orders split into parts: 23456/7, 23456/8, 23456/9 (one quotation each) ----------
+     LD.parts("23456/7/8/9") → {base:'23456', parts:['7','8','9']}   ·   "23456" → all parts            */
+  LD.parts = function(o){
+    var t=String(o==null?'':o).trim(), m=t.match(/\d{3,7}/);
+    if (!m) return {base:key(t), parts:[]};
+    var parts=[]; (t.slice(m.index+m[0].length).match(/\d{1,4}/g)||[]).forEach(function(x){ x=String(+x); if(parts.indexOf(x)<0) parts.push(x); });
+    return {base:m[0], parts:parts};
+  };
+  LD.joinParts = function(base, parts){ return parts.length ? base+'/'+parts.join('/') : base; };
+  /* Every saved part of a multi-part (or base-only) Offer No → {docs:[{file,kind,meta,offer,part}], missing:['9'], combined:'23456/7/8'} */
+  LD.loadMany = async function(offer, prefer){
+    var want=LD.parts(offer), list=await LD.list(), hits=[];
+    list.forEach(function(x){ var p=LD.parts(x.offer);
+      if (p.base!==want.base) return;
+      if (want.parts.length && !p.parts.some(function(q){ return want.parts.indexOf(q)>=0; })) return;
+      hits.push(x); });
+    hits.sort(function(a,b){ return (+LD.parts(a.offer).parts[0]||0)-(+LD.parts(b.offer).parts[0]||0); });
+    var docs=[], got=[];
+    for (var i=0;i<hits.length;i++){
+      try{ var r=await LD.load(hits[i].offer, prefer), pp=LD.parts(hits[i].offer).parts;
+        docs.push({file:r.file, kind:r.kind, meta:Object.assign({offer:hits[i].offer}, r.meta||{}), offer:hits[i].offer, part:pp.join('/'), offline:r.offline});
+        pp.forEach(function(q){ if(got.indexOf(q)<0) got.push(q); }); }catch(e){}
+    }
+    var missing=want.parts.filter(function(q){ return got.indexOf(q)<0; });
+    got.sort(function(a,b){return a-b;});
+    return {docs:docs, missing:missing, combined:LD.joinParts(want.base, got)};
+  };
+  /* tag for positions that came from one part of a split order: "[/8] " */
+  LD.partTag = function(meta){ return meta && meta.partCount>1 && meta.part ? '[/'+meta.part+'] ' : ''; };
+
+  /* "Load by Offer No" dialog.
+     onLoaded(file, kind, meta, offline) — called once per document (meta.part / partCount set for split orders).
+     opts.onMany(docs, combined) — if given, a split order is handed over in ONE call instead.            */
+  LD.openLoader = function(onLoaded, preset, prefer, opts){
+    opts = opts||{};
     var old=document.getElementById('ldDlg'); if(old) old.remove();
     var w=document.createElement('div'); w.id='ldDlg';
     w.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
@@ -1323,7 +1356,20 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
     async function run(){
       var off=inp.value.trim(); if(!off){ msg.style.color='#ef4444'; msg.textContent='Enter an Offer No.'; return; }
       go.disabled=true; msg.style.color='#7c8694'; msg.textContent='Loading…';
-      try{ var res=await LD.load(off, prefer); close(); await onLoaded(res.file, res.kind, Object.assign({offer:off}, res.meta||{}), res.offline); }
+      try{
+        var pp=LD.parts(off), many=pp.parts.length!==1, res=null;
+        if (!many){ try{ res=await LD.load(off, prefer); }catch(e){ if(!pp.parts.length) throw e; many=true; } }
+        else { try{ res=await LD.load(off, prefer); many=false; }catch(e){} }      // a combined PDF saved under the full number wins
+        if (!many){ close(); await onLoaded(res.file, res.kind, Object.assign({offer:off}, res.meta||{}), res.offline); return; }
+        msg.textContent='Loading every part of '+pp.base+'…';
+        var M=await LD.loadMany(off, prefer);
+        if (!M.docs.length) throw new Error('Nothing saved for any part of '+off);
+        if (M.missing.length && !confirm('Not uploaded yet: part '+M.missing.map(function(x){return '/'+x;}).join(', ')+'.\n\nContinue with '+M.docs.map(function(d){return d.offer;}).join(', ')+'?')){ go.disabled=false; msg.textContent=''; return; }
+        close();
+        M.docs.forEach(function(d){ d.meta.part=d.part; d.meta.partCount=M.docs.length; d.meta.combined=M.combined; });
+        if (opts.onMany){ await opts.onMany(M.docs, M.combined); return; }
+        for (var i=0;i<M.docs.length;i++){ var d=M.docs[i]; await onLoaded(d.file, d.kind, d.meta, d.offline); }
+      }
       catch(e){ go.disabled=false; msg.style.color='#ef4444'; msg.textContent=e.message||String(e); }
     }
     go.onclick=run; inp.addEventListener('keydown',function(e){ if(e.key==='Enter') run(); });
@@ -1592,6 +1638,20 @@ function taSales(raw){
        if(hit) return hit; }catch(e){}
   return s.slice(0,40);
 }
+/* several quotations / production sheets of ONE order (23456/7, /8, /9) → one combined booking:
+   positions tagged [/7] [/8] [/9], sq.ft added up, Offer No 23456/7/8/9, each PDF saved under its own number */
+function combineQs(list){
+  if (list.length===1) return list[0];
+  list.sort((a,b)=>(+LD.parts(a.offer).parts[0]||0)-(+LD.parts(b.offer).parts[0]||0));
+  const base=LD.parts(list[0].offer).base, parts=[];
+  list.forEach(q=>LD.parts(q.offer).parts.forEach(x=>{ if(!parts.includes(x)) parts.push(x); }));
+  parts.sort((a,b)=>a-b);
+  const items=[]; list.forEach(q=>{ const tag='[/'+LD.parts(q.offer).parts.join('/')+'] '; q.items.forEach(i=>items.push(Object.assign({},i,{ref:tag+i.ref}))); });
+  const first=k=>{ const q=list.find(x=>x[k]); return q?q[k]:''; };
+  return {kind:list.every(q=>q.kind==='production')?'production':'quotation', offer:LD.joinParts(base,parts), client:first('client'), party:first('party'),
+    sales:first('sales'), city:first('city'), items, total:items.reduce((s,i)=>s+(+i.sqft||0),0), service:list[0].service,
+    parts:list.map(q=>({offer:q.offer, kind:q.kind, positions:q.items.length, sqft:q.total, file:q.file, fromLib:q.fromLib}))};
+}
 async function parseQuotationTA(file){
   let kind='quotation'; try{ kind=await LD.kind(file); }catch(e){}
   if(kind==='production'){
@@ -1650,7 +1710,7 @@ async function parseQuotationTA_q(file){
 function quoteFieldHTML(){
   return '<div class="fd"><label>Quotation or production sheet (fills offer &amp; site · makes invoice)</label>'
     +'<div style="display:flex;gap:8px"><button type="button" class="qup" id="mQBtn">📄 Upload PDF</button><button type="button" class="qup" id="mQLoad">🔎 By Offer No</button></div>'
-    +'<input type="file" id="mQFile" accept="application/pdf,.pdf" hidden>'
+    +'<input type="file" id="mQFile" accept="application/pdf,.pdf" multiple hidden>'
     +'<div class="qinfo" id="mQInfo"></div></div>'
     +'<div id="mWo" hidden>'
     +'<div class="fd"><label>Invoice — rate</label><select id="mWoSvc" class="msel">'+Object.keys(WO_RATES).map(s=>'<option value="'+esc(s)+'">'+esc(s)+' (₹'+WO_RATES[s]+'/sqft)</option>').join('')+'</select></div>'
@@ -1663,12 +1723,17 @@ function wireQuoteField(){
   if(!b) return;
   b.onclick=()=>f.click();
   const lb=document.getElementById('mQLoad');
-  if(lb) lb.onclick=()=>LD.openLoader(async(file,kind,meta)=>{ await useFile(file,true,meta); }, (document.getElementById('mOffer').value||'').trim(), 'production');
-  f.onchange=async()=>{ const file=f.files[0]; f.value=''; if(file) await useFile(file,false); };
-  async function useFile(file,fromLib,meta){
-    info.className='qinfo'; info.textContent='Reading '+file.name+'…';
+  if(lb) lb.onclick=()=>LD.openLoader(async(file,kind,meta)=>{ await useFiles([{file,fromLib:true,meta}]); }, (document.getElementById('mOffer').value||'').trim(), 'production',
+    {onMany:async(docs)=>{ await useFiles(docs.map(d=>({file:d.file,fromLib:true,meta:d.meta}))); }});
+  f.onchange=async()=>{ const fs=[...f.files]; f.value=''; if(fs.length) await useFiles(fs.map(x=>({file:x,fromLib:false}))); };
+  async function useFiles(arr){
+    const meta=arr[0].meta;
+    info.className='qinfo'; info.textContent='Reading '+arr.length+' PDF'+(arr.length>1?'s':'')+'…';
     try{
-      const q=await parseQuotationTA(file); q.file=file; q.fromLib=fromLib; bookQ=q;
+      const qs=[]; for(const a of arr){ const one=await parseQuotationTA(a.file); one.file=a.file; one.fromLib=a.fromLib; if(!one.offer&&a.meta) one.offer=a.meta.offer; qs.push(one); }
+      const bases=[...new Set(qs.map(x=>LD.parts(x.offer).base))];
+      if(bases.length>1 && !confirm('These PDFs belong to different orders ('+bases.join(', ')+').\n\nCombine them into one booking anyway?')){ info.textContent=''; return; }
+      const q=combineQs(qs); bookQ=q; if(!q.parts) q.parts=null;
       const o=document.getElementById('mOffer'), p=document.getElementById('mProject');
       if(q.offer) o.value=q.offer;
       if(q.client && !p.value) p.value=q.client;
@@ -1682,7 +1747,8 @@ function wireQuoteField(){
       const bh=document.getElementById('mBillHint');
       if(bh) bh.textContent=q.party==='dealer'?'Dealer order → Lingel (tap to change)':q.party==='person'?'Direct customer → Fensterbau (tap to change)':'Could not tell dealer or customer — please choose';
       info.className='qinfo ok';
-      info.textContent='✓ '+(q.kind==='production'?'Production sheet · ':'Quotation · ')+(q.offer?('#'+q.offer+' · '):'')+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft'+(sales?' · '+sales:'')+(city?' · '+city:'');
+      info.textContent='✓ '+(q.parts?q.parts.length+' parts · ':(q.kind==='production'?'Production sheet · ':'Quotation · '))+(q.offer?('#'+q.offer+' · '):'')+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft'+(sales?' · '+sales:'')+(city?' · '+city:'')
+        +(q.parts?' ('+q.parts.map(p=>'/'+LD.parts(p.offer).parts.join('/')+' '+p.sqft.toFixed(0)).join(', ')+')':'');
       b.textContent='📄 Change PDF';
     }catch(e){ bookQ=null; info.className='qinfo err'; info.textContent='⚠ '+(e.message||"Couldn't read PDF"); }
   }
@@ -1761,6 +1827,7 @@ function workOrderHTML(w){
         <tr style="font-size:18px;font-weight:900;border-top:2px solid #1a1a1a"><td style="padding:12px 16px">GRAND TOTAL</td><td style="padding:12px 16px;text-align:right">${inr(inst)}</td></tr>
       </table>
     </div>
+    ${w.parts&&w.parts.length>1?`<div style="margin-top:16px;font-size:12px;color:#444"><b>Order parts:</b> ${w.parts.map(p=>esc(p.offer)+' — '+p.sqft.toFixed(2)+' sq.ft').join(' · ')}</div>`:''}
     ${posRows?`<div style="margin-top:22px;margin-bottom:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#888">Positions (${w.items.length})</div>
     <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f1f1f1">
       <th style="padding:7px 12px;text-align:left;font-size:10px;color:#666">#</th><th style="padding:7px 12px;text-align:left;font-size:10px;color:#666">POSITION</th>
@@ -1839,11 +1906,15 @@ async function afterBookWithQuote(q, b){
   const w={woNo:'', offer:b.offer, customer:b.project||q.client, city:b.city,
     salesperson:b.sales, contractor:b.name, team:b.team, phone:ci.phone, addr:ci.addr, code:ci.code, by:SUP,
     date:new Date(b.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
-    service:svc, rate, billTo:b.billTo, items:q.items, sqft:q.total};
+    service:svc, rate, billTo:b.billTo, items:q.items, sqft:q.total, parts:q.parts?q.parts.map(p=>({offer:p.offer,sqft:p.sqft})):null};
   woPut(w);
   setDot('dot','syncTxt','busy','Saving document & invoice…');
   let qOk=true;
   let dSkip=false;
+  if(q.parts){   // split order: save each part's PDF under its own Offer No (upload-once applies per part)
+    for(const p of q.parts){ if(p.fromLib) continue;
+      try{ await LD.save(p.file,{offer:p.offer,kind:p.kind,customer:w.customer,site:b.project,salesperson:b.sales,positions:String(p.positions),sqft:p.sqft.toFixed(2),by:SUP,app:'Team Availability'}); }catch(e){ qOk=false; } }
+  } else
   try{ if(!q.fromLib){ const dr=await LD.save(q.file,{offer:b.offer,kind:q.kind,customer:w.customer,site:b.project,salesperson:b.sales,positions:String(q.items.length),sqft:q.total.toFixed(2),items:q.kind==='quotation'?q.items.map(i=>({ref:i.ref,w:Math.round(i.w||0),h:Math.round(i.h||0),qty:1,sqft:+(+i.sqft||0).toFixed(2)})):undefined,by:SUP,app:'Team Availability'}); dSkip=!!(dr&&dr.skipped); } }
   catch(e){ qOk=false; console.warn(e); }
   try{ await makeWorkOrder(w); setDot('dot','syncTxt',qOk?'ok':'err', qOk?('Invoice '+w.woNo+' ready · '+(dSkip?'document was already saved — not uploaded again':'document saved')):('Invoice '+w.woNo+' ready · document NOT saved online ('+'kept on phone)')); }
