@@ -191,7 +191,7 @@ async function doLogin(){
   }
 }
 /* Office-only tiles: shown only when one of these names is signed in (exactly as in the login list; capitals don't matter) */
-const OFFICE_USERS = ['Vishal Saini'];
+const OFFICE_USERS = ['Vishal Saini','Padam Singh'];
 function isOffice(name){ const n=String(name||'').trim().toLowerCase(); return OFFICE_USERS.some(u=>u.trim().toLowerCase()===n); }
 function showLoggedIn(name){
   document.getElementById('loginOverlay').style.display='none';
