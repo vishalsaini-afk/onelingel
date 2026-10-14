@@ -1074,20 +1074,36 @@ function openRelease(name,team,tm){
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
   const upRoot=document.getElementById('mUpPick'), upGo=document.getElementById('mUpGo');
   if(upRoot){ let upQ=null, saved=[];
-    const pk=pdfPicker(upRoot,{onChange:q=>{ upQ=q; upGo.hidden=!q; if(q) upGo.textContent=(saved.length?'Save & make invoice with saved parts':'Save & make invoice')+' · '+(q.parts?q.parts.length+' new parts · ':'')+q.total.toFixed(0)+' sq.ft new'; }});
-    upGo.onclick=async()=>{ if(!upQ) return;
+    const savedBox=document.getElementById('mUpSaved');
+    const refresh=()=>showSavedDocs(tm.offer||'', savedBox, list=>{ saved=list; pk.setPlus(list.length>0); upGo.hidden=!upQ && !list.length; upGo.textContent='Make invoice from uploaded parts'; });
+    const pk=pdfPicker(upRoot,{
+      onChange:q=>{ upQ=q; upGo.hidden=!q && !saved.length; upGo.textContent='Make invoice from uploaded parts'; },
+      saveNow:async one=>{                        // upload-once: a part already in the library is not sent again
+        const off=cleanOffer(one.offer||'');
+        if(!off) throw new Error('no Offer No found in this PDF');
+        if(tm.offer && LD.parts(off).base!==LD.parts(tm.offer).base && !confirm('This PDF is for #'+off+', but Team '+team+' is booked for #'+tm.offer+'.\n\nSave it anyway?')) throw new Error('different order, not saved');
+        await LD.save(one.file,{offer:off,kind:one.kind,customer:one.client||tm.project||'',salesperson:one.sales||tm.salesperson||'',site:one.city||tm.city||'',
+          positions:String(one.items.length),sqft:one.total.toFixed(2),
+          items:one.kind==='quotation'?one.items.map(i=>({ref:i.ref,w:Math.round(i.w||0),h:Math.round(i.h||0),qty:1,sqft:+(+i.sqft||0).toFixed(2)})):undefined,
+          by:SUP,app:'Team Availability'});
+      },
+      hideSaved:!!tm.offer,   // once saved, the row shows in the library list above
+      afterSave:()=>{ if(tm.offer) refresh(); }
+    });
+    upGo.onclick=async()=>{ if(!upQ && !saved.length) return;
       /* parts already saved for this order go into the same invoice */
       const have=new Set(pk.list.map(x=>cleanOffer(x.offer).toUpperCase())), extra=saved.filter(s=>!have.has(cleanOffer(s.offer).toUpperCase()));
       let q=upQ;
-      if(extra.length){
+      if(extra.length || !q){
         const info=document.getElementById('mUpInfo'); info.className='qinfo'; info.textContent='Adding '+extra.length+' saved part'+(extra.length>1?'s':'')+'…';
         const all=pk.list.slice();
         for(const s of extra){ try{ const r=await LD.load(s.offer,'production'); const one=await parseQuotationTA(r.file); one.file=r.file; one.fromLib=true; if(!one.offer) one.offer=s.offer; all.push(one); }catch(e){} }
+        if(!all.length){ info.className='qinfo err'; info.textContent='⚠ Could not open the saved PDFs'; return; }
         q=combineQs(all); info.textContent='';
       }
       uploadForBooked(name,team,tm,q);
     };
-    if(tm.offer) showSavedDocs(tm.offer, document.getElementById('mUpSaved'), list=>{ saved=list; pk.setPlus(list.length>0); });
+    if(tm.offer) showSavedDocs(tm.offer, savedBox, list=>{ saved=list; pk.setPlus(list.length>0); upGo.hidden=!upQ && !list.length; if(list.length && !upQ) upGo.textContent='Make invoice from uploaded parts'; });
   }
   goHandler=()=>{ closeModal(); release(name,team); };
 }
@@ -1735,9 +1751,11 @@ function pdfPicker(root, opts){
   const say=(t,c)=>{ msg.className='qinfo pk-msg'+(c?' '+c:''); msg.textContent=t||''; };
   const short=o=>{ const pp=LD.parts(o||''); return pp.parts.length?'/'+pp.parts.join('/'):''; };
   function draw(){
-    L.innerHTML=list.map((q,i)=>'<div class="pk-row"><div class="tk">✓</div><div class="tx"><b>'+(q.offer?'#'+esc(q.offer):'No Offer No')+'</b> · '+(q.kind==='production'?'Production sheet':'Quotation')+' · uploaded'
+    const ST={saving:['…','busy','saving…'],saved:['✓','','uploaded'],err:['!','none','NOT saved — '],ready:['✓','',opts.readyText||'ready']};
+    L.innerHTML=list.map((q,i)=>{ if(opts.hideSaved && q._st==='saved') return ''; const s=ST[q._st||(q.fromLib?'saved':'ready')];
+      return '<div class="pk-row '+s[1]+'"><div class="tk">'+s[0]+'</div><div class="tx"><b>'+(q.offer?'#'+esc(q.offer):'No Offer No')+'</b> · '+(q.kind==='production'?'Production sheet':'Quotation')+' · '+s[2]+(q._st==='err'?esc(q._err||''):'')
       +'<span>'+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft'+(q.fromLib?' · from library':'')+(q.file&&q.file.name?' · '+esc(q.file.name):'')+'</span></div>'
-      +'<button type="button" class="rm" data-i="'+i+'" title="Remove">✕</button></div>').join('')
+      +'<button type="button" class="rm" data-i="'+i+'" title="Remove">✕</button></div>'; }).join('')
       +(busy?'<div class="pk-row busy"><div class="tk">…</div><div class="tx">Reading '+busy+' PDF'+(busy>1?'s':'')+'…</div></div>':'');
     L.querySelectorAll('.rm').forEach(b=>b.onclick=()=>{ list.splice(+b.getAttribute('data-i'),1); changed(); });
     // first time: two big buttons; after a PDF is in: a "+" to add the next part
@@ -1766,6 +1784,11 @@ function pdfPicker(root, opts){
       list.push(one);
     }
     changed();
+    if(opts.saveNow) for(const one of got){ if(!list.includes(one) || one.fromLib) continue;
+      one._st='saving'; draw();
+      try{ await opts.saveNow(one); one._st='saved'; }catch(e){ one._st='err'; one._err=e.message||'save failed'; }
+      draw(); }
+    if(opts.saveNow && opts.afterSave) opts.afterSave();
   }
   up.onclick=()=>f.click();
   f.onchange=async()=>{ const fs=[...f.files]; f.value=''; if(fs.length) await add(fs.map(x=>({file:x,fromLib:false}))); };
@@ -1773,7 +1796,7 @@ function pdfPicker(root, opts){
     list.length?LD.parts(list[0].offer).base:((opts.offerEl&&opts.offerEl.value)||'').trim(), 'production',
     {onMany:async(docs)=>{ await add(docs.map(d=>({file:d.file,fromLib:true,meta:d.meta}))); }});
   draw();
-  return {list, combined, say, setPlus:v=>{ extPlus=!!v; draw(); }};
+  return {list, combined, say, setPlus:v=>{ extPlus=!!v; draw(); }, redraw:draw};
 }
 
 /* Manage popup: which quotation / production sheets are already saved for the booked offer (all its parts) */
@@ -1785,12 +1808,19 @@ function woFind(offer){
 async function showSavedDocs(offer, box, done){
   if(!box) return;
   box.innerHTML='<div class="pk-row busy"><div class="tk">…</div><div class="tx">Checking saved documents for #'+esc(offer)+'…</div></div>';
-  const want=LD.parts(offer); let list=[], offline=false;
+  const want=LD.parts(offer); let list=[], offline=false, errTxt='';
+  const same=x=>{ const p=LD.parts(x.offer); return p.base===want.base && (!want.parts.length||!p.parts.length||p.parts.some(q=>want.parts.includes(q))); };
   try{
-    const all=await LD.list();
-    list=all.filter(x=>{ const p=LD.parts(x.offer); return p.base===want.base && (!want.parts.length||!p.parts.length||p.parts.some(q=>want.parts.includes(q))); });
-    if(!all.length){ const hq=await LD.has(offer,'production'); offline=!!hq.offline; if(hq.exists) list=[{offer,kinds:hq.kinds||['production']}]; }
-  }catch(e){ offline=true; }
+    const r=await fetch(LD.api(),{method:'POST',body:new URLSearchParams({action:'docList'})});
+    const d=JSON.parse((await r.text()).trim()||'{}');
+    if(d&&d.ok) list=(d.list||[]).filter(same); else errTxt=(d&&d.error)||'library did not answer';
+  }catch(e){ offline=!navigator.onLine; errTxt=offline?'offline':'library not reachable'; }
+  /* also ask for each part by its own number (68499/25, 68499/28 …) — both kinds */
+  if(!errTxt){
+    const asks=want.parts.length?want.parts.map(x=>want.base+'/'+x):[want.base];
+    for(const o of asks){ if(list.some(x=>cleanOffer(x.offer).toUpperCase()===o.toUpperCase())) continue;
+      try{ const hq=await LD.has(o,'quotation'); if(hq&&hq.kinds&&hq.kinds.length) list.push({offer:o,kinds:hq.kinds}); }catch(e){} }
+  }
   list.sort((a,b)=>(+LD.parts(a.offer).parts[0]||0)-(+LD.parts(b.offer).parts[0]||0));
   const w=woFind(offer), inv=w&&(w.invNo||w.woNo);
   const kindTxt=k=>(k||[]).map(x=>x==='production'?'Production sheet':'Quotation').join(' + ')||'Document';
@@ -1798,8 +1828,8 @@ async function showSavedDocs(offer, box, done){
       +'<span>'+(x.customer?esc(x.customer)+' · ':'')+'saved in library</span></div></div>').join('');
   const got=[]; list.forEach(x=>LD.parts(x.offer).parts.forEach(q=>{ if(!got.includes(q)) got.push(q); }));
   const miss=want.parts.filter(q=>!got.includes(q));
-  if(!list.length) html='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>Not uploaded yet</b>'
-      +'<span>'+(offline?'Offline — could not check the library':'No quotation or production sheet saved for #'+esc(offer))+'</span></div></div>';
+  if(!list.length) html='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>'+(errTxt?'Could not check':'Not uploaded yet')+'</b>'
+      +'<span>'+(errTxt?'Could not check the library ('+esc(errTxt)+') — try again when online':'No quotation or production sheet saved for #'+esc(offer))+'</span></div></div>';
   else if(miss.length) html+='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>Part /'+miss.join(', /')+' not uploaded</b><span>Tap + to add it</span></div></div>';
   if(inv) html+='<div class="pk-row"><div class="tk">✓</div><div class="tx"><b>Invoice '+esc(inv)+'</b> · made'
       +'<span>#'+esc(w.offer)+' · '+(+w.sqft||0).toFixed(2)+' sq.ft'+(w.parts?' · '+w.parts.length+' parts':'')+'</span></div></div>';
@@ -1819,7 +1849,7 @@ function wireQuoteField(){
   bookQ=null;
   const root=document.getElementById('mQPick'), info=document.getElementById('mQInfo');
   if(!root) return;
-  pdfPicker(root,{offerEl:document.getElementById('mOffer'), onChange:q=>{
+  pdfPicker(root,{offerEl:document.getElementById('mOffer'), readyText:'ready · saves when you book', onChange:q=>{
     bookQ=q;
     if(!q){ document.getElementById('mWo').hidden=true; info.textContent=''; return; }
     if(!q.parts) q.parts=null;
