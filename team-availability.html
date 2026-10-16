@@ -656,10 +656,14 @@ async function setNA(name,team,na){
     pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok',esc(name)+' Team '+team+(na?' → on leave':' → available'));
   }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Update failed')+' — try again'); }
 }
-async function holdSite(name,team,holdBy){
-  const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Putting on hold…');
-  try{ await apiPost({action:'holdSite',name,team,holdBy:holdBy||'Hold',by:SUP}); pending.delete(key); await loadBoard(true); setDot('dot','syncTxt','ok',esc(name)+' Team '+team+' on hold · crew freed'); }
-  catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Hold failed')+' — try again'); }
+async function holdSite(name,team,holdBy,extra){
+  const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy',extra&&extra.mailTo?'Putting on hold & sending e-mail…':'Putting on hold…');
+  try{ const d=await apiPost(Object.assign({action:'holdSite',name,team,holdBy:holdBy||'Hold',by:SUP},extra||{})); pending.delete(key); await loadBoard(true);
+    const m=d&&d.mail;
+    if(m&&m.ok===false){ setDot('dot','syncTxt','err',esc(name)+' Team '+team+' on hold — but e-mail NOT sent: '+esc(m.error||'')); alert('Work is on hold, but the e-mail was NOT sent:\n\n'+(m.error||'')+'\n\nCheck the address, or send it from your own mail.'); }
+    else setDot('dot','syncTxt','ok',esc(name)+' Team '+team+' on hold · crew freed'+(m&&m.ok?' · e-mail sent to '+esc(m.to):''));
+    return {ok:true, mail:m}; }
+  catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Hold failed')+' — try again'); return {ok:false, error:e.message||'Hold failed'}; }
 }
 async function holdNewSite(name,team,offer,project,holdBy,city,salesperson){
   setDot('dot','syncTxt','busy','Adding held site…');
@@ -1071,7 +1075,7 @@ function openRelease(name,team,tm){
     +'<div class="qinfo" id="mUpInfo"></div></div>'
     +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
-  document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ const v=b.getAttribute('data-val'); closeModal(); holdSite(name,team,v); });
+  document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>openHold(name,team,tm,b.getAttribute('data-val')));
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
   const fb=document.getElementById('mFineBtn'); if(fb){ fb.onclick=()=>openFine(name,team,tm); showFines(name,team,tm,document.getElementById('mFines')); }
   const upRoot=document.getElementById('mUpPick'), upGo=document.getElementById('mUpGo');
@@ -1802,6 +1806,101 @@ function pdfPicker(root, opts){
 }
 
 
+
+/* ===================== HOLD → reason + e-mail to customer / dealer / salesperson ===================== */
+const HOLD_REASONS={
+  'Customer':['Site not ready (civil / plaster / paint / flooring work pending)','Openings not ready as per measurement','Customer asked to stop the work','Payment pending','Site access / permission not available','Other'],
+  'Factory':['Material pending from factory','Glass pending','Hardware / accessories pending','Rework / replacement needed','Other'],
+  'Installation Team':['Installation team not available','Other']
+};
+let _contacts=null;
+async function loadContacts(){
+  if(_contacts) return _contacts;
+  try{ const r=await fetch(API+'?action=contacts&key='+encodeURIComponent(KYC_KEY)+'&t='+Date.now(),{cache:'no-store'}); const d=await r.json(); _contacts=(d&&d.ok&&d.contacts)||[]; }
+  catch(e){ _contacts=[]; }
+  try{ const loc=JSON.parse(localStorage.getItem('lingel_contacts')||'[]'); loc.forEach(c=>{ if(!_contacts.some(x=>x.name.toLowerCase()===c.name.toLowerCase())) _contacts.push(c); }); }catch(e){}
+  return _contacts;
+}
+const contactOf=n=>{ n=String(n||'').trim().toLowerCase(); if(!n||!_contacts) return ''; const c=_contacts.find(x=>x.name.toLowerCase()===n); return c?c.email:''; };
+function rememberContacts(list){
+  try{ const loc=JSON.parse(localStorage.getItem('lingel_contacts')||'[]');
+    list.forEach(c=>{ const i=loc.findIndex(x=>x.name.toLowerCase()===c.name.toLowerCase()); if(i>=0) loc[i]=c; else loc.push(c); });
+    localStorage.setItem('lingel_contacts',JSON.stringify(loc)); }catch(e){}
+  if(_contacts) list.forEach(c=>{ const i=_contacts.findIndex(x=>x.name.toLowerCase()===c.name.toLowerCase()); if(i>=0) _contacts[i]=c; else _contacts.push(c); });
+}
+function holdMailText(tm,holdBy,reason,details){
+  const d=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const cust=holdBy==='Customer';
+  return {
+    subject:'Work on hold — Order #'+tm.offer+(tm.project?' · '+tm.project:''),
+    body:['Dear '+(tm.project||'Sir / Madam')+',','',
+      'This is to inform you that the window & door installation work at your site has been put on hold from '+d+'.','',
+      'Order: #'+tm.offer,
+      'Site: '+[tm.project,tm.city].filter(Boolean).join(', '),'',
+      '*Reason for hold:* '+reason+(details?' — '+details:''),'',
+      cust?'*To resume:* please inform us as soon as the site is ready / the above point is cleared. Once you confirm, we will restart the work at the earliest — within 10 days of your confirmation, depending on installation team availability.'
+          :'*To resume:* we will inform you as soon as this is resolved, and restart the work at the earliest — within 10 days, depending on installation team availability.','',
+      'For any question, please contact '+(tm.salesperson?tm.salesperson+' (Sales)':'our sales team')+' or reply to this message.','',
+      'Regards,',SUP||'Installation Team','Installation Team · Lingel Windows & Doors'].join('\n')
+  };
+}
+async function openHold(name,team,tm,holdBy){
+  setBox('rel');
+  document.getElementById('mTtl').textContent='Hold — '+name;
+  document.getElementById('mSub').textContent='Team '+team+' · #'+(tm.offer||'—')+(tm.project?' · '+tm.project:'')+' · by '+holdBy;
+  const rs=HOLD_REASONS[holdBy]||['Other'];
+  document.getElementById('mBody').innerHTML=
+     '<div class="fd"><label>Reason for hold</label><select id="hReason" class="msel">'+rs.map(r=>'<option>'+esc(r)+'</option>').join('')+'</select></div>'
+    +'<div class="fd"><label>Details (optional, goes in the message)</label><input id="hDet" placeholder="e.g. flooring work in 2 bedrooms still going on"></div>'
+    +'<div class="qinfo" style="margin:-2px 0 8px">After holding you can share this on WhatsApp. E-mail too, if you have the address:</div>'
+    +'<label style="display:flex;gap:10px;align-items:center;margin:4px 0 12px;font-size:14px"><input type="checkbox" id="hMail" style="width:20px;height:20px"> Also e-mail the customer / dealer / salesperson</label>'
+    +'<div id="hMailBox">'
+    +'<div class="fd"><label>To — customer / dealer e-mail</label><input id="hTo" type="email" multiple inputmode="email" placeholder="name@example.com, …"></div>'
+    +'<div class="fd"><label>CC — salesperson'+(tm.salesperson?' ('+esc(tm.salesperson)+')':'')+' &amp; others</label><input id="hCc" type="email" multiple inputmode="email" placeholder="sales@lingel…, …"></div>'
+    +'<div class="qinfo" id="hHint" style="margin:-4px 0 8px">Loading saved e-mail addresses…</div>'
+    +'<div class="fd"><label>Subject</label><input id="hSub"></div>'
+    +'</div>'
+    +'<div class="fd"><label>Message — WhatsApp &amp; e-mail (you can edit it)</label><textarea id="hBody" style="min-height:260px;font-size:13px"></textarea></div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.className='mbtn amber'; modal.hidden=false;
+  const R=document.getElementById('hReason'), Dt=document.getElementById('hDet'), M=document.getElementById('hMail'), box=document.getElementById('hMailBox'),
+        To=document.getElementById('hTo'), Cc=document.getElementById('hCc'), S=document.getElementById('hSub'), B=document.getElementById('hBody');
+  let edited=false;
+  const fill=()=>{ const t=holdMailText(tm,holdBy,R.value,Dt.value.trim()); S.value=t.subject; if(!edited) B.value=t.body; };
+  const label=()=>{ go.textContent=M.checked?'Hold & send e-mail':'Put on hold'; box.style.display=M.checked?'':'none'; };
+  loadContacts().then(()=>{ if(contactOf(tm.project)){ M.checked=true; label(); } });
+  R.onchange=fill; Dt.oninput=fill; B.oninput=()=>{ edited=true; }; M.onchange=label; fill(); label();
+  loadContacts().then(()=>{ if(!To.value) To.value=contactOf(tm.project); if(!Cc.value) Cc.value=contactOf(tm.salesperson);
+    document.getElementById('hHint').textContent=(To.value||Cc.value)?'Filled from saved addresses — new ones are remembered for next time.':'No saved address yet — type it once, it is remembered for next time.'; });
+  goHandler=()=>{
+    const reason=R.value+(Dt.value.trim()?' — '+Dt.value.trim():'');
+    if(!M.checked){ holdDone(name,team,tm,holdBy,B.value,holdSite(name,team,holdBy,{holdReason:reason})); return; }
+    const ok=s=>s.split(/[,;\s]+/).filter(Boolean).every(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if(!To.value.trim()){ showMErr('Enter the customer / dealer e-mail, or untick e-mail'); return; }
+    if(!ok(To.value)||!ok(Cc.value)){ showMErr('Check the e-mail address — one of them is not valid'); return; }
+    const contacts=[]; if(tm.project&&To.value.trim()) contacts.push({name:tm.project,email:To.value.trim(),type:'Customer / Dealer'});
+    if(tm.salesperson&&Cc.value.trim()) contacts.push({name:tm.salesperson,email:Cc.value.trim(),type:'Salesperson'});
+    rememberContacts(contacts);
+    holdDone(name,team,tm,holdBy,B.value,holdSite(name,team,holdBy,{holdReason:reason,key:KYC_KEY,mailTo:To.value.trim(),mailCc:Cc.value.trim(),mailSubject:S.value,mailBody:B.value,contacts:JSON.stringify(contacts)}));
+  };
+}
+/* after the hold: show the result and a WhatsApp share (a fresh tap, so the phone opens WhatsApp reliably) */
+async function holdDone(name,team,tm,holdBy,body,job){
+  const go=document.getElementById('mGo'); go.disabled=true; go.textContent='Putting on hold…'; showMErr('');
+  const r=await job;
+  if(!r||!r.ok){ go.disabled=false; go.textContent='Try again'; showMErr('⚠ Hold failed: '+((r&&r.error)||'')+' — nothing was sent'); return; }
+  const m=r.mail, wa='*LINGEL — WORK ON HOLD*\n\n'+body;
+  document.getElementById('mTtl').textContent='On hold ✓';
+  document.getElementById('mSub').textContent=name+' · Team '+team+' · #'+(tm.offer||'')+' · crew freed';
+  document.getElementById('mBody').innerHTML=
+     (m?(m.ok?'<div class="pk-row" style="margin-bottom:10px"><div class="tk">✓</div><div class="tx"><b>E-mail sent</b><span>'+esc(m.to)+(m.cc?' · cc '+esc(m.cc):'')+'</span></div></div>'
+           :'<div class="pk-row none" style="margin-bottom:10px"><div class="tk">!</div><div class="tx"><b>E-mail NOT sent</b><span>'+esc(m.error||'')+'</span></div></div>'):'')
+    +'<div class="fd"><label>WhatsApp message</label><textarea id="hWa" style="min-height:240px;font-size:13px">'+esc(wa)+'</textarea></div>'
+    +'<div class="qinfo" style="margin:-4px 0 8px">WhatsApp opens — pick the customer, dealer or salesperson (or a group) and send.</div>'
+    +'<button type="button" class="mbtn" id="hCopy" style="width:100%;margin-bottom:8px;background:var(--panel-2);color:var(--text);border:1px solid var(--line)">Copy message</button>';
+  go.disabled=false; go.textContent='📲 Share on WhatsApp'; go.className='mbtn wa';
+  document.getElementById('hCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(document.getElementById('hWa').value); document.getElementById('hCopy').textContent='Copied ✓'; }catch(e){} };
+  goHandler=()=>window.open('https://wa.me/?text='+encodeURIComponent(document.getElementById('hWa').value),'_blank');
+}
 /* ===================== SUPERVISOR FINES =====================
    Same list and rates as the Ledger's deductions. Saved to the Deductions tab
    (Invoice script) → deducted in the Contractor Ledger. Then sent on WhatsApp. */
@@ -2105,19 +2204,28 @@ function contractorInfo(name){
 /* Real invoice number from the Invoice sheet (same as the Contractor Invoice app),
    logged once to the Invoices tab. Re-downloads reuse the same number. */
 async function ensureInvoiceNo(w){
-  if(w.invNo){ w.woNo=w.invNo; return; }
-  let next=null;
-  try{ const r=await fetch(INVOICE_EXEC+'?action=next&contractor='+encodeURIComponent(w.code)+'&t='+Date.now(),{cache:'no-store'}); const d=await r.json();
-       if(d&&typeof d.next==='number') next=d.next; }catch(e){}
-  if(next==null) next=parseInt(localStorage.getItem('linv_seq_'+w.code)||'0',10)+1;   // offline fallback
-  w.invNo='INV-'+w.code+'-'+String(next).padStart(3,'0'); w.woNo=w.invNo;
-  localStorage.setItem('linv_seq_'+w.code,String(next));
+  /* same contractor + same order already has a booking invoice (this phone or another) → keep that number */
+  if(!w.invNo){ try{ const r=await fetch(INVOICE_EXEC+'?action=invFind&code='+encodeURIComponent(w.code)+'&contractor='+encodeURIComponent(w.contractor)+'&offer='+encodeURIComponent(w.offer)+'&t='+Date.now(),{cache:'no-store'});
+      const d=await r.json(); if(d&&d.ok&&d.invoiceNo) w.invNo=d.invoiceNo; }catch(e){} }
+  if(!w.invNo){
+    let next=null;
+    try{ const r=await fetch(INVOICE_EXEC+'?action=next&contractor='+encodeURIComponent(w.code)+'&t='+Date.now(),{cache:'no-store'}); const d=await r.json();
+         if(d&&typeof d.next==='number') next=d.next; }catch(e){}
+    if(next==null) next=parseInt(localStorage.getItem('linv_seq_'+w.code)||'0',10)+1;   // offline fallback
+    w.invNo='INV-'+w.code+'-'+String(next).padStart(3,'0');
+    localStorage.setItem('linv_seq_'+w.code,String(next));
+  }
+  w.woNo=w.invNo;
+  if(w._logged){ woPut(w); return; }
   const inst=w.sqft*w.rate;
   const payload={action:'log',timestamp:new Date().toISOString(),contractor:w.contractor,code:w.code,invoiceNo:w.invNo,date:w.date,
     billTo:(WO_CO[w.billTo]||WO_CO.lingel).n,workType:'Regular Installation',offerNo:w.offer,customer:w.customer||'',
     totalSqft:Number(w.sqft.toFixed(2)),rate:w.rate,installation:inst,additional:0,grandTotal:inst,charges:[],
     notes:'Raised at booking - Team '+w.team+(w.by?(' - by '+w.by):'')};
-  try{ await fetch(INVOICE_EXEC,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}); }catch(e){}
+  /* the sheet updates the existing row instead of adding a new one, and may hand back a different number */
+  try{ const r=await fetch(INVOICE_EXEC,{method:'POST',body:new URLSearchParams(Object.assign({},payload,{charges:'[]'}))}); const d=JSON.parse((await r.text()).trim()||'{}');
+       if(d&&d.ok){ w._logged=true; if(d.invoiceNo){ w.invNo=d.invoiceNo; w.woNo=d.invoiceNo; } } }
+  catch(e){ try{ await fetch(INVOICE_EXEC,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}); }catch(x){} }
   woPut(w);
 }
 async function makeWorkOrder(w, opts){
@@ -2167,7 +2275,7 @@ async function uploadForBooked(name,team,tm,q){
     if(!confirm('This PDF is for #'+pdfOffer+', but Team '+team+' is booked for #'+booked+'.\n\nUse it for this booking anyway?')){ say('Cancelled — PDF is for a different order','err'); return; }
   }
   const prev=woFind(offer);
-  if(prev && prev.invNo && !confirm('Invoice '+prev.invNo+' already exists for #'+offer+'.\n\nOK = make a NEW invoice from this PDF\nCancel = keep the existing one (just saves the PDF)')){
+  if(prev && prev.invNo && !confirm('Invoice '+prev.invNo+' already exists for #'+offer+'.\n\nOK = update '+prev.invNo+' with this PDF (same number)\nCancel = keep it as it is (just saves the PDF)')){
     try{ const each=q.parts?q.parts:[{offer,kind:q.kind,positions:q.items.length,sqft:q.total,file:q.file,fromLib:q.fromLib}]; let n=0;
       for(const pt of each){ if(pt.fromLib) continue; const r=await LD.save(pt.file,{offer:pt.offer||offer,kind:pt.kind,customer:q.client,salesperson:q.sales,site:q.city,positions:String(pt.positions),sqft:(+pt.sqft).toFixed(2),app:'Team Availability'}); if(!(r&&r.skipped)) n++; }
       say(n?'✓ PDF saved — kept existing invoice '+prev.invNo:'✓ Already in the library — kept existing invoice '+prev.invNo,'ok'); }catch(e){ say('⚠ '+e.message,'err'); }
