@@ -141,6 +141,13 @@ const DED_TYPES = [
   {v:'Glass damage',  l:'Glass damaged at site (50% of cost)', per:'cost', rate:0.5},
   {v:'Other',         l:'Other (fixed amount)',             per:'fixed', rate:1}
 ];
+/* a deduction marked by a supervisor at site (Team Availability → Mark a fine) */
+const isFine = d => String(d.Source||'')==='Supervisor fine';
+const dedLabel = d => isFine(d) ? '⚠ Fine · '+esc(d.Type) : esc(d.Type);
+const dedWho = d => isFine(d) ? '<br><span style="color:#888;font-size:10px">Marked by '+esc(d['Added By']||'')+(d['Fine Date']?' on '+esc(d['Fine Date']):'')+(d.Photo?' · <a href="'+esc(d.Photo)+'" target="_blank" rel="noopener">photo</a>':'')+'</span>'
+  + (hasMercy(d) ? '<br><span style="color:var(--green);font-size:10.5px">🤝 '+(Number(d.Amount)===0?'Waived':'Reduced from '+inr(d['Original Amount']))+' by '+esc(d['Mercy By']||'')+(d['Mercy Reason']?' — '+esc(d['Mercy Reason']):'')+'</span>' : '') : '';
+const hasMercy = d => isFine(d) && d['Original Amount']!=='' && d['Original Amount']!=null && Number(d['Original Amount'])>0;
+const dedAmt = d => hasMercy(d) ? '<s style="color:var(--muted);font-weight:400">'+inr(d['Original Amount'])+'</s> '+inr(d.Amount) : inr(d.Amount);
 const ADD_TYPES = [   // from the rate card · every charge needs an approver (Padam Singh)
   {v:'Shifting',        l:'Shifting (₹800 / labour)',          rate:800,  q:'Labours'},
   {v:'Unloading',       l:'Unloading (₹800 / labour)',         rate:800,  q:'Labours'},
@@ -285,8 +292,8 @@ function openInv(no){
   + (adds.length ? '<table class="mini"><tr><th>Charge</th><th>Approved by</th><th class="r">Amount</th><th></th></tr>'+adds.map(d=>'<tr><td>'+esc(d.Type)+(d.Reason?' · '+esc(d.Reason):'')+'</td><td>'+esc(d['Approved By'])+'</td><td class="r">'+inr(d.Amount)+'</td><td>'+(s!=='paid'?'<button class="del" title="Remove" onclick="delAdd(\''+esc(d.ID)+'\',\''+esc(no)+'\')">✕</button>':'')+'</td></tr>').join('')+'</table>' : '')
   + '<div class="line neg"><span>Shifting share (50% of labour log)</span><span>−'+inr(i.shifting)+'</span></div>'
   + (i.shiftEntries.length ? '<table class="mini"><tr><th>Date</th><th>Labours</th><th class="r">Shifting cost</th><th class="r">50%</th></tr>'+i.shiftEntries.map(e=>'<tr><td>'+esc(e.date)+(e.offer?' · '+esc(e.offer):'')+'</td><td>'+e.labours+'</td><td class="r">'+inr(e.amount)+'</td><td class="r">'+inr(e.share)+'</td></tr>').join('')+'</table>' : '')
-  + '<div class="line neg"><span>Office deductions</span><span>−'+inr(i.other)+'</span></div>'
-  + (deds.length ? '<table class="mini"><tr><th>Type</th><th>Reason</th><th class="r">Amount</th><th></th></tr>'+deds.map(d=>'<tr><td>'+esc(d.Type)+'</td><td>'+esc(d.Reason)+'</td><td class="r">'+inr(d.Amount)+'</td><td>'+(s!=='paid'?'<button class="del" title="Remove" onclick="delDed(\''+esc(d.ID)+'\',\''+esc(no)+'\')">✕</button>':'')+'</td></tr>').join('')+'</table>' : '')
+  + '<div class="line neg"><span>Deductions &amp; fines'+(deds.some(isFine)?' <small style="color:var(--red)">('+deds.filter(isFine).length+' fine'+(deds.filter(isFine).length>1?'s':'')+' from site)</small>':'')+'</span><span>−'+inr(i.other)+'</span></div>'
+  + (deds.length ? '<table class="mini"><tr><th>Type</th><th>Reason</th><th class="r">Amount</th><th></th></tr>'+deds.map(d=>'<tr><td>'+dedLabel(d)+'</td><td>'+esc(d.Reason)+dedWho(d)+'</td><td class="r">'+dedAmt(d)+'</td><td style="white-space:nowrap">'+(s!=='paid'&&isFine(d)?'<button class="del" style="color:var(--green)" title="Mercy — reduce or waive this fine" onclick="mercyOpen(\''+esc(d.ID)+'\',\''+esc(no)+'\')">🤝</button>':'')+(s!=='paid'?'<button class="del" title="Remove" onclick="delDed(\''+esc(d.ID)+'\',\''+esc(no)+'\')">✕</button>':'')+'</td></tr>').join('')+'</table><div id="mercyBox"></div>' : '')
   + '<div class="line tot"><span>Net payable</span><span>'+inr(i.net)+'</span></div></div>'
   + (s!=='paid' ? addForm(i) + dedForm(i) : '')
   + '<div class="sec"><div class="sl">Payment</div>'
@@ -348,7 +355,7 @@ function finalHTML(i){
   let n=1, rows = tr(n++,'<b>'+esc(i.workType||'Installation')+'</b> — Window &amp; Door Installation', i.sqft?i.sqft.toFixed(2)+' sq.ft':'', i.rate?'₹'+i.rate+'/sqft':'', inr(i.gross));
   adds.forEach(d=> rows += tr(n++, esc(d.Type)+(d.Reason?' · '+esc(d.Reason):'')+'<br><span style="color:#888;font-size:10px">Approved by '+esc(d['Approved By']||'')+'</span>', d.Qty||'', d.Rate?'₹'+d.Rate:'', '+'+inr(d.Amount), '#1a7f37'));
   if (i.shifting) rows += tr(n++, 'Shifting labour — 50% contractor share<br><span style="color:#888;font-size:10px">'+(i.shiftEntries||[]).map(e=>esc(e.date)+': '+e.labours+' labour').join(' · ')+'</span>', '', '50%', '−'+inr(i.shifting), '#b42318');
-  deds.forEach(d=> rows += tr(n++, esc(d.Type)+(d.Reason?' · '+esc(d.Reason):''), d.Qty||'', d.Rate?(Number(d.Rate)<1?(d.Rate*100)+'%':'₹'+d.Rate):'', '−'+inr(d.Amount), '#b42318'));
+  deds.forEach(d=> rows += tr(n++, (isFine(d)?'Fine · ':'')+esc(d.Type)+(d.Reason?' · '+esc(d.Reason):'')+(isFine(d)?'<br><span style="color:#888;font-size:10px">Marked at site by '+esc(d['Added By']||'')+(d['Fine Date']?' on '+esc(d['Fine Date']):'')+(hasMercy(d)?' · reduced from '+inr(d['Original Amount'])+' by '+esc(d['Mercy By']||''):'')+'</span>':''), d.Qty||'', d.Rate?(Number(d.Rate)<1?(d.Rate*100)+'%':'₹'+d.Rate):'', '−'+inr(d.Amount), '#b42318'));
   const add = i.additions||0, ded = (i.shifting||0)+(i.other||0);
   const pay = [['Account Holder',con['Account Holder']],['Bank',con['Bank']],['A/C No.',con['A/C No']],['IFSC',con['IFSC']],['PAN',con['PAN']],['Aadhaar',con['Aadhaar Last 4']],['GSTIN',con['GSTIN']]].filter(r=>r[1]);
   return `<div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;width:100%;padding:40px 45px;background:#fff">
@@ -445,6 +452,45 @@ async function addDed(no){
     qty:$('dQty').value||'', rate:T.per==='fixed'?'':T.rate, amount:amt, reason:$('dWhy').value.trim(), by:supName()}, 'Deduction added');
   if (ok) openInv(no);
 }
+/* ---------- MERCY: reduce or waive a supervisor fine (Ledger users only) ---------- */
+function mercyOpen(id,no){
+  const d=D.deductions.find(x=>String(x.ID)===String(id)); if(!d) return;
+  const orig=hasMercy(d)?Number(d['Original Amount']):Number(d.Amount);
+  const box=$('mercyBox'); if(!box) return;
+  box.innerHTML='<div style="margin-top:10px;padding:12px;border:1px solid var(--green);border-radius:9px;background:rgba(34,197,94,.06)">'
+   +'<div style="font-weight:700;margin-bottom:4px">🤝 Mercy — '+esc(d.Type)+' fine on '+esc(d.Contractor||'')+'</div>'
+   +'<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Marked by '+esc(d['Added By']||'')+' · original fine '+inr(orig)+(hasMercy(d)?' · now '+inr(d.Amount):'')+'</div>'
+   +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
+   +'<button class="btn" onclick="$(\'mAmt\').value=0">Waive fully</button>'
+   +'<button class="btn" onclick="$(\'mAmt\').value='+Math.round(orig/2)+'">Half ('+inr(Math.round(orig/2))+')</button>'
+   +(hasMercy(d)?'<button class="btn" onclick="$(\'mAmt\').value='+orig+'">Undo mercy</button>':'')+'</div>'
+   +'<div class="fd" style="margin-bottom:8px"><label>New fine amount ₹ (0 = waived)</label><input type="number" id="mAmt" min="0" max="'+orig+'" value="'+Number(d.Amount)+'"></div>'
+   +'<div class="fd" style="margin-bottom:8px"><label>Why (shows on the statement)</label><input id="mWhy" value="'+esc(d['Mercy Reason']||'')+'" placeholder="e.g. first time, contractor redid the work same day"></div>'
+   +'<div style="display:flex;gap:8px"><button class="btn grn" onclick="mercySave(\''+esc(id)+'\',\''+esc(no)+'\','+orig+')">Save mercy</button><button class="btn" onclick="$(\'mercyBox\').innerHTML=\'\'">Cancel</button></div></div>';
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function mercySave(id,no,orig){
+  const amt=Number($('mAmt').value), why=$('mWhy').value.trim();
+  if(!(amt>=0) || amt>orig){ alert('New amount must be between ₹0 and '+inr(orig)); return; }
+  if(amt<orig && !why){ alert('Write why the fine is reduced'); return; }
+  const before=D.deductions.find(x=>String(x.ID)===String(id));
+  const ok=await act({action:'ledgerFineAdj', id, amount:amt, reason:why, by:supName()}, amt===orig?'Mercy removed':amt===0?'Fine waived':'Fine reduced');
+  if(!ok) return;
+  openInv(no);
+  if(amt<orig && before) mercyTell(before, orig, amt, why, no);
+}
+/* optional: tell the contractor on WhatsApp */
+function mercyTell(d, orig, amt, why, no){
+  const c=D.contractors.find(x=>x.name===d.Contractor)||{}; let ph=String(c.phone||'').replace(/\D/g,''); if(ph.length===10) ph='91'+ph;
+  const msg=['*LINGEL — FINE '+(amt===0?'WAIVED':'REDUCED')+'*','',
+    'Contractor: '+d.Contractor,'Site: #'+(d['Offer No']||'')+(d.Site?' · '+d.Site:''),
+    'Fine: '+d.Type+(d['Fine Date']?' ('+d['Fine Date']+')':''),
+    amt===0?'*Fine of '+inr(orig)+' is waived — nothing will be deducted.*':'*Fine reduced from '+inr(orig)+' to '+inr(amt)+'.*',
+    why?'Note: '+why:null,'Approved by: '+supName(),'',
+    amt===0?'इस बार जुर्माना माफ़ किया गया है।':'जुर्माना कम कर दिया गया है।'].filter(x=>x!==null).join('\n');
+  const box=$('mercyBox'); if(!box) return;
+  box.innerHTML='<div style="margin-top:10px;padding:12px;border:1px solid var(--green);border-radius:9px">✓ Saved. <a class="btn grn" style="display:inline-block;margin-left:6px;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent(msg)+'">📲 Tell '+esc(d.Contractor)+' on WhatsApp</a></div>';
+}
 async function delDed(id,no){ if (!confirm('Remove this deduction?')) return; if (await act({action:'ledgerDeductDel', id}, 'Deduction removed')) openInv(no); }
 async function pay(no){ if (await act({action:'ledgerPay', invoiceNo:no, paidOn:$('pDate').value, ref:$('pRef').value.trim()}, 'Marked paid')) openInv(no); }
 async function unpay(no){ if (!confirm('Mark this invoice unpaid again?')) return; if (await act({action:'ledgerUnpay', invoiceNo:no}, 'Marked unpaid')) openInv(no); }
@@ -470,7 +516,7 @@ function statementHTML(){
   const c = $('sCon').value, con = D.contractors.find(x=>x.name===c) || {}, L = stmRows();
   const ad = L.reduce((s,i)=>s+(i.additions||0),0), g = L.reduce((s,i)=>s+i.gross,0), sh = L.reduce((s,i)=>s+i.shifting,0), od = L.reduce((s,i)=>s+i.other,0), n = L.reduce((s,i)=>s+i.net,0);
   const td = 'padding:7px 8px;border-bottom:1px solid #e5e5e5;font-size:12px';
-  const dedLines = L.flatMap(i => D.deductions.filter(d=>String(d['Invoice No']).trim()===i.invoiceNo).map(d => '<tr><td style="'+td+'">'+esc(i.invoiceNo)+'</td><td style="'+td+'">'+esc(d.Type)+'</td><td style="'+td+'">'+esc(d.Reason)+'</td><td style="'+td+';text-align:right">'+inr(d.Amount)+'</td></tr>'));
+  const dedLines = L.flatMap(i => D.deductions.filter(d=>String(d['Invoice No']).trim()===i.invoiceNo).map(d => '<tr><td style="'+td+'">'+esc(i.invoiceNo)+'</td><td style="'+td+'">'+(isFine(d)?'Fine · ':'')+esc(d.Type)+'</td><td style="'+td+'">'+esc(d.Reason)+'</td><td style="'+td+';text-align:right">'+inr(d.Amount)+'</td></tr>'));
   return '<div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;padding:32px 36px;max-width:820px;margin:0 auto">'
    + '<div style="display:flex;justify-content:space-between;border-bottom:2px solid #1a1a1a;padding-bottom:12px;margin-bottom:16px"><div><div style="font-size:22px;font-weight:900;letter-spacing:1px">PAYMENT STATEMENT</div><div style="font-size:12px;color:#666;margin-top:4px">Lingel Windows &amp; Doors · contractor settlement</div></div>'
    + '<div style="text-align:right;font-size:12px"><div><span style="color:#888">Date</span> <b>'+new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+'</b></div><div><span style="color:#888">Invoices</span> <b>'+L.length+'</b></div></div></div>'
