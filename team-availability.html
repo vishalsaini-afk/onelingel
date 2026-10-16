@@ -1936,7 +1936,7 @@ async function showFines(name,team,tm,box){
       +'<div class="qinfo" style="color:var(--red);font-weight:700">Total fines: −'+fineInr(tot)+'</div>';
     const ph=contractorInfo(name).phone;
     d.fines.forEach(f=>{ if(!(f.amount>0)) return; const T=FINE_TYPES.find(x=>x.v===f.type)||{v:f.type,l:f.type,per:'fixed',rate:1};
-      wireWa('fnWa_'+f.id, ()=>fineMessage(name,team,tm,{type:T,qty:'',amt:f.amount,original:f.original,why:f.reason,date:f.date,photo:f.photo,invoiceNo:f.invoiceNo,by:f.by}), ph); });
+      wireWa('fnWa_'+f.id, ()=>fineMessage(name,team,tm,{id:f.id,type:T,qty:'',amt:f.amount,original:f.original,why:f.reason,date:f.date,photo:f.photo,invoiceNo:f.invoiceNo,by:f.by},d.fines), ph); });
     box.querySelectorAll('button[data-id]').forEach(b=>b.onclick=async()=>{
       if(!confirm('Remove this fine? It will no longer be deducted.')) return;
       try{ const x=await apiPost({action:'fineDel',id:b.getAttribute('data-id'),by:SUP,key:KYC_KEY}); if(x&&x.ok===false) throw new Error(x.error); showFines(name,team,tm,box); }
@@ -1996,25 +1996,41 @@ function openFine(name,team,tm){
       const r=await apiPost({action:'fine',key:KYC_KEY,by:SUP,contractor:name,code:ci.code,team:'Team'+team,offer:tm.offer,site:[tm.project,tm.city].filter(Boolean).join(' · '),
         type:x.v,qty:x.per==='fixed'?'':q.value,rate:x.per==='fixed'?'':x.rate,amount:amt,reason:why.value.trim(),fineDate:date,photo});
       if(r&&r.ok===false) throw new Error(r.error||'not saved');
-      fineSent(name,team,tm,{type:x,qty:q.value,amt,why:why.value.trim(),date,photo,invoiceNo:(r&&r.invoiceNo)||'',phone:ci.phone});
+      fineSent(name,team,tm,{type:x,qty:q.value,amt,why:why.value.trim(),date,photo,invoiceNo:(r&&r.invoiceNo)||'',phone:ci.phone,id:(r&&r.id)||'',isNew:true});
     }catch(e){ go.disabled=false; go.textContent='Save fine'; showMErr('⚠ Fine NOT saved: '+(e.message||e)+' — nothing was sent. Try again when online.'); }
   };
 }
-function fineMessage(name,team,tm,f){
-  const d=new Date(f.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+/* WhatsApp fine notice: the fine just marked (or tapped) + ALL fines on this site and the total to be deducted.
+   all = fines list from the sheet ({id,date,type,amount,original,...}); may be empty while loading/offline. */
+function fineMessage(name,team,tm,f,all){
+  const dt=s=>{ const d=new Date(String(s).slice(0,10)+'T00:00:00'); return isNaN(d)?String(s||''):d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); };
   const det=!f.qty?'':f.type.per==='sqft'?f.qty+' sq.ft × ₹'+f.type.rate:f.type.per==='cost'?'50% of glass cost ₹'+f.qty:'';
-  return ['*LINGEL — FINE NOTICE*','',
+  const L=['*LINGEL — FINE NOTICE*','',
     'Contractor: '+name+' (Team '+team+')',
-    'Date: '+d,
-    'Site: #'+tm.offer+(tm.project?' · '+tm.project:'')+(tm.city?' · '+tm.city:''),
+    'Site: #'+tm.offer+(tm.project?' · '+tm.project:'')+(tm.city?' · '+tm.city:''),'',
+    '*Fine — '+dt(f.date)+'*',
     'Rule broken: '+f.type.l,
     det?'Details: '+det:null,
-    '*Fine amount: '+fineInr(f.amt)+'*'+(f.original>0?' (reduced from '+fineInr(f.original)+')':''),
+    'Fine: '+fineInr(f.amt)+(f.original>0?' (reduced from '+fineInr(f.original)+')':''),
     'What happened: '+f.why,
     f.photo?'Photo: '+f.photo:null,
-    'Marked by: '+(f.by||SUP),'',
-    'This amount will be deducted from your bill'+(f.invoiceNo?' (Invoice '+f.invoiceNo+')':' for #'+tm.offer)+'.',
-    'यह राशि आपके बिल से काटी जाएगी।'].filter(l=>l!==null).join('\n');
+    'Marked by: '+(f.by||SUP)];
+  let list=(all||[]).slice();
+  if(f.id && !list.some(x=>x.id===f.id)) list.push({id:f.id,date:f.date,type:f.type.v,amount:f.amt,original:f.original||0});
+  if(!list.length) list=[{id:'_',date:f.date,type:f.type.v,amount:f.amt,original:f.original||0}];
+  list.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const tot=list.reduce((s,x)=>s+(+x.amount||0),0);
+  if(list.length>1){
+    L.push('','*All fines on this site ('+list.length+'):*');
+    list.forEach((x,k)=>L.push((k+1)+'. '+dt(x.date)+' · '+x.type+' · '+(x.amount>0?fineInr(x.amount):'₹0 (waived)')+(x.original>0&&x.amount>0?' (reduced)':'')+(f.id&&x.id===f.id?(f.isNew?'  ← new':'  ← this one'):'')));
+  }
+  L.push('','*Total to be deducted: '+fineInr(tot)+'*'+(f.invoiceNo?' (Invoice '+f.invoiceNo+')':''),
+    'यह राशि आपके बिल से काटी जाएगी।');
+  return L.filter(l=>l!==null).join('\n');
+}
+async function siteFines(name,tm){
+  try{ const r=await fetch(API+'?action=fines&offer='+encodeURIComponent(tm.offer)+'&contractor='+encodeURIComponent(name)+'&key='+encodeURIComponent(KYC_KEY)+'&t='+Date.now(),{cache:'no-store'});
+    const d=await r.json(); return (d&&d.ok&&d.fines)||null; }catch(e){ return null; }
 }
 function fineSent(name,team,tm,f){
   const msg=fineMessage(name,team,tm,f), ph=waPhone(f.phone);
@@ -2026,6 +2042,9 @@ function fineSent(name,team,tm,f){
     +'<button type="button" class="mbtn" id="fCopy" style="width:100%;margin-bottom:8px;background:var(--panel-2);color:var(--text);border:1px solid var(--line)">Copy message</button>';
   const go=document.getElementById('mGo'); go.disabled=false; go.textContent='📲 Send on WhatsApp'; go.className='mbtn wa'; showMErr('');
   wireWa('fWaBtn', ()=>document.getElementById('fMsg').value, f.phone);
+  /* pull every fine on this site so the message carries the full list + total */
+  let edited=false; const ta=document.getElementById('fMsg'); ta.oninput=()=>{ edited=true; };
+  siteFines(name,tm).then(all=>{ if(all && !edited && document.getElementById('fMsg')===ta) ta.value=fineMessage(name,team,tm,f,all); });
   document.getElementById('fCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(document.getElementById('fMsg').value); document.getElementById('fCopy').textContent='Copied ✓'; }catch(e){} };
   goHandler=()=>{ const text=document.getElementById('fMsg').value;
     window.open((ph?'https://wa.me/'+ph:'https://wa.me/')+'?text='+encodeURIComponent(text),'_blank'); };
