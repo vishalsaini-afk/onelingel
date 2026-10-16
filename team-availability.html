@@ -155,7 +155,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
 .qup{flex:1;width:100%;border:1px dashed var(--hivis);background:rgba(255,206,31,.08);color:var(--hivis);border-radius:8px;padding:11px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
-.qinfo{font-size:12px;color:var(--muted);min-height:0}.pk-list{display:flex;flex-direction:column;gap:6px;margin:8px 0 6px}.pk-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--green);border-radius:8px;background:rgba(46,204,113,.08);font-size:12.5px}.pk-row .tk{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.pk-row .tx{flex:1;min-width:0;line-height:1.35}.pk-row .tx b{color:var(--text,#fff)}.pk-row .tx span{color:var(--muted);display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pk-row .rm{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 6px;cursor:pointer}.pk-row.busy{border-color:var(--muted);background:none}.pk-row.busy .tk{background:var(--muted)}.pk-add{display:flex;gap:8px}.pk-add .qup.plus{font-size:20px;flex:0 0 56px;padding:6px}.pk-row.none{border-color:var(--hivis);background:rgba(255,206,31,.06)}.pk-row.none .tk{background:none;border:1.5px solid var(--hivis);color:var(--hivis)}.pk-tot{font-size:12px;color:var(--green);font-weight:700;margin-top:2px}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
+.qinfo{font-size:12px;color:var(--muted);min-height:0}.pk-list{display:flex;flex-direction:column;gap:6px;margin:8px 0 6px}.pk-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--green);border-radius:8px;background:rgba(46,204,113,.08);font-size:12.5px}.pk-row .tk{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.pk-row .tx{flex:1;min-width:0;line-height:1.35}.pk-row .tx b{color:var(--text,#fff)}.pk-row .tx span{color:var(--muted);display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pk-row .rm{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 6px;cursor:pointer}.pk-row.busy{border-color:var(--muted);background:none}.pk-row.busy .tk{background:var(--muted)}.pk-add{display:flex;gap:8px}.pk-add .qup.plus{font-size:20px;flex:0 0 56px;padding:6px}.pk-row.none{border-color:var(--hivis);background:rgba(255,206,31,.06)}.pk-row.none .tk{background:none;border:1.5px solid var(--hivis);color:var(--hivis)}.qup.fine{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.07)}.fn-list{display:flex;flex-direction:column;gap:6px;margin:6px 0 10px}.fn-row{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid rgba(239,68,68,.5);border-radius:8px;background:rgba(239,68,68,.06);font-size:12.5px}.fn-row .tx{flex:1;min-width:0;line-height:1.35}.fn-row .tx span{display:block;color:var(--muted);font-size:11.5px}.fn-row .am{font-weight:800;color:var(--red);white-space:nowrap}.fn-row button{border:0;background:none;color:var(--muted);font-size:17px;cursor:pointer}.fd textarea{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif;min-height:70px;resize:vertical}.fn-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fn-sum{padding:12px 14px;border-radius:9px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.45);font-size:13px;line-height:1.5;margin:4px 0 12px}.fn-sum b.big{font-size:22px;color:var(--red);display:block}.wa{background:#25D366;color:#062b14}.pk-tot{font-size:12px;color:var(--green);font-weight:700;margin-top:2px}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
 .msel{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .relinfo{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:12px 13px;margin-bottom:14px;font-size:13px;line-height:1.7}
 .relinfo b{color:var(--hivis);font-family:'Archivo Narrow'}
@@ -681,7 +681,7 @@ function showMErr(m){ document.getElementById('mErr').textContent=m||''; }
 document.getElementById('mCancel').addEventListener('click',closeModal);
 document.getElementById('mGo').addEventListener('click',()=>{ if(goHandler) goHandler(); });
 modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
-function setBox(cls){ document.getElementById('mbox').className='mbox'+(cls?(' '+cls):''); }
+function setBox(cls){ document.getElementById('mbox').className='mbox'+(cls?(' '+cls):''); document.getElementById('mGo').disabled=false; }
 function dutyRow(onDuty){ return '<div class="mduty"><div><div class="mdt">Team status</div><div class="mds '+(onDuty?'ond':'onl')+'">'+(onDuty?'On duty':'On leave')+'</div></div><span class="sw'+(onDuty?' on':'')+'" id="mSw"></span></div>'; }
 function wireDutySwitch(name,team){ const s=document.getElementById('mSw'); if(s) s.onclick=()=>{ closeModal(); handleSwitch(name,team); }; }
 function seg(id,opts,active){ return '<div class="seg" id="'+id+'">'+opts.map(o=>'<button type="button" data-val="'+esc(o.v)+'"'+(o.v===active?' class="on"':'')+'>'+esc(o.l)+'</button>').join('')+'</div>'; }
@@ -1065,6 +1065,7 @@ function openRelease(name,team,tm){
   document.getElementById('mSub').textContent='Team '+team+' · release or put on hold';
   document.getElementById('mBody').innerHTML='<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
     +(tm.offer?'<div style="margin-bottom:10px"><button type="button" class="qup" id="mWoBtn">📄 Invoice for #'+esc(tm.offer)+'</button></div>':'')
+    +(tm.offer?'<div class="fd"><label>Fines on this site</label><div class="fn-list" id="mFines"></div><button type="button" class="qup fine" id="mFineBtn">⚠ Mark a fine</button></div>':'')
     +'<div class="fd"><label>Quotation / production sheet</label><div id="mUpSaved" class="pk-list"></div><div id="mUpPick"></div>'
     +'<button type="button" class="mbtn" id="mUpGo" style="width:100%;margin-top:8px" hidden>Save &amp; make invoice</button>'
     +'<div class="qinfo" id="mUpInfo"></div></div>'
@@ -1072,6 +1073,7 @@ function openRelease(name,team,tm){
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>{ const v=b.getAttribute('data-val'); closeModal(); holdSite(name,team,v); });
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
+  const fb=document.getElementById('mFineBtn'); if(fb){ fb.onclick=()=>openFine(name,team,tm); showFines(name,team,tm,document.getElementById('mFines')); }
   const upRoot=document.getElementById('mUpPick'), upGo=document.getElementById('mUpGo');
   if(upRoot){ let upQ=null, saved=[];
     const savedBox=document.getElementById('mUpSaved');
@@ -1799,6 +1801,121 @@ function pdfPicker(root, opts){
   return {list, combined, say, setPlus:v=>{ extPlus=!!v; draw(); }, redraw:draw};
 }
 
+
+/* ===================== SUPERVISOR FINES =====================
+   Same list and rates as the Ledger's deductions. Saved to the Deductions tab
+   (Invoice script) → deducted in the Contractor Ledger. Then sent on WhatsApp. */
+const FINE_TYPES=[
+  {v:'No-show',      l:'No-show at commitment',  per:'sqft',  rate:5,   unit:'₹5 / sq.ft'},
+  {v:'Bad silicone', l:'Bad silicone work',      per:'sqft',  rate:10,  unit:'₹10 / sq.ft'},
+  {v:'Glass damage', l:'Glass damaged at site',  per:'cost',  rate:0.5, unit:'50% of glass cost'},
+  {v:'Other',        l:'Other rule broken',      per:'fixed', rate:1,   unit:'fixed amount'}
+];
+const fineInr=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+function waPhone(p){ let d=String(p||'').replace(/\D/g,''); if(d.length===11&&d[0]==='0') d=d.slice(1); if(d.length===10) d='91'+d; return d.length>=11?d:''; }
+async function showFines(name,team,tm,box){
+  if(!box) return; box.innerHTML='<div class="qinfo">Checking fines…</div>';
+  try{
+    const r=await fetch(API+'?action=fines&offer='+encodeURIComponent(tm.offer)+'&contractor='+encodeURIComponent(name)+'&key='+encodeURIComponent(KYC_KEY)+'&t='+Date.now(),{cache:'no-store'});
+    const d=await r.json(); if(!d.ok) throw new Error(d.error||'');
+    if(!d.fines.length){ box.innerHTML='<div class="qinfo">No fines on this site.</div>'; return; }
+    const tot=d.fines.reduce((s,f)=>s+f.amount,0);
+    box.innerHTML=d.fines.map(f=>'<div class="fn-row"><div class="tx"><b>'+esc(f.type)+'</b> · '+esc(f.date)+'<span>'+esc(f.reason)+' · by '+esc(f.by)+(f.invoiceNo?' · '+esc(f.invoiceNo):' · invoice not made yet')
+      +(f.original>0?'<br><span style="color:var(--green)">🤝 '+(f.amount===0?'Waived':'Reduced from '+fineInr(f.original))+' by '+esc(f.mercyBy)+(f.mercyReason?' — '+esc(f.mercyReason):'')+'</span>':'')+'</span></div>'
+      +'<div class="am">'+(f.amount===0?'<span style="color:var(--green)">₹0</span>':'−'+fineInr(f.amount))+'</div>'+(f.by.toLowerCase()===SUP.toLowerCase()?'<button title="Remove my fine" data-id="'+esc(f.id)+'">✕</button>':'')+'</div>').join('')
+      +'<div class="qinfo" style="color:var(--red);font-weight:700">Total fines: −'+fineInr(tot)+'</div>';
+    box.querySelectorAll('button[data-id]').forEach(b=>b.onclick=async()=>{
+      if(!confirm('Remove this fine? It will no longer be deducted.')) return;
+      try{ const x=await apiPost({action:'fineDel',id:b.getAttribute('data-id'),by:SUP,key:KYC_KEY}); if(x&&x.ok===false) throw new Error(x.error); showFines(name,team,tm,box); }
+      catch(e){ alert('Could not remove: '+(e.message||e)); }
+    });
+  }catch(e){ box.innerHTML='<div class="qinfo">Could not load fines (offline?)</div>'; }
+}
+async function finePhoto(file){   // shrink to ~1280px JPEG before upload
+  const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=URL.createObjectURL(file); });
+  const k=Math.min(1,1280/Math.max(img.width,img.height)), c=document.createElement('canvas');
+  c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg',0.8).split(',')[1];
+}
+function openFine(name,team,tm){
+  setBox('rel');
+  const w=woFind(tm.offer), sq=w?(+w.sqft||0):0, today=new Date().toISOString().slice(0,10);
+  document.getElementById('mTtl').textContent='Fine — '+name;
+  document.getElementById('mSub').textContent='Team '+team+' · #'+tm.offer+(tm.project?' · '+tm.project:'');
+  document.getElementById('mBody').innerHTML=
+     '<div class="fd"><label>Rule broken</label><select id="fType" class="msel">'+FINE_TYPES.map(t=>'<option value="'+t.v+'">'+t.l+' ('+t.unit+')</option>').join('')+'</select></div>'
+    +'<div class="fn-row2"><div class="fd"><label id="fQl">Sq.ft</label><input type="number" step="0.01" inputmode="decimal" id="fQty"></div>'
+    +'<div class="fd"><label>Fine amount ₹</label><input type="number" step="1" inputmode="decimal" id="fAmt"></div></div>'
+    +'<div class="qinfo" id="fHint" style="margin:-4px 0 10px"></div>'
+    +'<div class="fd"><label>Date</label><input type="date" id="fDate" value="'+today+'"></div>'
+    +'<div class="fd"><label>What happened (goes on WhatsApp)</label><textarea id="fWhy" placeholder="e.g. silicone gaps on bedroom windows W3, W4 — redone by our team"></textarea></div>'
+    +'<div class="fd"><label>Photo (optional, saved in the order folder)</label><input type="file" id="fPhoto" accept="image/*" capture="environment"></div>'
+    +'<div class="fn-sum" id="fSum"></div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Save fine'; go.className='mbtn danger'; modal.hidden=false;
+  const t=document.getElementById('fType'), q=document.getElementById('fQty'), a=document.getElementById('fAmt'), ql=document.getElementById('fQl'), hint=document.getElementById('fHint'), why=document.getElementById('fWhy'), sum=document.getElementById('fSum');
+  let manual=false;
+  const T=()=>FINE_TYPES.find(x=>x.v===t.value);
+  const paint=()=>{ const amt=+a.value||0; sum.innerHTML='<b class="big">−'+fineInr(amt)+'</b>will be deducted from '+esc(name)+'’s bill for #'+esc(tm.offer)+(w&&w.invNo?' (invoice '+esc(w.invNo)+')':''); };
+  const calc=()=>{ const x=T(); if(x.per!=='fixed' && !manual) a.value=((+q.value||0)*x.rate).toFixed(0); paint(); };
+  const setType=()=>{ const x=T(); manual=false;
+    ql.textContent=x.per==='sqft'?'Sq.ft':x.per==='cost'?'Glass cost ₹':'—';
+    q.disabled=x.per==='fixed'; q.value=x.per==='sqft'?(sq?sq.toFixed(2):''):'';
+    hint.textContent=x.per==='sqft'?(sq?'Whole order is '+sq.toFixed(2)+' sq.ft — change it to the affected area if only some windows':'Enter the sq.ft affected'):x.per==='cost'?'Enter the actual glass cost — fine is 50%':'Type the fine amount';
+    a.value=''; calc(); };
+  t.onchange=setType; q.oninput=()=>{ manual=false; calc(); }; a.oninput=()=>{ manual=true; paint(); };
+  setType();
+  goHandler=async()=>{
+    const x=T(), amt=+a.value||0;
+    if(!SUP){ showMErr('Sign in from the hub first — the fine needs your name'); return; }
+    if(!(amt>0)){ showMErr('Enter the fine amount'); return; }
+    if(!why.value.trim()){ showMErr('Write what happened'); return; }
+    showMErr(''); go.disabled=true; go.textContent='Saving…';
+    const ci=contractorInfo(name), date=document.getElementById('fDate').value||today;
+    let photo='';
+    try{
+      const pf=document.getElementById('fPhoto').files[0];
+      if(pf){ go.textContent='Uploading photo…';
+        const up=await apiPost({action:'upload',folder:tm.offer,name:'Fine_'+String(tm.offer).replace(/[^\w-]+/g,'-')+'_'+date+'_'+Date.now().toString().slice(-4)+'.jpg',mime:'image/jpeg',data:await finePhoto(pf)});
+        photo=(up&&up.url)||''; }
+    }catch(e){ console.warn('photo',e); }
+    try{
+      go.textContent='Saving…';
+      const r=await apiPost({action:'fine',key:KYC_KEY,by:SUP,contractor:name,code:ci.code,team:'Team'+team,offer:tm.offer,site:[tm.project,tm.city].filter(Boolean).join(' · '),
+        type:x.v,qty:x.per==='fixed'?'':q.value,rate:x.per==='fixed'?'':x.rate,amount:amt,reason:why.value.trim(),fineDate:date,photo});
+      if(r&&r.ok===false) throw new Error(r.error||'not saved');
+      fineSent(name,team,tm,{type:x,qty:q.value,amt,why:why.value.trim(),date,photo,invoiceNo:(r&&r.invoiceNo)||'',phone:ci.phone});
+    }catch(e){ go.disabled=false; go.textContent='Save fine'; showMErr('⚠ Fine NOT saved: '+(e.message||e)+' — nothing was sent. Try again when online.'); }
+  };
+}
+function fineMessage(name,team,tm,f){
+  const d=new Date(f.date+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const det=f.type.per==='sqft'?f.qty+' sq.ft × ₹'+f.type.rate:f.type.per==='cost'?'50% of glass cost ₹'+f.qty:'';
+  return ['*LINGEL — FINE NOTICE*','',
+    'Contractor: '+name+' (Team '+team+')',
+    'Date: '+d,
+    'Site: #'+tm.offer+(tm.project?' · '+tm.project:'')+(tm.city?' · '+tm.city:''),
+    'Rule broken: '+f.type.l,
+    det?'Details: '+det:null,
+    '*Fine amount: '+fineInr(f.amt)+'*',
+    'What happened: '+f.why,
+    f.photo?'Photo: '+f.photo:null,
+    'Marked by: '+SUP,'',
+    'This amount will be deducted from your bill'+(f.invoiceNo?' (Invoice '+f.invoiceNo+')':' for #'+tm.offer)+'.',
+    'यह राशि आपके बिल से काटी जाएगी।'].filter(l=>l!==null).join('\n');
+}
+function fineSent(name,team,tm,f){
+  const msg=fineMessage(name,team,tm,f), ph=waPhone(f.phone);
+  document.getElementById('mTtl').textContent='Fine saved ✓';
+  document.getElementById('mSub').textContent=name+' · Team '+team+' · #'+tm.offer;
+  document.getElementById('mBody').innerHTML='<div class="fn-sum"><b class="big">−'+fineInr(f.amt)+'</b>Saved — it will be deducted in the Contractor Ledger'+(f.invoiceNo?' from invoice '+esc(f.invoiceNo):' as soon as the invoice for #'+esc(tm.offer)+' is made')+'.</div>'
+    +'<div class="fd"><label>WhatsApp message</label><textarea id="fMsg" style="min-height:220px;font-size:13px">'+esc(msg)+'</textarea></div>'
+    +(ph?'':'<div class="qinfo" style="color:var(--amber);margin-bottom:8px">No phone number for '+esc(name)+' in the Contractors sheet — WhatsApp will ask you to pick the contact.</div>')
+    +'<button type="button" class="mbtn" id="fCopy" style="width:100%;margin-bottom:8px;background:var(--panel-2);color:var(--text);border:1px solid var(--line)">Copy message</button>';
+  const go=document.getElementById('mGo'); go.disabled=false; go.textContent='📲 Send on WhatsApp'; go.className='mbtn wa'; showMErr('');
+  document.getElementById('fCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(document.getElementById('fMsg').value); document.getElementById('fCopy').textContent='Copied ✓'; }catch(e){} };
+  goHandler=()=>{ const text=document.getElementById('fMsg').value;
+    window.open((ph?'https://wa.me/'+ph:'https://wa.me/')+'?text='+encodeURIComponent(text),'_blank'); };
+}
 /* Manage popup: which quotation / production sheets are already saved for the booked offer (all its parts) */
 function woFind(offer){
   const w=woGet(offer); if(w) return w;
