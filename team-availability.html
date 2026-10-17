@@ -725,7 +725,8 @@ function openBook(name,team){
     const date=chosenPlanDate();
     const q=bookQ, woSvc=q?document.getElementById('mWoSvc').value:'', woBill=q?(segVal('segBill')||'lingel'):'';
     if(q && !offer){ showMErr('Quotation uploaded — enter its Offer No. to make the invoice.'); return; }
-    const runWO=()=>{ if(q) afterBookWithQuote(q,{name,team,offer,project,city,sales,date,service:woSvc,billTo:woBill}); };
+    const woMake=q?!!(document.getElementById('mWoMake')||{}).checked:false;
+    const runWO=()=>{ if(q) afterBookWithQuote(q,{name,team,offer,project,city,sales,date,service:woSvc,billTo:woBill,makeInvoice:woMake}); };
     rememberSalesperson(sales); closeModal();
     if(date===TODAY()){
       if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales);
@@ -2202,6 +2203,8 @@ function quoteFieldHTML(){
   return '<div class="fd"><label>Quotation or production sheet (fills offer &amp; site · makes invoice)</label>'
     +'<div id="mQPick"></div><div class="qinfo" id="mQInfo"></div></div>'
     +'<div id="mWo" hidden>'
+    +'<label style="display:flex;gap:10px;align-items:center;margin:2px 0 12px;font-size:14px;cursor:pointer"><input type="checkbox" id="mWoMake" style="width:20px;height:20px;accent-color:var(--hivis)"> Make invoice now</label>'
+    +'<div class="qinfo" style="margin:-8px 0 12px">Off: the quotation is only saved. You can make the invoice later from the 📄 Invoice button.</div>'
     +'<div class="fd"><label>Invoice — rate</label><select id="mWoSvc" class="msel">'+Object.keys(WO_RATES).map(s=>'<option value="'+esc(s)+'">'+esc(s)+' (₹'+WO_RATES[s]+'/sqft)</option>').join('')+'</select></div>'
     +'<div class="fd"><label>Bill to</label>'+seg('segBill',[{v:'lingel',l:'Lingel'},{v:'fensterbau',l:'Fensterbau'}],'lingel')+'<div class="qinfo" id="mBillHint"></div></div>'
     +'</div>';
@@ -2403,6 +2406,7 @@ async function afterBookWithQuote(q, b){
   } else
   try{ if(!q.fromLib){ const dr=await LD.save(q.file,{offer:b.offer,kind:q.kind,customer:w.customer,site:b.project,salesperson:b.sales,positions:String(q.items.length),sqft:q.total.toFixed(2),items:q.kind==='quotation'?q.items.map(i=>({ref:i.ref,w:Math.round(i.w||0),h:Math.round(i.h||0),qty:1,sqft:+(+i.sqft||0).toFixed(2)})):undefined,by:SUP,app:'Team Availability'}); dSkip=!!(dr&&dr.skipped); } }
   catch(e){ qOk=false; console.warn(e); }
+  if(!b.makeInvoice){ setDot('dot','syncTxt',qOk?'ok':'err', qOk?(dSkip?'Quotation was already saved · no invoice made':'Quotation saved · no invoice made (use 📄 Invoice when needed)'):'Quotation NOT saved online (kept on phone)'); return; }
   try{ await makeWorkOrder(w); setDot('dot','syncTxt',qOk?'ok':'err', qOk?('Invoice '+w.woNo+' ready · '+(dSkip?'document was already saved — not uploaded again':'document saved')):('Invoice '+w.woNo+' ready · document NOT saved online ('+'kept on phone)')); }
   catch(e){ setDot('dot','syncTxt','err','Invoice failed: '+(e.message||e)); }
 }
@@ -2428,7 +2432,7 @@ async function uploadForBooked(name,team,tm,q){
   }
   closeModal();
   await afterBookWithQuote(q,{name,team,offer,project:tm.project||q.client,city:tm.city||q.city,sales:tm.salesperson||q.sales,
-    date:TODAY(),service:q.service,billTo:q.party==='person'?'fensterbau':'lingel'});
+    date:TODAY(),service:q.service,billTo:q.party==='person'?'fensterbau':'lingel',makeInvoice:true});
 }
 async function reprintWorkOrder(name,team,offer){
   let w=woGet(offer);
