@@ -287,7 +287,11 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab tr.heldrow .heldcell{color:var(--amber);font-size:11px}
 .ptab .dd{color:var(--muted);font-size:11px;white-space:nowrap}
 .ptab .dcell{white-space:nowrap}
-.ptab td.xcol{width:38px;text-align:center;padding:6px}
+.ptab td.xcol{width:70px;text-align:center;padding:6px}
+.xbtns{display:flex;gap:5px;justify-content:center}
+.pedit{background:transparent;border:1px solid var(--hivis);color:var(--hivis);border-radius:7px;width:26px;height:26px;font-size:13px;cursor:pointer;flex:0 0 auto}
+.pedit:active{background:var(--panel-2)}
+.pdflight .pedit{display:none!important}
 .ptab .xcol .pdel{margin:0;width:26px;height:26px}
 .spwrap{position:relative;display:inline-block}
 .spbtn{max-width:230px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px}
@@ -459,7 +463,7 @@ function upcomingItems(){ return plans.filter(p=>(p.kind==='team'||p.kind==='sup
 function upcomingSection(){ const items=upcomingItems(); if(!items.length) return '';
   let h='<div class="psec"><div class="psectt">📅 Upcoming — later dates <span class="cnt">'+items.length+'</span></div><div class="ptabwrap"><table class="ptab"><thead><tr><th>Date</th><th>Type</th><th>Contractor / Supervisor</th><th>Offer No.</th><th>Site</th><th>City</th><th>Salesperson</th><th class="xcol noprint"></th></tr></thead><tbody>';
   items.forEach(function(p){ const who=p.kind==='team'?(esc(p.contractor)+' · T'+esc(p.team)):(esc(p.supervisor)+' · '+esc(p.task||'')); const typ=p.kind==='team'?'Install':'Supervisor';
-    h+='<tr><td>'+esc(prettyDate(p.date))+'</td><td>'+typ+'</td><td class="cn">'+who+'</td><td>'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'')+'</td><td>'+esc(p.city||'')+'</td><td>'+esc(p.salesperson||'')+'</td><td class="xcol noprint"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></td></tr>'; });
+    h+='<tr><td>'+esc(prettyDate(p.date))+'</td><td>'+typ+'</td><td class="cn">'+who+'</td><td>'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'')+'</td><td>'+esc(p.city||'')+'</td><td>'+esc(p.salesperson||'')+'</td><td class="xcol noprint"><div class="xbtns">'+(p.kind==='team'?'<button class="pedit" data-pid="'+esc(p.id)+'" title="Edit">✎</button>':'')+'<button class="pdel" data-id="'+esc(p.id)+'">✕</button></div></td></tr>'; });
   return h+'</tbody></table></div></div>'; }
 function teamItems(date){
   if(date===TODAY()){
@@ -795,6 +799,103 @@ function deletePlanEntry(id){
   const e=planById(id); if(e){ plans=plans.filter(p=>p.id!==id); savePlansLocal(); pushPlanDelete(id); }
   renderBoard(); renderPlan();
 }
+
+/* ===================== EDIT A CONTRACTOR PLAN =====================
+   Change contractor, team, date, offer, site, city, salesperson or hold.
+   Every change is written to the Google Sheet and the save WAITS for the sheet:
+   - plan rows (Day Plan tab)  → planUpsert / planDelete
+   - today's live booking (Contractors + Bookings tabs) → release + book again   */
+function isLiveToday(c,t,offer){ const r=rows.find(x=>x.name===c); const tm=r?teamOf(r,String(t)):null;
+  return !!(tm && tm.status==='booked' && (offer==null || cleanOffer(tm.offer).toUpperCase()===cleanOffer(offer).toUpperCase())); }
+function editSrcFromRow(r){
+  const today=!!r.today, date=today?TODAY():TOMORROW();
+  const id='c|'+r.contractor+'|'+r.team+'|'+date, pl=planById(id)||{};
+  return { id: pl.id||(r.id&&r.id.endsWith('|'+date)?r.id:''), date, contractor:r.contractor, team:String(r.team), offer:r.offer||'', project:r.project||'',
+    city:r.city||pl.city||'', salesperson:r.salesperson||pl.salesperson||'', holdBy:pl.holdBy||r.holdBy||'' };
+}
+async function sheetPlanUpsert(entry){
+  const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry);
+  if(deletedPlanIds.has(entry.id)){ deletedPlanIds.delete(entry.id); saveTombstones(); }
+  savePlansLocal();
+  await apiPost(Object.assign({action:'planUpsert'},entry));
+}
+async function sheetPlanDelete(id){
+  plans=plans.filter(p=>p.id!==id); deletedPlanIds.add(id); saveTombstones(); savePlansLocal();
+  await apiPost({action:'planDelete',id:id});
+}
+function openTeamEdit(src){
+  const live = src.date===TODAY() && isLiveToday(src.contractor,src.team,src.offer);
+  setBox('');
+  document.getElementById('mTtl').textContent='Edit plan · '+src.contractor;
+  document.getElementById('mSub').textContent='Team '+src.team+' · '+whenLabel(src.date)+(src.offer?' · #'+src.offer:'')+(live?' · working now':'');
+  const daySel=src.date===TODAY()?'today':(src.date===TOMORROW()?'tomorrow':'later');
+  const names=rows.map(r=>r.name); if(names.indexOf(src.contractor)<0) names.unshift(src.contractor);
+  const teamOpts=c=>{ const r=rows.find(x=>x.name===c); const n=r?r.teams.length:Math.max(2,+src.team||1); let o=''; for(let t=1;t<=n;t++) o+='<option value="'+t+'"'+(String(t)===String(src.team)?' selected':'')+'>Team '+t+'</option>'; return o; };
+  document.getElementById('mBody').innerHTML=
+     planDateField(daySel, src.date>TOMORROW()?src.date:null)
+    +'<div class="fn-row2"><div class="fd"><label>Contractor</label><select id="eCon" class="msel">'+names.map(n=>'<option'+(n===src.contractor?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></div>'
+    +'<div class="fd"><label>Team</label><select id="eTeam" class="msel">'+teamOpts(src.contractor)+'</select></div></div>'
+    +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" value="'+esc(src.offer)+'"></div>'
+    +'<div class="fd"><label>Project / Site</label><input id="mProject" autocomplete="off" value="'+esc(src.project)+'"></div>'
+    +'<div class="fn-row2"><div class="fd"><label>City</label><input id="mCity" autocomplete="off" value="'+esc(src.city)+'"></div>'
+    +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" value="'+esc(src.salesperson)+'"></div></div>'
+    +'<div class="fd"><label>Hold by</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],src.holdBy||'')+'</div>'
+    +(live?'<div class="qinfo" style="margin:-4px 0 10px">This team is working today — saving updates its live booking in the sheet too.</div>':'');
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Save changes'; go.className='mbtn go'; go.disabled=false; modal.hidden=false;
+  wireSegs(); wirePlanDate();
+  const eCon=document.getElementById('eCon'), eTeam=document.getElementById('eTeam');
+  eCon.onchange=()=>{ eTeam.innerHTML=teamOpts(eCon.value); };
+  goHandler=async()=>{
+    const n={ contractor:eCon.value, team:String(eTeam.value), date:chosenPlanDate(),
+      offer:cleanOffer(document.getElementById('mOffer').value), project:document.getElementById('mProject').value.trim(),
+      city:document.getElementById('mCity').value.trim(), salesperson:document.getElementById('mSales').value.trim(), holdBy:segVal('segHold')||'' };
+    if(!n.offer && !n.holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
+    const same=['contractor','team','date','offer','project','city','salesperson','holdBy'].every(k=>String(n[k]||'')===String(src[k]||''));
+    if(same){ closeModal(); return; }
+    const moved = n.contractor!==src.contractor || n.team!==String(src.team) || n.date!==src.date;
+    const newId='c|'+n.contractor+'|'+n.team+'|'+n.date;
+    // the new slot must be free
+    if(moved){
+      if(n.date===TODAY()){ const r=rows.find(x=>x.name===n.contractor), tm=r?teamOf(r,n.team):null;
+        if(tm && tm.status==='booked'){ showMErr(n.contractor+' Team '+n.team+' is already working today (#'+(tm.offer||'—')+').'); return; }
+        if(tm && tm.status==='na'){ showMErr(n.contractor+' Team '+n.team+' is on leave today.'); return; } }
+      const prev=planById(newId);
+      if(prev && n.date!==TODAY() && !confirm(n.contractor+' Team '+n.team+' already has #'+(prev.offer||prev.holdBy||'—')+' on '+whenLabel(n.date)+'.\n\nReplace it?')) return;
+    }
+    go.disabled=true; go.textContent='Saving to sheet…'; showMErr('');
+    try{
+      // 1) take the old one out
+      if(live && (moved || n.offer!==src.offer || n.project!==src.project || n.city!==src.city || n.salesperson!==src.salesperson || n.holdBy!==src.holdBy)){
+        await apiPost({action:'release',name:src.contractor,team:src.team,by:SUP});
+        const r=rows.find(x=>x.name===src.contractor); if(r){ const tm=teamOf(r,src.team); tm.status='available'; tm.offer=''; tm.project=''; }
+      }
+      const oldId=src.id || ('c|'+src.contractor+'|'+src.team+'|'+src.date);
+      if(oldId!==newId && planById(oldId)) await sheetPlanDelete(oldId);
+      // 2) put the new one in
+      if(n.date===TODAY()){
+        await apiPost({action:'book',name:n.contractor,team:n.team,offer:n.offer,project:n.project,by:SUP,holdBy:n.holdBy,city:n.city,salesperson:n.salesperson});
+      }
+      if(n.date!==TODAY() || planById(newId) || live){
+        await sheetPlanUpsert({ id:newId, kind:'team', date:n.date, contractor:n.contractor, team:n.team, offer:n.offer, project:n.project, city:n.city,
+          salesperson:n.salesperson, holdBy:n.holdBy, supervisor:'', task:'', by:SUP, at:new Date().toISOString() });
+      }
+      // 3) today's details changed (not moved) → keep tomorrow's carried plan for the same team in step
+      if(live && !moved){ const tid='c|'+n.contractor+'|'+n.team+'|'+TOMORROW(), tp=planById(tid);
+        if(tp && cleanOffer(tp.offer).toUpperCase()===cleanOffer(src.offer).toUpperCase())
+          await sheetPlanUpsert(Object.assign({},tp,{offer:n.offer,project:n.project,city:n.city,salesperson:n.salesperson,holdBy:n.holdBy,by:SUP,at:new Date().toISOString()})); }
+      rememberSalesperson(n.salesperson);
+      if(!inRegion(n.salesperson)){ planSalesList=[]; saveSalesSel(); }
+      closeModal();
+      await loadBoard(true); renderBoard(); renderPlan();
+      setDot('dotP','syncP','ok','Saved to sheet · '+n.contractor+' Team '+n.team+' · '+whenLabel(n.date)+(n.offer?' · #'+n.offer:''));
+      setDot('dot','syncTxt','ok','Plan updated · '+n.contractor+' Team '+n.team);
+    }catch(err){
+      go.disabled=false; go.textContent='Try again';
+      showMErr('⚠ Not saved to the sheet: '+(err.message||err));
+      syncPlansFromServer().then(()=>{ renderPlan(); }); loadBoard(true);
+    }
+  };
+}
 /* ===== Upcoming jobs popup (tap the 📅 badge) ===== */
 let upCtx=null;
 function openUpcoming(name,team){ upCtx={name:name,team:team}; renderUpcoming(); }
@@ -813,7 +914,7 @@ function renderUpcoming(){
       return '<div class="uprow"><div class="upinfo">'
         +'<div class="upwhen">📅 '+esc(whenLabel(p.date))+' <span class="updd">'+esc(prettyDate(p.date))+'</span></div>'
         +'<div class="upsite">'+site+'</div>'+(meta?'<div class="upmeta">'+meta+'</div>':'')
-        +'</div><div class="upacts"><button class="upbtn upre" data-id="'+esc(p.id)+'">Reschedule</button>'
+        +'</div><div class="upacts"><button class="upbtn upedit" data-id="'+esc(p.id)+'">✎ Edit</button><button class="upbtn upre" data-id="'+esc(p.id)+'">Reschedule</button>'
         +'<button class="upbtn updel" data-id="'+esc(p.id)+'" title="Cancel booking">✕</button></div></div>';
     }).join('')+'</div>';
   }
@@ -826,6 +927,7 @@ function renderUpcoming(){
     }
   });
   document.querySelectorAll('#mBody .upre').forEach(b=>b.onclick=()=>{ const p=planById(b.getAttribute('data-id')); if(p) rescheduleUpcoming(p); });
+  document.querySelectorAll('#mBody .upedit').forEach(b=>b.onclick=()=>{ const p=planById(b.getAttribute('data-id')); if(p) openTeamEdit(Object.assign({},p)); });
 }
 function rescheduleUpcoming(job){
   if(!upCtx) return; const name=upCtx.name, team=upCtx.team;
@@ -914,7 +1016,9 @@ function contractorPlanRows(){
   return out;
 }
 function rowRank(p){ return p.held?2:(p.today?0:1); }
+let _cpRows=[];
 function contractorTable(){
+  _cpRows=[];
   const groups=groupBy(contractorPlanRows().filter(p=>inRegion(p.salesperson)), p=>p.salesperson, 'Unassigned');
   if(!groups.length) return '<div class="pempty">No contractor teams planned'+(!planSalesList.length?'':' for '+salesLabel())+'.</div>';
   let h='<div class="ptabwrap"><table class="ptab"><thead><tr><th>Offer No.</th><th>Customer</th><th>City</th><th>Contractor</th><th class="dayh">Today<span class="thd">'+esc(prettyDate(TODAY()))+'</span></th><th class="dayh">Tomorrow<span class="thd">'+esc(prettyDate(TOMORROW()))+'</span></th><th class="xcol noprint"></th></tr></thead>';
@@ -927,7 +1031,8 @@ function contractorTable(){
       if(p.held) dayCells='<td colspan="2" class="heldcell">⏸ On hold · '+esc(p.holdBy||'—')+(p.heldOn?' · '+esc(shortDate(p.heldOn)):'')+'</td>';
       else { const tmAttr=' class="dc tmtog" data-c="'+esc(p.contractor||'')+'" data-t="'+esc(p.team||'')+'" title="Tap to set / clear tomorrow"';
         dayCells='<td class="dc">'+(p.today?'<span class="daypill td">✓</span>':'<span class="free">—</span>')+'</td><td'+tmAttr+'>'+(p.tomorrow?'<span class="daypill tm">✓</span>':'<span class="free">—</span>')+'</td>'; }
-      h+='<tr'+(p.held?' class="heldrow"':'')+'>'+base+dayCells+'<td class="xcol noprint">'+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</td></tr>';
+      const ci=_cpRows.push(p)-1;
+      h+='<tr'+(p.held?' class="heldrow"':'')+'>'+base+dayCells+'<td class="xcol noprint"><div class="xbtns">'+(p.held?'':'<button class="pedit" data-ci="'+ci+'" title="Edit">✎</button>')+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</div></td></tr>';
     });
     h+='</tbody>';
   });
@@ -1181,6 +1286,9 @@ document.getElementById('planReport').addEventListener('click',e=>{
     else if(carrySkip.has(k)){ carrySkip.delete(k); saveCarrySkip(); }
     else { carrySkip.add(k); saveCarrySkip(); }
     renderPlan(); return; }
+  const ed=e.target.closest('.pedit');
+  if(ed){ if(ed.hasAttribute('data-ci')){ const r=_cpRows[+ed.getAttribute('data-ci')]; if(r) openTeamEdit(editSrcFromRow(r)); }
+          else { const p=planById(ed.getAttribute('data-pid')); if(p) openTeamEdit(Object.assign({},p)); } return; }
   const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
 document.getElementById('btnWa').addEventListener('click',()=>sharePlanPdf());
