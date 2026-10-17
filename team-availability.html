@@ -289,7 +289,9 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .ptab .dcell{white-space:nowrap}
 .ptab td.xcol{width:70px;text-align:center;padding:6px}
 .xbtns{display:flex;gap:5px;justify-content:center}
-.pedit{background:transparent;border:1px solid var(--hivis);color:var(--hivis);border-radius:7px;width:26px;height:26px;font-size:13px;cursor:pointer;flex:0 0 auto}
+.pedit{background:var(--hivis);border:none;color:#111;border-radius:7px;width:30px;height:30px;font-size:15px;font-weight:700;cursor:pointer;flex:0 0 auto;margin-right:8px;vertical-align:middle}
+.ptab td.ecell{white-space:nowrap}
+.ptab td.xcol{width:38px}
 .pedit:active{background:var(--panel-2)}
 .pdflight .pedit{display:none!important}
 .ptab .xcol .pdel{margin:0;width:26px;height:26px}
@@ -463,7 +465,7 @@ function upcomingItems(){ return plans.filter(p=>(p.kind==='team'||p.kind==='sup
 function upcomingSection(){ const items=upcomingItems(); if(!items.length) return '';
   let h='<div class="psec"><div class="psectt">📅 Upcoming — later dates <span class="cnt">'+items.length+'</span></div><div class="ptabwrap"><table class="ptab"><thead><tr><th>Date</th><th>Type</th><th>Contractor / Supervisor</th><th>Offer No.</th><th>Site</th><th>City</th><th>Salesperson</th><th class="xcol noprint"></th></tr></thead><tbody>';
   items.forEach(function(p){ const who=p.kind==='team'?(esc(p.contractor)+' · T'+esc(p.team)):(esc(p.supervisor)+' · '+esc(p.task||'')); const typ=p.kind==='team'?'Install':'Supervisor';
-    h+='<tr><td>'+esc(prettyDate(p.date))+'</td><td>'+typ+'</td><td class="cn">'+who+'</td><td>'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'')+'</td><td>'+esc(p.city||'')+'</td><td>'+esc(p.salesperson||'')+'</td><td class="xcol noprint"><div class="xbtns">'+(p.kind==='team'?'<button class="pedit" data-pid="'+esc(p.id)+'" title="Edit">✎</button>':'')+'<button class="pdel" data-id="'+esc(p.id)+'">✕</button></div></td></tr>'; });
+    h+='<tr><td>'+esc(prettyDate(p.date))+'</td><td>'+typ+'</td><td class="cn">'+who+'</td><td>'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'')+'</td><td>'+esc(p.city||'')+'</td><td>'+esc(p.salesperson||'')+'</td><td class="xcol noprint"><div class="xbtns"><button class="pdel" data-id="'+esc(p.id)+'">✕</button></div></td></tr>'; });
   return h+'</tbody></table></div></div>'; }
 function teamItems(date){
   if(date===TODAY()){
@@ -1026,13 +1028,13 @@ function contractorTable(){
     h+='<tbody><tr class="grp"><td colspan="7">🧑‍💼 '+esc(grp.key)+' <span class="gcnt">'+grp.items.length+'</span></td></tr>';
     grp.items.sort((a,b)=>(rowRank(a)-rowRank(b)) || (a.contractor||'').toLowerCase().localeCompare((b.contractor||'').toLowerCase()));
     grp.items.forEach(p=>{
+      const ci=_cpRows.push(p)-1;
       const base='<td>#'+esc(p.offer||'—')+'</td><td>'+esc(p.project||'—')+'</td><td>'+(p.city?esc(p.city):'—')+'</td><td class="cn">'+esc(p.contractor||'—')+'</td>';
       let dayCells;
       if(p.held) dayCells='<td colspan="2" class="heldcell">⏸ On hold · '+esc(p.holdBy||'—')+(p.heldOn?' · '+esc(shortDate(p.heldOn)):'')+'</td>';
       else { const tmAttr=' class="dc tmtog" data-c="'+esc(p.contractor||'')+'" data-t="'+esc(p.team||'')+'" title="Tap to set / clear tomorrow"';
         dayCells='<td class="dc">'+(p.today?'<span class="daypill td">✓</span>':'<span class="free">—</span>')+'</td><td'+tmAttr+'>'+(p.tomorrow?'<span class="daypill tm">✓</span>':'<span class="free">—</span>')+'</td>'; }
-      const ci=_cpRows.push(p)-1;
-      h+='<tr'+(p.held?' class="heldrow"':'')+'>'+base+dayCells+'<td class="xcol noprint"><div class="xbtns">'+(p.held?'':'<button class="pedit" data-ci="'+ci+'" title="Edit">✎</button>')+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</div></td></tr>';
+      h+='<tr'+(p.held?' class="heldrow"':'')+'>'+base+dayCells+'<td class="xcol noprint"><div class="xbtns">'+(p.id?'<button class="pdel" data-id="'+esc(p.id)+'">✕</button>':'')+'</div></td></tr>';
     });
     h+='</tbody>';
   });
@@ -1173,6 +1175,7 @@ function openRelease(name,team,tm){
   document.getElementById('mTtl').textContent='Manage '+name;
   document.getElementById('mSub').textContent='Team '+team+' · release or put on hold';
   document.getElementById('mBody').innerHTML='<div class="relinfo"><div><span class="k">Offer</span><br><b>'+(tm.offer?('#'+esc(tm.offer)):'—')+'</b></div>'+(tm.project?'<div style="margin-top:8px"><span class="k">Project</span><br>'+esc(tm.project)+'</div>':'')+(tm.by?'<div style="margin-top:8px"><span class="k">Booked by</span><br>'+esc(tm.by)+'</div>':'')+'</div>'
+    +'<div style="margin-bottom:10px"><button type="button" class="qup" id="mEditBtn">✎ Edit this booking</button></div>'
     +(tm.offer?'<div style="margin-bottom:10px"><button type="button" class="qup" id="mWoBtn">📄 Invoice for #'+esc(tm.offer)+'</button></div>':'')
     +(tm.offer?'<div class="fd"><label>Fines on this site</label><div class="fn-list" id="mFines"></div><button type="button" class="qup fine" id="mFineBtn">⚠ Mark a fine</button></div>':'')
     +'<div class="fd"><label>Quotation / production sheet</label><div id="mUpSaved" class="pk-list"></div><div id="mUpPick"></div>'
@@ -1182,6 +1185,8 @@ function openRelease(name,team,tm){
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>openHold(name,team,tm,b.getAttribute('data-val')));
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
+  const eb=document.getElementById('mEditBtn'); if(eb) eb.onclick=()=>{ const pl=planById('c|'+name+'|'+team+'|'+TODAY())||{};
+    openTeamEdit({id:pl.id||'',date:TODAY(),contractor:name,team:String(team),offer:tm.offer||pl.offer||'',project:tm.project||pl.project||'',city:tm.city||pl.city||'',salesperson:tm.salesperson||pl.salesperson||'',holdBy:pl.holdBy||''}); };
   const fb=document.getElementById('mFineBtn'); if(fb){ fb.onclick=()=>openFine(name,team,tm); showFines(name,team,tm,document.getElementById('mFines')); }
   const upRoot=document.getElementById('mUpPick'), upGo=document.getElementById('mUpGo');
   if(upRoot){ let upQ=null, saved=[];
@@ -1286,9 +1291,6 @@ document.getElementById('planReport').addEventListener('click',e=>{
     else if(carrySkip.has(k)){ carrySkip.delete(k); saveCarrySkip(); }
     else { carrySkip.add(k); saveCarrySkip(); }
     renderPlan(); return; }
-  const ed=e.target.closest('.pedit');
-  if(ed){ if(ed.hasAttribute('data-ci')){ const r=_cpRows[+ed.getAttribute('data-ci')]; if(r) openTeamEdit(editSrcFromRow(r)); }
-          else { const p=planById(ed.getAttribute('data-pid')); if(p) openTeamEdit(Object.assign({},p)); } return; }
   const b=e.target.closest('.pdel'); if(!b) return; const id=b.getAttribute('data-id'); if(confirm('Remove this from the plan?')) deletePlanEntry(id); });
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
 document.getElementById('btnWa').addEventListener('click',()=>sharePlanPdf());
