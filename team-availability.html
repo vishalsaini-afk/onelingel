@@ -48,6 +48,33 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
 .legend .lg{background:var(--green)}.legend .lr{background:var(--red)}.legend .ln{background:var(--amber)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.vtab[data-view=un]{white-space:nowrap}
+.vbadge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;line-height:16px;letter-spacing:0;vertical-align:1px}
+.unbar{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.unbar .seg{margin:0}.unbar .search{flex:1}
+.unrow{display:flex;gap:8px;align-items:center}
+.uncard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;padding:12px 13px;margin-bottom:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.uncard:active{background:var(--panel-2)}
+.uncard.has-p{border-left-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(240,166,58,.02))}
+.uncard.done{border-left-color:var(--green);cursor:default;opacity:.85}
+.unh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.unoff{font-weight:800;color:var(--hivis);font-size:15px}
+.uncl{font-size:14px;margin-top:2px}
+.unmeta{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.undays{font-size:11px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(239,68,68,.15);color:#fda4a4;white-space:nowrap}
+.undays.ok{background:rgba(34,197,94,.15);color:#86efac}
+.pwarn{margin-top:8px;border:1px dashed var(--amber);border-radius:9px;padding:7px 9px;font-size:12.5px;color:#fcd9a0;background:rgba(240,166,58,.07)}
+.pwarn b{color:var(--amber)}
+.pwarn ul{margin:4px 0 0 16px;padding:0}.pwarn li{margin:2px 0}
+.pdep{font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:5px;background:var(--panel-2);border:1px solid var(--line);color:var(--text);margin-left:4px}
+.asgl{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto;margin-top:6px}
+.asgc{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--panel-2)}
+.asgc .nm{font-weight:800;font-size:14px;margin-bottom:6px}
+.asgt{display:flex;flex-wrap:wrap;gap:6px}
+.asgt button{border:1px solid var(--line);border-left:4px solid var(--green);background:rgba(34,197,94,.10);color:var(--text);border-radius:8px;padding:7px 9px;font:inherit;font-size:12.5px;cursor:pointer;text-align:left}
+.asgt button.bk{border-left-color:var(--red);background:transparent;color:var(--muted)}
+.asgt button.na{border-left-color:var(--amber);background:transparent;color:var(--muted);cursor:not-allowed}
+.asgt small{display:block;font-size:10.5px;color:var(--muted)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 14px 13px}
 .card .nm{font-family:Archivo;font-weight:700;font-size:16px;line-height:1.15;word-break:break-word}
 .card .role{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
@@ -356,6 +383,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div class="vtabs">
     <button class="vtab on" data-view="board">Board</button>
     <button class="vtab" data-view="plan">📋 Day Plan</button>
+    <button class="vtab" data-view="un" title="Dispatched sites with no contractor">To Assign<span class="vbadge" id="unBadge" hidden>0</span></button>
   </div>
 
   <div id="boardView">
@@ -399,6 +427,16 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     </div>
     <div class="sync noprint"><span class="dot" id="dotP"></span><span id="syncP">—</span></div>
     <div id="planReport"></div>
+  </div>
+
+  <div id="unView" hidden>
+    <div class="unbar">
+      <div class="seg" id="unSeg"><button type="button" data-val="un" class="on">Unassigned</button><button type="button" data-val="pend">⚠ Pending</button><button type="button" data-val="all">All dispatched</button></div>
+      <div class="unrow"><div class="search"><span class="mag">🔍</span><input id="unQ" placeholder="Offer, client, city, salesperson…" autocomplete="off"></div>
+      <button class="rf" id="refreshU" title="Re-check the production plan now">⟳</button></div>
+    </div>
+    <div class="sync"><span class="dot" id="dotU"></span><span id="syncU">—</span></div>
+    <div id="unList"></div>
   </div>
 
   <div class="foot-note">Lingel Field Operations · Live status in teams · full history in Bookings</div>
@@ -699,7 +737,8 @@ function wireDutySwitch(name,team){ const s=document.getElementById('mSw'); if(s
 function seg(id,opts,active){ return '<div class="seg" id="'+id+'">'+opts.map(o=>'<button type="button" data-val="'+esc(o.v)+'"'+(o.v===active?' class="on"':'')+'>'+esc(o.l)+'</button>').join('')+'</div>'; }
 function wireSegs(){ document.querySelectorAll('#mBody .seg').forEach(s=>{ s.querySelectorAll('button').forEach(b=>b.onclick=()=>{ s.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }); }); }
 function segVal(id){ const on=document.querySelector('#'+id+' button.on'); return on?on.getAttribute('data-val'):''; }
-function openBook(name,team){
+function openBook(name,team,pre){
+  pre=pre||null;
   setBox('');
   document.getElementById('mTtl').textContent='Book '+name;
   document.getElementById('mSub').textContent='Team '+team+' · assign a job (stays until released/held)';
@@ -710,9 +749,11 @@ function openBook(name,team){
     +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>'
     +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
-    +planDateField('today');
+    +planDateField(pre&&pre.day||'today');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wireDutySwitch(name,team); wirePlanDate(); wireQuoteField();
+  if(pre){ [['mSales',pre.sales],['mCity',pre.city],['mOffer',pre.offer],['mProject',pre.project]].forEach(function(f){ const el=document.getElementById(f[0]); if(el&&f[1]) el.value=f[1]; });
+    if(pre.pending&&pre.pending.length){ const b=document.getElementById('mBody'); b.insertAdjacentHTML('afterbegin', pendingBox(pre.pending)); } }
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
   goHandler=()=>{
    try{
@@ -728,6 +769,7 @@ function openBook(name,team){
     const woMake=q?!!(document.getElementById('mWoMake')||{}).checked:false;
     const runWO=()=>{ if(q) afterBookWithQuote(q,{name,team,offer,project,city,sales,date,service:woSvc,billTo:woBill,makeInvoice:woMake}); };
     rememberSalesperson(sales); closeModal();
+    if(pre && pre.onBooked) pre.onBooked(offer);
     if(date===TODAY()){
       if(holdBy) holdNewSite(name,team,offer,project,holdBy,city,sales); else book(name,team,offer,project,'',city,sales);
       if(view==='plan') renderPlan();
@@ -1323,13 +1365,15 @@ document.getElementById('btnCopy').addEventListener('click',async()=>{ const t=p
 
 /* ============ VIEW SWITCH + POLL ============ */
 let boardTick=0;
-function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:POLL_PLAN; pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); boardTick++; if(boardTick%3===0) syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
+function startPoll(){ stopPoll(); const iv=view==='board'?POLL_BOARD:POLL_PLAN; pollTimer=setInterval(()=>{ if(document.hidden||!modal.hidden) return; if(view==='board'){ if(pending.size===0) loadBoard(true); boardTick++; if(boardTick%3===0) syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); } else if(view==='un'){ if(boardTick++%4===0) loadDispatch(false,true); } else { syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); } }, iv); }
 function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 function switchView(v){
   view=v;
   document.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on', x.getAttribute('data-view')===v));
   document.getElementById('boardView').hidden = v!=='board';
   document.getElementById('planView').hidden = v!=='plan';
+  document.getElementById('unView').hidden = v!=='un';
+  if(v==='un'){ renderUn(); loadDispatch(false); }
   if(v==='board'){ if(!document.getElementById('supBoard').hidden) renderSupBoard(); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); }
   if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
   startPoll();
@@ -1338,6 +1382,96 @@ document.querySelectorAll('.vtab').forEach(b=>b.addEventListener('click',()=>swi
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!modal.hidden) closeModal(); else if(e.key==='Enter'&&!modal.hidden&&goHandler) goHandler(); });
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopPoll(); else { if(view==='board'){ loadBoard(true); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); } else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); startPoll(); } });
 window.addEventListener('online',()=>{ if(view==='board'){ loadBoard(true); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); } else syncPlansFromServer().then(ok=>{ if(ok) renderPlan(); }); });
+
+
+/* ===================== 🚚 UNASSIGNED (dispatched orders with no contractor) =====================
+   Source: the "Dispatch Tracker" tab, built by dispatch-tracker.gs from the production plan
+   (Aluminum + UPVC, dispatched orders) + Bookings/Day Plan + the "pending" tab.            */
+const DISPATCH_API = "";   // ← paste the /exec URL of dispatch-tracker.gs here
+const UN_CACHE='lingel_dispatch_cache_v1', UN_JUST='lingel_dispatch_just_v1';
+let unRows=[], unMode='un', unQ='', unLoading=false, unLast='';
+let unJust={}; try{ unJust=JSON.parse(localStorage.getItem(UN_JUST)||'{}')||{}; }catch(e){}
+try{ const c=JSON.parse(localStorage.getItem(UN_CACHE)||'null'); if(c&&Array.isArray(c.rows)){ unRows=c.rows; unLast=c.lastSync||''; } }catch(e){}
+function offerKeys(s){ const keys=[]; let base='';
+  String(s||'').split(/[,;&\s]+/).forEach(tok=>{ tok=tok.trim(); if(!tok) return; const parts=tok.split('/').filter(x=>x!==''); if(!parts.length) return;
+    if(/^\d{4,7}$/.test(parts[0])){ base=parts[0]; if(parts.length===1){ keys.push(base); return; } for(let i=1;i<parts.length;i++) if(/^\d{1,4}$/.test(parts[i])) keys.push(base+'/'+(+parts[i])); }
+    else if(base && /^\d{1,4}$/.test(parts[0]) && parts.length===1) keys.push(base+'/'+(+parts[0])); });
+  return [...new Set(keys)]; }
+function offerHit(orderOffer, otherOffer){ const a=offerKeys(orderOffer), b=offerKeys(otherOffer); if(!a.length||!b.length) return false;
+  return b.some(k=> k.indexOf('/')>=0 ? a.includes(k) : a.some(x=>x.split('/')[0]===k)); }
+/* assigned right now in this app (even before the next sheet sync)? */
+function localAssign(o){
+  for(const r of rows){ for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t)); if(tm && tm.offer && offerHit(o.offer,tm.offer)) return r.name+' (T'+t+')'; }
+    for(const h of (r.held||[])) if(h.offer && offerHit(o.offer,h.offer)) return r.name+(h.team?' (T'+h.team+')':''); }
+  for(const p of plans) if(p.kind==='team' && p.contractor && p.offer && offerHit(o.offer,p.offer)) return p.contractor+' (T'+p.team+')';
+  for(const k of offerKeys(o.offer)) if(unJust[k]) return unJust[k];
+  return '';
+}
+function unView(){ return unRows.map(o=>{ const la=o.assigned?'':localAssign(o); return Object.assign({},o,{assigned:o.assigned||!!la, contractor:o.contractor||la}); }); }
+function pendingBox(list){ if(!list||!list.length) return '';
+  return '<div class="pwarn">⚠ <b>'+list.length+' item'+(list.length>1?'s':'')+' pending from factory</b><ul>'+list.map(p=>'<li>'+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')+(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':'')+'</li>').join('')+'</ul></div>'; }
+function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+' days')); }
+function renderUn(){
+  const all=unView(), un=all.filter(o=>!o.assigned);
+  const b=document.getElementById('unBadge'); if(b){ b.textContent=un.length; b.hidden=!un.length; }
+  const box=document.getElementById('unList'); if(!box) return;
+  if(!DISPATCH_API){ box.innerHTML='<div class="msg">Dispatch list is not connected yet.<br><span style="font-size:12px">Paste the dispatch-tracker /exec URL into <b>DISPATCH_API</b> in this file.</span></div>'; return; }
+  let list = unMode==='un' ? un : (unMode==='pend' ? all.filter(o=>o.pending&&o.pending.length) : all);
+  const q=unQ.trim().toLowerCase();
+  if(q) list=list.filter(o=>[o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q));
+  if(!unRows.length && unLoading){ box.innerHTML=Array.from({length:4}).map(()=>'<div class="skel" style="height:86px;margin-bottom:9px"></div>').join(''); return; }
+  if(!list.length){ box.innerHTML='<div class="msg">'+(unMode==='un'?'✅ Every dispatched site has a contractor.':(unMode==='pend'?'No dispatched order has pending items.':'No dispatched orders.'))+'</div>'; return; }
+  box.innerHTML=list.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
+    return '<div class="uncard'+(hp?' has-p':'')+(o.assigned?' done':'')+'" data-ui="'+i+'">'
+      +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
+      +(o.assigned?'<span class="undays ok">✓ '+esc(o.contractor||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''))+'</div>'
+      +'<div class="unmeta">🧑‍💼 '+esc(o.sales||'—')+(o.location?' · 📍 '+esc(o.location):'')+'<br>🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+(o.supervisor?' · 👔 '+esc(o.supervisor):'')+(o.startDate?' · ▶ '+esc(prettyDate(o.startDate)):'')+'</div>'
+      +pendingBox(o.pending)+'</div>'; }).join('');
+}
+async function loadDispatch(refresh, silent){
+  if(!DISPATCH_API || unLoading) return;
+  unLoading=true; if(!silent) setDot('dotU','syncU','busy', refresh?'Checking the production plan… (can take ~20 s)':'Loading…'); renderUn();
+  try{
+    const r=await fetch(DISPATCH_API+'?action=dispatchList'+(refresh?'&refresh=1':'')+'&t='+Date.now()); const t=(await r.text()).trim();
+    if(t.charAt(0)==='<') throw new Error('Script returned a sign-in page — set the deployment to “Anyone”.');
+    const d=JSON.parse(t); if(!d||d.ok===false) throw new Error((d&&d.error)||'Server error');
+    unRows=d.rows||[]; unLast=d.lastSync||'';
+    // offers the sheet now shows as assigned no longer need the local "just assigned" mark
+    let ch=false; unRows.forEach(o=>{ if(o.assigned) offerKeys(o.offer).forEach(k=>{ if(unJust[k]){ delete unJust[k]; ch=true; } }); }); if(ch) try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
+    try{ localStorage.setItem(UN_CACHE, JSON.stringify({rows:unRows,lastSync:unLast})); }catch(e){}
+    const n=unView().filter(o=>!o.assigned).length;
+    setDot('dotU','syncU','ok', n+' unassigned · sheet checked '+(unLast?new Date(unLast).toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—'));
+  }catch(e){ setDot('dotU','syncU','err',(unRows.length?'Offline · showing last list · ':'')+(e.message||e)); }
+  finally{ unLoading=false; renderUn(); }
+}
+function openAssign(o){
+  setBox('');
+  document.getElementById('mTtl').textContent='Assign #'+o.offer;
+  document.getElementById('mSub').textContent=(o.client||'')+(o.location?' · '+o.location:'');
+  const teamsHTML=rows.map(r=>{ let b=''; for(let t=1;t<=r.teams.length;t++){ const tm=dispTeam(r,String(t));
+      if(tm.status==='na') b+='<button type="button" class="na" disabled>Team '+t+'<small>On leave</small></button>';
+      else if(tm.status==='booked') b+='<button type="button" class="bk" data-n="'+esc(r.name)+'" data-t="'+t+'" data-d="tomorrow">Team '+t+'<small>#'+esc(tm.offer||'busy')+' · book later</small></button>';
+      else b+='<button type="button" data-n="'+esc(r.name)+'" data-t="'+t+'" data-d="today">Team '+t+'<small>Free today</small></button>'; }
+    return '<div class="asgc"><div class="nm">'+esc(r.name)+'</div><div class="asgt">'+b+'</div></div>'; }).join('');
+  document.getElementById('mBody').innerHTML=pendingBox(o.pending)
+    +'<div class="unmeta" style="margin:6px 0 4px">🧑‍💼 '+esc(o.sales||'—')+' · 🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+' · '+esc(o.dept||'')+'</div>'
+    +'<div class="mdt" style="margin-top:10px">Pick a contractor team</div><div class="asgl">'+(teamsHTML||'<div class="msg">No contractors loaded — open the Board once.</div>')+'</div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Close'; go.className='mbtn'; modal.hidden=false; goHandler=closeModal;
+  document.querySelectorAll('#mBody .asgt button[data-n]').forEach(btn=>btn.onclick=()=>{
+    const name=btn.getAttribute('data-n'), team=btn.getAttribute('data-t');
+    openBook(name,team,{ offer:o.offer, project:o.client, city:o.location, sales:o.sales, pending:o.pending, day:btn.getAttribute('data-d'),
+      onBooked:function(off){ offerKeys(off||o.offer).forEach(k=>unJust[k]=name+' (T'+team+')'); try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
+        renderUn(); setTimeout(()=>loadDispatch(true,true), 4000); } });
+  });
+}
+(function(){
+  const seg=document.getElementById('unSeg');
+  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); unMode=b.getAttribute('data-val'); renderUn(); }));
+  document.getElementById('unQ').addEventListener('input',e=>{ unQ=e.target.value; renderUn(); });
+  document.getElementById('refreshU').addEventListener('click',()=>loadDispatch(true));
+  document.getElementById('unList').addEventListener('click',e=>{ const c=e.target.closest('.uncard'); if(!c||c.classList.contains('done')) return; const o=unView()[+c.getAttribute('data-ui')]; if(o) openAssign(o); });
+  renderUn(); if(DISPATCH_API) setTimeout(()=>loadDispatch(false,true), 1500);
+})();
 
 /* ===== init day-plan ===== */
 loadPlansLocal(); loadSalesLocal(); fillDatalist('dlSales',[...salesSet]); renderPlan(); loadSupervisors(); syncPlansFromServer().then(ok=>{ if(ok){ renderPlan(); if(view==='board'&&rows.length) renderBoard(); } });
