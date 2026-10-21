@@ -56,6 +56,10 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;padding:12px 13px;margin-bottom:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .uncard:active{background:var(--panel-2)}
 .uncard.has-p{border-left-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(240,166,58,.02))}
+.uncard.closed{border-left-color:var(--muted);opacity:.6}
+.undays.cl{background:var(--panel-2);color:var(--muted)}
+.closebtn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:1px dashed var(--muted);background:transparent;color:var(--text);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.closebtn:active{background:var(--panel-2)}
 .uncard.done{border-left-color:var(--green);cursor:default;opacity:.85}
 .unh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .unoff{font-weight:800;color:var(--hivis);font-size:15px}
@@ -1412,12 +1416,12 @@ function localAssign(o){
   for(const k of offerKeys(o.offer)) if(unJust[k]) return unJust[k];
   return '';
 }
-function unView(){ return unRows.map(o=>{ const la=o.assigned?'':localAssign(o); return Object.assign({},o,{assigned:o.assigned||!!la, contractor:o.contractor||la}); }); }
+function unView(){ return unRows.map(o=>{ const la=(o.assigned||o.closed)?'':localAssign(o); return Object.assign({},o,{assigned:o.assigned||!!la, contractor:o.contractor||la}); }); }
 function pendingBox(list){ if(!list||!list.length) return '';
   return '<div class="pwarn">⚠ <b>'+list.length+' item'+(list.length>1?'s':'')+' pending from factory</b><ul>'+list.map(p=>'<li>'+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')+(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':'')+'</li>').join('')+'</ul></div>'; }
 function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+' days')); }
 function renderUn(){
-  const all=unView(), un=all.filter(o=>!o.assigned);
+  const all=unView(), un=all.filter(o=>!o.assigned && !o.closed);
   const b=document.getElementById('unBadge'); if(b){ b.textContent=un.length; b.hidden=!un.length; }
   const box=document.getElementById('unList'); if(!box) return;
   if(!DISPATCH_API){ box.innerHTML='<div class="msg">Dispatch list is not connected yet.<br><span style="font-size:12px">Paste the dispatch-tracker /exec URL into <b>DISPATCH_API</b> in this file.</span></div>'; return; }
@@ -1427,10 +1431,11 @@ function renderUn(){
   if(!unRows.length && unLoading){ box.innerHTML=Array.from({length:4}).map(()=>'<div class="skel" style="height:86px;margin-bottom:9px"></div>').join(''); return; }
   if(!list.length){ box.innerHTML='<div class="msg">'+(unMode==='un'?'✅ Every dispatched site has a contractor.':(unMode==='pend'?'No dispatched order has pending items.':'No dispatched orders.'))+'</div>'; return; }
   box.innerHTML=list.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
-    return '<div class="uncard'+(hp?' has-p':'')+(o.assigned?' done':'')+'" data-ui="'+i+'">'
+    return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':'')+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
       +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
-      +(o.assigned?'<span class="undays ok">✓ '+esc(o.contractor||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''))+'</div>'
+      +(o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(o.contractor||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''))+'</div>'
       +'<div class="unmeta">🧑‍💼 '+esc(o.sales||'—')+(o.location?' · 📍 '+esc(o.location):'')+'<br>🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+(o.supervisor?' · 👔 '+esc(o.supervisor):'')+(o.startDate?' · ▶ '+esc(prettyDate(o.startDate)):'')+'</div>'
+      +(o.closed&&o.closedNote?'<div class="unmeta">🔒 '+esc(o.closedNote)+' · tap to reopen</div>':'')
       +pendingBox(o.pending)+'</div>'; }).join('');
 }
 async function loadDispatch(refresh, silent){
@@ -1444,7 +1449,7 @@ async function loadDispatch(refresh, silent){
     // offers the sheet now shows as assigned no longer need the local "just assigned" mark
     let ch=false; unRows.forEach(o=>{ if(o.assigned) offerKeys(o.offer).forEach(k=>{ if(unJust[k]){ delete unJust[k]; ch=true; } }); }); if(ch) try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
     try{ localStorage.setItem(UN_CACHE, JSON.stringify({rows:unRows,lastSync:unLast})); }catch(e){}
-    const n=unView().filter(o=>!o.assigned).length;
+    const n=unView().filter(o=>!o.assigned && !o.closed).length;
     setDot('dotU','syncU','ok', n+' unassigned · sheet checked '+(unLast?new Date(unLast).toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—'));
   }catch(e){ setDot('dotU','syncU','err',(unRows.length?'Offline · showing last list · ':'')+(e.message||e)); }
   finally{ unLoading=false; renderUn(); }
@@ -1460,8 +1465,10 @@ function openAssign(o){
     return '<div class="asgc"><div class="nm">'+esc(r.name)+'</div><div class="asgt">'+b+'</div></div>'; }).join('');
   document.getElementById('mBody').innerHTML=pendingBox(o.pending)
     +'<div class="unmeta" style="margin:6px 0 4px">🧑‍💼 '+esc(o.sales||'—')+' · 🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+' · '+esc(o.dept||'')+'</div>'
-    +'<div class="mdt" style="margin-top:10px">Pick a contractor team</div><div class="asgl">'+(teamsHTML||'<div class="msg">No contractors loaded — open the Board once.</div>')+'</div>';
+    +'<div class="mdt" style="margin-top:10px">Pick a contractor team</div><div class="asgl">'+(teamsHTML||'<div class="msg">No contractors loaded — open the Board once.</div>')+'</div>'
+    +'<button type="button" class="closebtn" id="unCloseBtn">✓ Close site — no contractor needed</button>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Close'; go.className='mbtn'; modal.hidden=false; goHandler=closeModal;
+  document.getElementById('unCloseBtn').onclick=()=>openCloseSite(o);
   document.querySelectorAll('#mBody .asgt button[data-n]').forEach(btn=>btn.onclick=()=>{
     const name=btn.getAttribute('data-n'), team=btn.getAttribute('data-t');
     openBook(name,team,{ offer:o.offer, project:o.client, city:o.location, sales:o.sales, pending:o.pending, day:btn.getAttribute('data-d'),
@@ -1469,12 +1476,38 @@ function openAssign(o){
         renderUn(); setTimeout(()=>loadDispatch(true,true), 4000); } });
   });
 }
+function openCloseSite(o){
+  setBox('');
+  document.getElementById('mTtl').textContent='Close #'+o.offer;
+  document.getElementById('mSub').textContent=(o.client||'')+' · removes it from the To Assign list';
+  document.getElementById('mBody').innerHTML=pendingBox(o.pending)
+    +'<div class="fd"><label>Why close this site?</label>'+seg('segClose',[{v:'Work completed',l:'Completed'},{v:'Customer own installation',l:'Own team'},{v:'Supply only',l:'Supply only'},{v:'Cancelled',l:'Cancelled'}],'Work completed')+'</div>'
+    +'<div class="fd"><label>Note (optional)</label><input id="mCloseNote" autocomplete="off" placeholder="e.g. installed by dealer"></div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Close site'; go.className='mbtn go'; modal.hidden=false; wireSegs();
+  goHandler=()=>{ const r=segVal('segClose')||'Closed', n=(document.getElementById('mCloseNote').value||'').trim(); closeModal(); setSiteClosed(o,true,r+(n?' — '+n:'')); };
+}
+async function setSiteClosed(o,close,reason){
+  const row=unRows.find(x=>x.offer===o.offer); if(!row) return;
+  const before={closed:row.closed, closedNote:row.closedNote};
+  row.closed=close; row.closedNote=close?(reason+' · '+(SUP||'')):''; renderUn();
+  setDot('dotU','syncU','busy', close?'Closing #'+o.offer+'…':'Reopening #'+o.offer+'…');
+  try{
+    const r=await fetch(DISPATCH_API+'?action='+(close?'dispatchClose':'dispatchReopen')+'&offer='+encodeURIComponent(o.offer)+'&reason='+encodeURIComponent(reason||'')+'&by='+encodeURIComponent(SUP||'')+'&t='+Date.now());
+    const t=(await r.text()).trim(); if(t.charAt(0)==='<') throw new Error('Script returned a web page — check deployment');
+    const d=JSON.parse(t); if(!d||d.ok===false) throw new Error((d&&d.error)||'Server error');
+    if(d.note!=null) row.closedNote=d.note;
+    try{ localStorage.setItem(UN_CACHE, JSON.stringify({rows:unRows,lastSync:unLast})); }catch(e){}
+    renderUn(); setDot('dotU','syncU','ok', (close?'Closed #':'Reopened #')+o.offer+' · saved to sheet');
+  }catch(e){ row.closed=before.closed; row.closedNote=before.closedNote; renderUn(); setDot('dotU','syncU','err','Not saved: '+(e.message||e)); alert('Couldn’t update the sheet:\n\n'+(e.message||e)); }
+}
 (function(){
   const seg=document.getElementById('unSeg');
   seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); unMode=b.getAttribute('data-val'); renderUn(); }));
   document.getElementById('unQ').addEventListener('input',e=>{ unQ=e.target.value; renderUn(); });
   document.getElementById('refreshU').addEventListener('click',()=>loadDispatch(true));
-  document.getElementById('unList').addEventListener('click',e=>{ const c=e.target.closest('.uncard'); if(!c||c.classList.contains('done')) return; const o=unView()[+c.getAttribute('data-ui')]; if(o) openAssign(o); });
+  document.getElementById('unList').addEventListener('click',e=>{ const c=e.target.closest('.uncard'); if(!c||c.classList.contains('done')) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;
+    if(o.closed){ if(confirm('Reopen #'+o.offer+' ('+(o.client||'')+')?\n\nIt will come back to the To Assign list.')) setSiteClosed(o,false,''); return; }
+    openAssign(o); });
   renderUn(); if(DISPATCH_API) setTimeout(()=>loadDispatch(false,true), 1500);
 })();
 
