@@ -279,6 +279,7 @@
         <div class="field"><label>Inspector</label><input id="o_insp" placeholder="Your name"></div>
         <div class="field"><label>Date</label><input id="o_date" type="date"></div>
       </div>
+      <div id="pendBox" class="no-print" style="display:none;margin-top:10px;padding:10px 12px;border-radius:9px;border:1px dashed #f0a63a;background:rgba(240,166,58,.08);color:#fcd9a0;font-size:13px;line-height:1.5"></div>
       <div id="slDocInfo" class="no-print" style="display:none;margin-top:10px;padding:9px 12px;border-radius:8px;border:1px solid #2e3540;background:#1b1f27;color:#cfd3da;font-size:12.5px;line-height:1.5"></div>
     </div>
   </div>
@@ -383,6 +384,7 @@ async function saveMeta(){
     sales:$("#o_sales").value,insp:$("#o_insp").value,date:$("#o_date").value,
     order:positions.map(p=>p.id),matOrder:materials.map(m=>m.id)};
   try{await idbPut("kv",meta,"meta");}catch(e){console.error(e);}
+  try{ schedulePending(); }catch(e){}
 }
 async function savePos(p){try{await idbPut("positions",p);}catch(e){console.error(e);}}
 async function savePhoto(id,data){try{await idbPut("photos",data,id);}catch(e){console.error(e);toast("⚠ Could not save photo");}}
@@ -789,6 +791,47 @@ $("#addPos").onclick=async()=>{
   window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
 };
 
+
+/* ===================== PENDING ITEMS FROM FACTORY =====================
+   Open rows of the "pending" tab for this Order No. (read via dispatch-tracker.gs).
+   Shown under Order Details and printed on the report cover.                        */
+const DISPATCH_API = "";   // ← paste the /exec URL of dispatch-tracker.gs here (same as in team-availability.html)
+let pendItems=[], pendOffer=null, _pendT=null;
+function fmtPendDate(iso){ const p=String(iso||"").split("-").map(Number); if(p.length<3) return iso||""; return new Date(p[0],p[1]-1,p[2]).toLocaleDateString([], {day:"2-digit",month:"short",year:"numeric"}); }
+function renderPendBox(state){
+  const b=$("#pendBox"); if(!b) return;
+  if(state==="busy"){ b.style.display="block"; b.innerHTML="⏳ Checking pending items for this order…"; return; }
+  if(state==="err"){ b.style.display="block"; b.innerHTML="⚠ Couldn’t check pending items (offline?). They’ll be checked again when you’re online."; return; }
+  if(!pendItems.length){ b.style.display=pendOffer?"block":"none"; b.style.borderStyle="solid"; b.style.borderColor="#2e3540"; b.style.background="#1b1f27"; b.style.color="#9aa3af";
+    b.innerHTML="✓ No pending items from factory for this order."; return; }
+  b.style.display="block"; b.style.borderStyle="dashed"; b.style.borderColor="#f0a63a"; b.style.background="rgba(240,166,58,.08)"; b.style.color="#fcd9a0";
+  b.innerHTML='<b style="color:#f0a63a">⚠ '+pendItems.length+' item'+(pendItems.length>1?"s":"")+' pending from factory</b> · printed in the report'
+    +'<ul style="margin:6px 0 0 18px;padding:0">'+pendItems.map(it=>'<li style="margin:3px 0">'+esc(it.item)+(it.qty?' · '+esc(it.qty):'')
+      +' <span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;border:1px solid #f0a63a;color:#f0a63a">'+esc(it.dept?it.dept+' factory':'Factory')+'</span>'
+      +(it.status&&!/^open$/i.test(it.status)?' <i>('+esc(it.status)+')</i>':'')+'</li>').join("")+'</ul>';
+}
+function schedulePending(){ clearTimeout(_pendT); _pendT=setTimeout(fetchPending,700); }
+async function fetchPending(force){
+  const offer=($("#o_no").value||"").trim();
+  if(!DISPATCH_API) return;
+  if(!offer || !/\d{4,}/.test(offer)){ pendItems=[]; pendOffer=null; renderPendBox(); return; }
+  if(!force && offer===pendOffer) return;
+  const ck="lingel_pending_"+offer;
+  renderPendBox("busy");
+  try{
+    const r=await fetch(DISPATCH_API+"?action=pendingFor&offer="+encodeURIComponent(offer)+"&t="+Date.now());
+    const d=JSON.parse((await r.text()).trim()); if(!d||d.ok===false) throw new Error((d&&d.error)||"error");
+    if(($("#o_no").value||"").trim()!==offer) return;           // order changed while loading
+    pendItems=d.items||[]; pendOffer=offer; try{ localStorage.setItem(ck,JSON.stringify(pendItems)); }catch(e){}
+    renderPendBox();
+  }catch(e){
+    let c=null; try{ c=JSON.parse(localStorage.getItem(ck)||"null"); }catch(_){}
+    if(Array.isArray(c)){ pendItems=c; pendOffer=offer; renderPendBox(); } else { pendItems=[]; pendOffer=null; renderPendBox("err"); }
+  }
+}
+window.addEventListener("online",()=>fetchPending(true));
+setTimeout(()=>fetchPending(true),1200);
+
 /* ---- order meta autosave ---- */
 ["o_no","o_client","o_loc","o_sales","o_insp","o_date"].forEach(id=>{
   let t;$("#"+id).addEventListener("input",()=>{clearTimeout(t);t=setTimeout(saveMeta,400);});
@@ -948,7 +991,15 @@ function reportData(){
       <div class="rphotos ${pcls}">${photos}</div>
     </div>`;
   }).filter(Boolean);
-  return {title,metaRows,issuesTable,statusSummary,cards:cards.join(""),cardList:cards,ordered,
+  const pendingTable=pendItems.length?`
+    <div class="sumwrap">
+      <div class="sumhead" style="color:#b45309;border-bottom-color:#b45309">⚠ Pending from factory — ${pendItems.length} item${pendItems.length>1?"s":""}</div>
+      <table class="sumtbl">
+        <thead><tr><th style="width:36px">No.</th><th>Item</th><th style="width:80px">Qty</th><th style="width:110px">Responsible factory</th><th style="width:90px">Dispatched</th><th style="width:96px">Status</th></tr></thead>
+        <tbody>${pendItems.map((it,i)=>`<tr style="background:#fff4e0"><td class="c"><b>${i+1}</b></td><td>${esc(it.item)}${it.details?`<br><span style="color:#666">${esc(it.details)}</span>`:""}</td><td>${esc(it.qty)||"—"}</td><td><b>${esc(it.dept?it.dept+" factory":"—")}</b></td><td>${esc(it.dispatchDate?fmtPendDate(it.dispatchDate):"—")}</td><td>${esc(it.status||"Open")}${it.reDispatch?`<br><span style="color:#666">Re-dispatch ${esc(fmtPendDate(it.reDispatch))}</span>`:""}</td></tr>`).join("")}</tbody>
+      </table>
+    </div>`:"";
+  return {title,metaRows,issuesTable,statusSummary,cards:cards.join(""),cardList:cards,ordered,pendingTable,
           materialTable,matCardList:matCards,matCards:matCards.join("")};
 }
 const REPORT_STYLE=`
@@ -1004,6 +1055,7 @@ function reportBodyHTML(){
       <div class="co">Lingel Windows &amp; Doors<small>Technologies Pvt. Ltd.</small></div></div>
     <h1>${esc(d.title)}</h1>
     <div class="metawrap">${d.metaRows}</div>
+    ${d.pendingTable||""}
     ${d.issuesTable}
     ${d.statusSummary}
     ${d.materialTable}
@@ -1183,6 +1235,7 @@ async function makePDF(){
       <div class="co">Lingel Windows &amp; Doors<small>Technologies Pvt. Ltd.</small></div></div>
     <h1>${esc(d.title)}</h1>
     <div class="metawrap">${d.metaRows}</div>
+    ${d.pendingTable||""}
     ${d.issuesTable}
     ${d.statusSummary}
     ${d.materialTable}`;
@@ -1222,6 +1275,7 @@ $("#pdfBtn").onclick=async()=>{
   // Videos first (when online) so their Drive links land in the report + issue table below.
   const _api=luApi(); const _vids=positions.filter(p=>p.videoId);
   if(_api && _vids.length && navigator.onLine){ try{ await uploadVideosAS(_api, ($("#o_no").value||"").trim()||"Misc", _vids); }catch(e){ console.error("pre-upload videos failed",e); } }
+  try{ if(DISPATCH_API && navigator.onLine) await fetchPending(); }catch(e){}
   toast("📄 Building PDF…");
   let ok=false;
   try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ PDF saved");ok=true;}
