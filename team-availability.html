@@ -56,6 +56,14 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;padding:12px 13px;margin-bottom:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .uncard:active{background:var(--panel-2)}
 .uncard.has-p{border-left-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(240,166,58,.02))}
+.ungrows{margin-top:8px;border-top:1px solid var(--line)}
+.ungrow{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.ungrow:active{background:var(--panel-2)}
+.ungrow.done{cursor:default;opacity:.75}.ungrow.closed{opacity:.55}
+.unsub{font-weight:800;color:var(--hivis);font-size:13.5px;white-space:nowrap}
+.unrmeta{flex:1;font-size:11.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unall{width:100%;margin-top:10px;padding:11px;border:none;border-radius:10px;background:var(--hivis);color:#111;font-family:'Archivo Narrow';font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.uncard.ungrp{cursor:default}
 .uncard.closed{border-left-color:var(--muted);opacity:.6}
 .undays.cl{background:var(--panel-2);color:var(--muted)}
 .closebtn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:1px dashed var(--muted);background:transparent;color:var(--text);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
@@ -1431,13 +1439,45 @@ function renderUn(){
   if(q) list=list.filter(o=>[o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q));
   if(!unRows.length && unLoading){ box.innerHTML=Array.from({length:4}).map(()=>'<div class="skel" style="height:86px;margin-bottom:9px"></div>').join(''); return; }
   if(!list.length){ box.innerHTML='<div class="msg">'+(unMode==='un'?'✅ Every dispatched site has a contractor.':(unMode==='pend'?'No dispatched order has pending items or site requirements.':'No dispatched orders.'))+'</div>'; return; }
-  box.innerHTML=list.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
-    return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':'')+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
-      +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
-      +(o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(o.contractor||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''))+'</div>'
-      +'<div class="unmeta">🧑‍💼 '+esc(o.sales||'—')+(o.location?' · 📍 '+esc(o.location):'')+'<br>🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+(o.supervisor?' · 👔 '+esc(o.supervisor):'')+(o.startDate?' · ▶ '+esc(prettyDate(o.startDate)):'')+'</div>'
-      +(o.closed&&o.closedNote?'<div class="unmeta">🔒 '+esc(o.closedNote)+' · tap to reopen</div>':'')
-      +pendingBox(o.pending)+'</div>'; }).join('');
+  // group orders that share the same base offer (71071/63, /64, /65 → one card)
+  const groups=[], gmap={};
+  list.forEach(o=>{ const b=unBase(o.offer); if(!gmap[b]){ gmap[b]={base:b,items:[]}; groups.push(gmap[b]); } gmap[b].items.push(o); });
+  box.innerHTML=groups.map(g=> g.items.length===1 ? unCard(g.items[0]) : unGroupCard(g)).join('');
+}
+function unVisible(o){ if(unMode==='un'&&(o.assigned||o.closed)) return false; if(unMode==='pend'&&!(o.pending&&o.pending.length)) return false;
+  const q=unQ.trim().toLowerCase(); return !q || [o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q); }
+function unBase(offer){ const k=offerKeys(offer)[0]; return k?k.split('/')[0]:String(offer||'').split('/')[0].trim(); }
+function unSub(offer){ const b=unBase(offer); return String(offer||'').trim().replace(new RegExp('^'+b),'') || offer; }
+function unState(o){ return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(o.contractor||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
+function unCard(o){ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
+  return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':'')+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
+    +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
+    +'<div class="unmeta">🧑‍💼 '+esc(o.sales||'—')+(o.location?' · 📍 '+esc(o.location):'')+'<br>🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+(o.supervisor?' · 👔 '+esc(o.supervisor):'')+(o.startDate?' · ▶ '+esc(prettyDate(o.startDate)):'')+'</div>'
+    +(o.closed&&o.closedNote?'<div class="unmeta">🔒 '+esc(o.closedNote)+' · tap to reopen</div>':'')
+    +pendingBox(o.pending)+'</div>'; }
+function unGroupOrder(g){   // one combined "order" for assigning / closing the whole group
+  const open=g.items.filter(o=>!o.assigned&&!o.closed), use=open.length?open:g.items, f=use[0];
+  const pend=[]; use.forEach(o=>(o.pending||[]).forEach(p=>{ if(!pend.includes(p)) pend.push(p); }));
+  const subs=use.map(o=>offerKeys(o.offer).map(k=>k.split('/')[1]).filter(Boolean)).flat();
+  const dates=use.map(o=>o.dispatchDate).filter(Boolean).sort();
+  return { offer: subs.length ? g.base+'/'+[...new Set(subs)].join('/') : f.offer, client:f.client, location:f.location, sales:f.sales,
+    dept:[...new Set(use.map(o=>o.dept).filter(Boolean))].join(' + '), dispatchDate:dates[0]||'', pending:pend, members:use.map(o=>o.offer) };
+}
+function unGroupCard(g){
+  const open=g.items.filter(o=>!o.assigned&&!o.closed), f=g.items[0];
+  const pend=new Set(); g.items.forEach(o=>(o.pending||[]).forEach(p=>pend.add(p)));
+  const days=Math.max(...open.map(o=>o.days==null?-1:o.days)), allPend=[...pend];
+  const depts=[...new Set(g.items.map(o=>o.dept).filter(Boolean))].join(' + ');
+  const rowsH=g.items.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer), hp=o.pending&&o.pending.length;
+    return '<div class="ungrow'+(o.closed?' closed':(o.assigned?' done':''))+'" data-ui="'+i+'"><span class="unsub">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+'</span>'
+      +'<span class="unrmeta">'+esc(o.dept||'')+(o.location&&o.location!==f.location?' · '+esc(o.location):'')+(hp?' · '+o.pending.length+' item'+(o.pending.length>1?'s':''):'')+'</span>'+unState(o)+'</div>'; }).join('');
+  return '<div class="uncard ungrp'+(allPend.length?' has-p':'')+(open.length?'':' done')+'">'
+    +'<div class="unh"><div><div class="unoff">'+(allPend.length?'⚠ ':'')+'#'+esc(g.base)+' <span class="pdep">'+g.items.length+' orders</span> <span class="pdep">'+esc(depts)+'</span></div><div class="uncl">'+esc(f.client||'—')+'</div></div>'
+    +(open.length&&days>=0?'<span class="undays">'+esc(daysTxt(days))+'</span>':(open.length?'':'<span class="undays ok">✓ all done</span>'))+'</div>'
+    +'<div class="unmeta">🧑‍💼 '+esc(f.sales||'—')+(f.location?' · 📍 '+esc(f.location):'')+'</div>'
+    +'<div class="ungrows">'+rowsH+'</div>'
+    +pendingBox(allPend)
+    +(open.length?'<button type="button" class="unall" data-grp="'+esc(g.base)+'">Assign all '+open.length+' together →</button>':'')+'</div>';
 }
 async function loadDispatch(refresh, silent){
   if(!DISPATCH_API || unLoading) return;
@@ -1473,19 +1513,20 @@ function openAssign(o){
   document.querySelectorAll('#mBody .asgt button[data-n]').forEach(btn=>btn.onclick=()=>{
     const name=btn.getAttribute('data-n'), team=btn.getAttribute('data-t');
     openBook(name,team,{ offer:o.offer, project:o.client, city:o.location, sales:o.sales, pending:o.pending, day:btn.getAttribute('data-d'),
-      onBooked:function(off){ offerKeys(off||o.offer).forEach(k=>unJust[k]=name+' (T'+team+')'); try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
+      onBooked:function(off){ offerKeys(off||o.offer).concat((o.members||[]).map(m=>offerKeys(m)).flat()).forEach(k=>unJust[k]=name+' (T'+team+')'); try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
         renderUn(); setTimeout(()=>loadDispatch(true,true), 4000); } });
   });
 }
 function openCloseSite(o){
   setBox('');
-  document.getElementById('mTtl').textContent='Close #'+o.offer;
+  document.getElementById('mTtl').textContent='Close #'+o.offer+(o.members&&o.members.length>1?' ('+o.members.length+' orders)':'');
   document.getElementById('mSub').textContent=(o.client||'')+' · removes it from the To Assign list';
   document.getElementById('mBody').innerHTML=pendingBox(o.pending)
     +'<div class="fd"><label>Why close this site?</label>'+seg('segClose',[{v:'Work completed',l:'Completed'},{v:'Customer own installation',l:'Own team'},{v:'Supply only',l:'Supply only'},{v:'Cancelled',l:'Cancelled'}],'Work completed')+'</div>'
     +'<div class="fd"><label>Note (optional)</label><input id="mCloseNote" autocomplete="off" placeholder="e.g. installed by dealer"></div>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Close site'; go.className='mbtn go'; modal.hidden=false; wireSegs();
-  goHandler=()=>{ const r=segVal('segClose')||'Closed', n=(document.getElementById('mCloseNote').value||'').trim(); closeModal(); setSiteClosed(o,true,r+(n?' — '+n:'')); };
+  goHandler=()=>{ const r=segVal('segClose')||'Closed', n=(document.getElementById('mCloseNote').value||'').trim(); closeModal();
+    (o.members||[o.offer]).forEach(off=>setSiteClosed({offer:off},true,r+(n?' — '+n:''))); };
 }
 async function setSiteClosed(o,close,reason){
   const row=unRows.find(x=>x.offer===o.offer); if(!row) return;
@@ -1506,7 +1547,9 @@ async function setSiteClosed(o,close,reason){
   seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); unMode=b.getAttribute('data-val'); renderUn(); }));
   document.getElementById('unQ').addEventListener('input',e=>{ unQ=e.target.value; renderUn(); });
   document.getElementById('refreshU').addEventListener('click',()=>loadDispatch(true));
-  document.getElementById('unList').addEventListener('click',e=>{ const c=e.target.closest('.uncard'); if(!c||c.classList.contains('done')) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;
+  document.getElementById('unList').addEventListener('click',e=>{
+    const all=e.target.closest('.unall'); if(all){ const base=all.getAttribute('data-grp'); const items=unView().filter(o=>unBase(o.offer)===base && unVisible(o)); openAssign(unGroupOrder({base:base,items:items})); return; }
+    const c=e.target.closest('.ungrow')||e.target.closest('.uncard:not(.ungrp)'); if(!c||c.classList.contains('done')) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;
     if(o.closed){ if(confirm('Reopen #'+o.offer+' ('+(o.client||'')+')?\n\nIt will come back to the To Assign list.')) setSiteClosed(o,false,''); return; }
     openAssign(o); });
   renderUn(); if(DISPATCH_API) setTimeout(()=>loadDispatch(false,true), 1500);
