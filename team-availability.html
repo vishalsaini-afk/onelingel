@@ -435,7 +435,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div id="unView" hidden>
     <div class="unbar">
-      <div class="seg" id="unSeg"><button type="button" data-val="un" class="on">Unassigned</button><button type="button" data-val="pend">⚠ Pending</button><button type="button" data-val="all">All dispatched</button></div>
+      <div class="seg" id="unSeg"><button type="button" data-val="un" class="on">Unassigned</button><button type="button" data-val="pend">⚠ Pending / Site req</button><button type="button" data-val="all">All dispatched</button></div>
       <div class="unrow"><div class="search"><span class="mag">🔍</span><input id="unQ" placeholder="Offer, client, city, salesperson…" autocomplete="off"></div>
       <button class="rf" id="refreshU" title="Re-check the production plan now">⟳</button></div>
     </div>
@@ -1418,7 +1418,8 @@ function localAssign(o){
 }
 function unView(){ return unRows.map(o=>{ const la=(o.assigned||o.closed)?'':localAssign(o); return Object.assign({},o,{assigned:o.assigned||!!la, contractor:o.contractor||la}); }); }
 function pendingBox(list){ if(!list||!list.length) return '';
-  return '<div class="pwarn">⚠ <b>'+list.length+' item'+(list.length>1?'s':'')+' pending from factory</b><ul>'+list.map(p=>'<li>'+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')+(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':'')+'</li>').join('')+'</ul></div>'; }
+  const sr=list.filter(p=>p.src==='Site Req').length, pd=list.length-sr;
+  return '<div class="pwarn">⚠ <b>'+[pd?pd+' pending':'', sr?sr+' site requirement'+(sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b><ul>'+list.map(p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')+(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':'')+'</li>').join('')+'</ul></div>'; }
 function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+' days')); }
 function renderUn(){
   const all=unView(), un=all.filter(o=>!o.assigned && !o.closed);
@@ -1429,7 +1430,7 @@ function renderUn(){
   const q=unQ.trim().toLowerCase();
   if(q) list=list.filter(o=>[o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q));
   if(!unRows.length && unLoading){ box.innerHTML=Array.from({length:4}).map(()=>'<div class="skel" style="height:86px;margin-bottom:9px"></div>').join(''); return; }
-  if(!list.length){ box.innerHTML='<div class="msg">'+(unMode==='un'?'✅ Every dispatched site has a contractor.':(unMode==='pend'?'No dispatched order has pending items.':'No dispatched orders.'))+'</div>'; return; }
+  if(!list.length){ box.innerHTML='<div class="msg">'+(unMode==='un'?'✅ Every dispatched site has a contractor.':(unMode==='pend'?'No dispatched order has pending items or site requirements.':'No dispatched orders.'))+'</div>'; return; }
   box.innerHTML=list.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
     return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':'')+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
       +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
