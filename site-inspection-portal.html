@@ -803,10 +803,11 @@ function renderPendBox(state){
   if(state==="busy"){ b.style.display="block"; b.innerHTML="⏳ Checking pending items for this order…"; return; }
   if(state==="err"){ b.style.display="block"; b.innerHTML="⚠ Couldn’t check pending items (offline?). They’ll be checked again when you’re online."; return; }
   if(!pendItems.length){ b.style.display=pendOffer?"block":"none"; b.style.borderStyle="solid"; b.style.borderColor="#2e3540"; b.style.background="#1b1f27"; b.style.color="#9aa3af";
-    b.innerHTML="✓ No pending items from factory for this order."; return; }
+    b.innerHTML="✓ No pending items or site requirements for this order."; return; }
   b.style.display="block"; b.style.borderStyle="dashed"; b.style.borderColor="#f0a63a"; b.style.background="rgba(240,166,58,.08)"; b.style.color="#fcd9a0";
-  b.innerHTML='<b style="color:#f0a63a">⚠ '+pendItems.length+' item'+(pendItems.length>1?"s":"")+' pending from factory</b> · printed in the report'
-    +'<ul style="margin:6px 0 0 18px;padding:0">'+pendItems.map(it=>'<li style="margin:3px 0">'+esc(it.item)+(it.qty?' · '+esc(it.qty):'')
+  const _sr=pendItems.filter(it=>it.src==="Site Req").length, _pd=pendItems.length-_sr;
+  b.innerHTML='<b style="color:#f0a63a">⚠ '+[_pd?_pd+' pending from factory':'', _sr?_sr+' site requirement'+(_sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b> · printed in the report'
+    +'<ul style="margin:6px 0 0 18px;padding:0">'+pendItems.map(it=>'<li style="margin:3px 0">'+(it.src==="Site Req"?'<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:#f0a63a;color:#111">Site req</span> ':'')+esc(it.item)+(it.qty?' · '+esc(it.qty):'')
       +' <span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;border:1px solid #f0a63a;color:#f0a63a">'+esc(it.dept?it.dept+' factory':'Factory')+'</span>'
       +(it.status&&!/^open$/i.test(it.status)?' <i>('+esc(it.status)+')</i>':'')+'</li>').join("")+'</ul>';
 }
@@ -993,10 +994,10 @@ function reportData(){
   }).filter(Boolean);
   const pendingTable=pendItems.length?`
     <div class="sumwrap">
-      <div class="sumhead" style="color:#b45309;border-bottom-color:#b45309">⚠ Pending from factory — ${pendItems.length} item${pendItems.length>1?"s":""}</div>
+      <div class="sumhead" style="color:#b45309;border-bottom-color:#b45309">⚠ Site requirement / Pending from factory — ${pendItems.length} item${pendItems.length>1?"s":""}</div>
       <table class="sumtbl">
-        <thead><tr><th style="width:36px">No.</th><th>Item</th><th style="width:80px">Qty</th><th style="width:110px">Responsible factory</th><th style="width:90px">Dispatched</th><th style="width:96px">Status</th></tr></thead>
-        <tbody>${pendItems.map((it,i)=>`<tr style="background:#fff4e0"><td class="c"><b>${i+1}</b></td><td>${esc(it.item)}${it.details?`<br><span style="color:#666">${esc(it.details)}</span>`:""}</td><td>${esc(it.qty)||"—"}</td><td><b>${esc(it.dept?it.dept+" factory":"—")}</b></td><td>${esc(it.dispatchDate?fmtPendDate(it.dispatchDate):"—")}</td><td>${esc(it.status||"Open")}${it.reDispatch?`<br><span style="color:#666">Re-dispatch ${esc(fmtPendDate(it.reDispatch))}</span>`:""}</td></tr>`).join("")}</tbody>
+        <thead><tr><th style="width:36px">No.</th><th style="width:88px">Type</th><th>Item</th><th style="width:70px">Qty</th><th style="width:104px">Responsible factory</th><th style="width:86px">Date</th><th style="width:96px">Status</th></tr></thead>
+        <tbody>${pendItems.map((it,i)=>`<tr style="background:#fff4e0"><td class="c"><b>${i+1}</b></td><td>${it.src==="Site Req"?`<b>Site requirement</b>${it.reqNo?`<br><span style="color:#666">#${esc(it.reqNo)}</span>`:""}`:"Pending at dispatch"}</td><td>${esc(it.item)}${it.details?`<br><span style="color:#666">${esc(it.details)}</span>`:""}</td><td>${esc(it.qty)||"—"}</td><td><b>${esc(it.dept?it.dept+" factory":"—")}</b></td><td>${esc(it.dispatchDate?fmtPendDate(it.dispatchDate):"—")}<br><span style="color:#666">${it.src==="Site Req"?"raised":"dispatched"}</span></td><td>${esc(it.status||"Open")}${it.reDispatch?`<br><span style="color:#666">${it.src==="Site Req"?"Delivery":"Re-dispatch"} ${esc(fmtPendDate(it.reDispatch))}</span>`:""}</td></tr>`).join("")}</tbody>
       </table>
     </div>`:"";
   return {title,metaRows,issuesTable,statusSummary,cards:cards.join(""),cardList:cards,ordered,pendingTable,
