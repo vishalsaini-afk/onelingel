@@ -487,7 +487,7 @@ let pollTimer=null, firstLoad=true, bookingsLoaded=false;
 /* ===== DAY-PLAN state ===== */
 const POLL_PLAN=20000;
 const PLAN_KEY='lingel_dayplan_v1', SALES_KEY='lingel_salespeople_v1', SUP_KEY='lingel_supervisors_v1';
-const DEFAULT_SALES=['Ravish','Digvijay','Krishna','Praphul','Bir','Vivek','Rohan','Suraj','Abhishek','Vikas'];
+const DEFAULT_SALES=['Krishna','Ravish','Ziaaz Homes','Praphul','Vivek','Bir Singh','Digvijay','Abhishek'];
 // Region → NCR salespeople. Anyone not in this set counts as "Others".
 const NCR_SALES=['Ravish','Digvijay','Rohan','Suraj','Abhishek','Praphul','Ziaaz Homes','Vivek','Krishna','Vikas'];
 const NCR_SET=new Set(NCR_SALES.map(s=>s.trim().toLowerCase()));
@@ -496,9 +496,26 @@ try{ const raw=localStorage.getItem('lingel_dayplan_sales_multi'); if(raw) planS
      else { const old=localStorage.getItem('lingel_dayplan_sales'); if(old && old!=='all') planSalesList=[old]; } }catch(e){ planSalesList=[]; }
 function saveSalesSel(){ try{ localStorage.setItem('lingel_dayplan_sales_multi', JSON.stringify(planSalesList)); }catch(e){} }
 function normSales(x){ return String(x||'').trim().toLowerCase(); }
+/* ===== DEALER → SALESPERSON =====
+   A quotation often carries the dealer's name. The Day Plan always shows the Lingel salesperson.
+   Left = salesperson shown; right = names that belong to them (dealer names, short forms, the salesperson's own name).
+   Matching ignores case, accents, dots and "Mr/Ji"; short forms like GB / SD must be a whole word. Edit this list to add dealers. */
+const SALES_MAP = {
+  'Krishna':     ['krishna','gb','gangabath','ganga bath','amritsar'],
+  'Ravish':      ['ravish','inspace','avsar homes','avsar'],
+  'Ziaaz Homes': ['ziaaz homes','ziaaz','suraj','rohan','korel','koral'],
+  'Praphul':     ['praphul','sd','shubh decor','subh decor','shubh decore'],
+  'Vivek':       ['vivek','parnami'],
+  'Bir Singh':   ['bir singh','bir'],
+  'Digvijay':    ['digvijay'],
+  'Abhishek':    ['abhishek','deceremica','decerimica','deceramica']
+};
+const SALES_ALIAS = (function(){ const a=[]; Object.keys(SALES_MAP).forEach(sp=>SALES_MAP[sp].forEach(al=>a.push([' '+al+' ',sp]))); return a.sort((x,y)=>y[0].length-x[0].length); })();
+function salesKey(x){ return ' '+String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').replace(/\b(mr|mrs|ms|ji|sir|sh|shri)\b/g,' ').replace(/\s+/g,' ').trim()+' '; }
+function canonSales(x){ const raw=String(x||'').trim(); if(!raw) return ''; const k=salesKey(raw); for(const [al,sp] of SALES_ALIAS){ if(k.indexOf(al)>=0) return sp; } return raw; }
 function salesLabel(){ if(!planSalesList.length) return 'All salespeople'; if(planSalesList.length===1) return planSalesList[0]; if(planSalesList.length<=3) return planSalesList.join(', '); return planSalesList.length+' salespeople'; }
 function regionOf(sales){ return NCR_SET.has(String(sales||'').trim().toLowerCase())?'NCR':'Others'; }
-function inRegion(sales){ if(!planSalesList.length) return true; const n=normSales(sales); return planSalesList.some(x=>normSales(x)===n); }
+function inRegion(sales){ if(!planSalesList.length) return true; const n=normSales(canonSales(sales)); return planSalesList.some(x=>normSales(canonSales(x))===n); }
 let plans=[], supList=[], salesSet=new Set(), supDay='tomorrow';
 let deletedPlanIds=new Set(); try{ deletedPlanIds=new Set(JSON.parse(localStorage.getItem('lingel_plan_tombstones_v1')||'[]')); }catch(e){}
 let carrySkip=new Set(); try{ carrySkip=new Set(JSON.parse(localStorage.getItem('lingel_carry_skip_v1')||'[]')); }catch(e){}
@@ -542,7 +559,7 @@ function isoDateAny(v){
 function TODAY(){ return isoDate(new Date()); }
 function TOMORROW(){ const t=new Date(); t.setDate(t.getDate()+1); return isoDate(t); }
 function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.length<3) return iso||'—'; const dt=new Date(p[0],p[1]-1,p[2]); return dt.toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); }
-function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:isoDateAny(p.date), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:cleanOffer(p.offer), project:String(p.project||''), city:String(p.city||''), salesperson:String(p.salesperson||''), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
+function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:isoDateAny(p.date), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:cleanOffer(p.offer), project:String(p.project||''), city:String(p.city||''), salesperson:canonSales(p.salesperson), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
 function cleanOffer(v){
   if(v==null) return '';
   if(v instanceof Date) return isNaN(v)?'':String(v.getFullYear());
@@ -558,8 +575,8 @@ function cleanOffer(v){
 }
 function loadPlansLocal(){ try{ const a=JSON.parse(localStorage.getItem(PLAN_KEY)||'[]'); plans=Array.isArray(a)?a.map(normPlan):[]; }catch(e){ plans=[]; } }
 function savePlansLocal(){ try{ localStorage.setItem(PLAN_KEY, JSON.stringify(plans)); }catch(e){} }
-function loadSalesLocal(){ DEFAULT_SALES.forEach(s=>salesSet.add(s)); NCR_SALES.forEach(s=>salesSet.add(s)); try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
-function rememberSalesperson(s){ s=(s||'').trim(); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
+function loadSalesLocal(){ DEFAULT_SALES.forEach(s=>salesSet.add(s)); try{ (JSON.parse(localStorage.getItem(SALES_KEY)||'[]')||[]).forEach(s=>salesSet.add(s)); }catch(e){} }
+function rememberSalesperson(s){ s=canonSales(s); if(!s) return; salesSet.add(s); try{ localStorage.setItem(SALES_KEY, JSON.stringify([...salesSet])); }catch(e){} fillDatalist('dlSales',[...salesSet]); }
 function fillDatalist(id,arr){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=(arr||[]).map(v=>'<option value="'+esc(v)+'">').join(''); }
 async function syncPlansFromServer(){
   try{
@@ -574,7 +591,8 @@ async function syncPlansFromServer(){
           var np=normPlan(rp);
           if(!np.id || deletedPlanIds.has(np.id) || healedOffers.has(np.id)) return;
           var rawOffer=(rp&&rp.offer!=null)?String(rp.offer).trim():'';
-          if(rawOffer && rawOffer!==np.offer){ healedOffers.add(np.id); pushPlan(np); }
+          var rawSales=(rp&&rp.salesperson!=null)?String(rp.salesperson).trim():'';
+          if((rawOffer && rawOffer!==np.offer) || (rawSales && rawSales!==np.salesperson)){ healedOffers.add(np.id); pushPlan(np); }
         }catch(e){}
       });
       const serverIds=new Set(server.map(p=>p.id));
@@ -610,8 +628,8 @@ async function loadSupervisors(){
 
 function setDot(id,txtId,kind,txt){ const d=document.getElementById(id); d.className='dot'+(kind?(' '+kind):''); if(txt!==undefined) document.getElementById(txtId).textContent=txt; }
 function normStatus(v){ const s=String(v||'').toLowerCase(); return s==='booked'?'booked':s==='na'?'na':'available'; }
-function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:cleanOffer(t.offer), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'', salesperson:String(t.salesperson||'').trim(), city:String(t.city||'').trim() }; }
-function normHeld(h){ h=h||{}; return { offer:cleanOffer(h.offer), project:String(h.project||'').trim(), team:String(h.team||'').trim(), city:String(h.city||'').trim(), salesperson:String(h.salesperson||'').trim(), holdBy:String(h.holdBy||'').trim(), heldOn:String(h.heldOn||'') }; }
+function normTeam(t){ t=t||{}; return { status:normStatus(t.status), offer:cleanOffer(t.offer), project:String(t.project||'').trim(), by:String(t.by||'').trim(), at:t.at||'', salesperson:canonSales(t.salesperson), city:String(t.city||'').trim() }; }
+function normHeld(h){ h=h||{}; return { offer:cleanOffer(h.offer), project:String(h.project||'').trim(), team:String(h.team||'').trim(), city:String(h.city||'').trim(), salesperson:canonSales(h.salesperson), holdBy:String(h.holdBy||'').trim(), heldOn:String(h.heldOn||'') }; }
 function shortDate(v){ const d=new Date(v); return isNaN(d)?'' : d.toLocaleDateString([], {day:'2-digit',month:'short'}); }
 function normRow(c){ let teams=Array.isArray(c.teams)?c.teams.map(normTeam):[]; if(!teams.length) teams=[normTeam(c.team1),normTeam(c.team2)]; return { name:String(c.name||'').trim(), code:String(c.code||'').trim(), phone:String(c.phone||'').trim(), addr:String(c.addr||'').trim(), role:String(c.role||'').trim(), teamCount:teams.length, teams:teams, held:Array.isArray(c.held)?c.held.map(normHeld):[] }; }
 function saveCache(){ try{ localStorage.setItem(CACHE_KEY, JSON.stringify(rows)); }catch(e){} }
@@ -769,7 +787,7 @@ function openBook(name,team,pre){
     +planDateField(pre&&pre.day||'today');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wireDutySwitch(name,team); wirePlanDate(); wireQuoteField();
-  if(pre){ [['mSales',pre.sales],['mCity',pre.city],['mOffer',pre.offer],['mProject',pre.project]].forEach(function(f){ const el=document.getElementById(f[0]); if(el&&f[1]) el.value=f[1]; });
+  if(pre){ [['mSales',canonSales(pre.sales)],['mCity',pre.city],['mOffer',pre.offer],['mProject',pre.project]].forEach(function(f){ const el=document.getElementById(f[0]); if(el&&f[1]) el.value=f[1]; });
     if(pre.pending&&pre.pending.length){ const b=document.getElementById('mBody'); b.insertAdjacentHTML('afterbegin', pendingBox(pre.pending)); } }
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
   goHandler=()=>{
@@ -778,7 +796,7 @@ function openBook(name,team,pre){
     const offer=(document.getElementById('mOffer').value||'').trim();
     const project=(document.getElementById('mProject').value||'').trim();
     const city=(document.getElementById('mCity').value||'').trim();
-    const sales=(document.getElementById('mSales').value||'').trim();
+    const sales=canonSales(document.getElementById('mSales').value);
     if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
     const date=chosenPlanDate();
     const q=bookQ, woSvc=q?document.getElementById('mWoSvc').value:'', woBill=q?(segVal('segBill')||'lingel'):'';
@@ -838,7 +856,7 @@ function openSupPlan(preset){
     if(others.length>=4){ showMErr(sup+' already has 4 plans that day.'); return; }
     const base = ed ? ed.id.split('|')[1] : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
     const id='s|'+base+'|'+date;
-    const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:(document.getElementById('mSales').value||'').trim(), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
+    const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
     if(ed && ed.id!==id){ plans=plans.filter(p=>p.id!==ed.id); pushPlanDelete(ed.id); }
     upsertPlan(entry); rememberSalesperson(entry.salesperson); closeModal();
     if(view==='board') renderSupBoard(); if(view==='plan') renderPlan();
@@ -912,7 +930,7 @@ function openTeamEdit(src){
   goHandler=async()=>{
     const n={ contractor:eCon.value, team:String(eTeam.value), date:chosenPlanDate(),
       offer:cleanOffer(document.getElementById('mOffer').value), project:document.getElementById('mProject').value.trim(),
-      city:document.getElementById('mCity').value.trim(), salesperson:document.getElementById('mSales').value.trim(), holdBy:segVal('segHold')||'' };
+      city:document.getElementById('mCity').value.trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:segVal('segHold')||'' };
     if(!n.offer && !n.holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
     const same=['contractor','team','date','offer','project','city','salesperson','holdBy'].every(k=>String(n[k]||'')===String(src[k]||''));
     if(same){ closeModal(); return; }
@@ -1356,11 +1374,11 @@ document.getElementById('planReport').addEventListener('click',e=>{
 document.getElementById('btnAddSup').addEventListener('click',()=>openSupPlan());
 document.getElementById('btnWa').addEventListener('click',()=>sharePlanPdf());
 document.getElementById('refreshP').addEventListener('click',()=>{ document.getElementById('refreshP').classList.add('spin'); syncPlansFromServer().then(ok=>{ renderPlan(); setDot('dotP','syncP',ok?'ok':'err',ok?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); document.getElementById('refreshP').classList.remove('spin'); }); });
-function allSalesNames(){ const set=new Set();
-  contractorPlanRows().forEach(p=>{ if((p.salesperson||'').trim()) set.add(p.salesperson.trim()); });
-  plans.forEach(p=>{ if((p.salesperson||'').trim()) set.add(p.salesperson.trim()); });
-  [...salesSet].forEach(x=>{ if((x||'').trim()) set.add(String(x).trim()); });
-  planSalesList.forEach(x=>{ if((x||'').trim()) set.add(String(x).trim()); });
+function allSalesNames(){ const set=new Set(), add=x=>{ const c=canonSales(x); if(c) set.add(c); };
+  contractorPlanRows().forEach(p=>add(p.salesperson));
+  plans.forEach(p=>add(p.salesperson));
+  [...salesSet].forEach(add);
+  planSalesList.forEach(add);
   return [...set].sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase())); }
 function fillPlanSales(){ const btn=document.getElementById('salesBtn'), list=document.getElementById('spList'); if(!btn||!list) return;
   btn.textContent=salesLabel()+' ▾'; btn.classList.toggle('active', planSalesList.length>0);
@@ -2442,7 +2460,7 @@ function wireQuoteField(){
     if(q.client && !p.value) p.value=q.client;
     const sEl=document.getElementById('mSales'), cEl=document.getElementById('mCity');
     const sales=q.sales||(meta&&taSales(meta.salesperson))||'', city=q.city||(meta&&taCity(meta.site))||'';
-    if(sEl && sales && !sEl.value) sEl.value=sales;
+    if(sEl && sales && !sEl.value) sEl.value=canonSales(sales);
     if(cEl && city && !cEl.value) cEl.value=city;
     document.getElementById('mWoSvc').value=q.service;
     document.getElementById('mWo').hidden=false;
