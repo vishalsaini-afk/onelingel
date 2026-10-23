@@ -49,6 +49,13 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .legend .lg{background:var(--green)}.legend .lr{background:var(--red)}.legend .ln{background:var(--amber)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .vtab[data-view=un]{white-space:nowrap}
+.nmrow{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lvbtn{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:5px 9px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.lvbtn:active{background:var(--panel-2)}
+.card.sleave{border-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(240,166,58,.03))}
+.lvstate{width:100%;margin-top:8px;padding:12px;border-radius:10px;border:1px dashed var(--amber);background:transparent;color:var(--amber);font:inherit;font-weight:800;font-size:15px;cursor:pointer;text-align:left}
+.lvstate span{display:block;font-weight:500;font-size:11.5px;color:var(--muted);margin-top:2px}
+.lvwarn{margin-top:8px;font-size:12px;color:#fda4a4}
 .vbadge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:9px;background:var(--red);color:#fff;font-size:11px;line-height:16px;letter-spacing:0;vertical-align:1px}
 .unbar{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
 .unbar .seg{margin:0}.unbar .search{flex:1}
@@ -530,7 +537,7 @@ function planDateField(sel,dateVal){ sel=sel||'tomorrow'; const dmin=DAYAFTER();
     +'<input type="date" id="segDateLater" min="'+dmin+'" value="'+val+'" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit;'+(sel==='later'?'':'display:none')+'"></div>'; }
 function wirePlanDate(){ const sg=document.getElementById('segDate'), inp=document.getElementById('segDateLater'); if(!sg||!inp) return; sg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ inp.style.display=(b.dataset.val==='later')?'':'none'; })); }
 function chosenPlanDate(){ const d=segVal('segDate')||'tomorrow'; if(d==='later'){ const el=document.getElementById('segDateLater'); return (el&&el.value)||DAYAFTER(); } return dateOf(d); }
-function upcomingItems(){ return plans.filter(p=>(p.kind==='team'||p.kind==='supervisor') && p.date>TOMORROW() && inRegion(p.salesperson)).sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); }
+function upcomingItems(){ return plans.filter(p=>(p.kind==='team'||p.kind==='supervisor') && !isLeave(p) && p.date>TOMORROW() && inRegion(p.salesperson)).sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); }
 function upcomingSection(){ const items=upcomingItems(); if(!items.length) return '';
   let h='<div class="psec"><div class="psectt">📅 Upcoming — later dates <span class="cnt">'+items.length+'</span></div><div class="ptabwrap"><table class="ptab"><thead><tr><th>Date</th><th>Type</th><th>Contractor / Supervisor</th><th>Offer No.</th><th>Site</th><th>City</th><th>Salesperson</th><th class="xcol noprint"></th></tr></thead><tbody>';
   items.forEach(function(p){ const who=p.kind==='team'?(esc(p.contractor)+' · T'+esc(p.team)):(esc(p.supervisor)+' · '+esc(p.task||'')); const typ=p.kind==='team'?'Install':'Supervisor';
@@ -611,7 +618,39 @@ async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URL
 async function pushPlanDelete(id){ deletedPlanIds.add(id); saveTombstones(); try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
 function upsertPlan(entry){ if(deletedPlanIds.has(entry.id)){ deletedPlanIds.delete(entry.id); saveTombstones(); } const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
 function planById(id){ return plans.find(p=>p.id===id); }
-function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind); }
+function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind && !isLeave(p)); }
+/* ===== SUPERVISOR LEAVE — one row per day in the Day Plan sheet: id 'l|<name>|<date>', kind supervisor, task 'Leave', reason in project ===== */
+function isLeave(p){ return p && p.kind==='supervisor' && p.task==='Leave'; }
+function leaveOn(name,date){ return plans.find(p=>isLeave(p)&&p.date===date&&normSales(p.supervisor)===normSales(name)); }
+function leavesBetween(a,b){ return plans.filter(p=>isLeave(p)&&p.date>=a&&p.date<=b).sort((x,y)=>x.date<y.date?-1:x.date>y.date?1:x.supervisor.localeCompare(y.supervisor)); }
+function addDays(iso,n){ const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function openSupLeave(name, day){
+  setBox('');
+  const d0=dateOf(day||supDay||'today');
+  document.getElementById('mTtl').textContent='Leave · '+name;
+  document.getElementById('mSub').textContent='Mark the supervisor on leave — no visits can be planned on those days';
+  document.getElementById('mBody').innerHTML=
+     '<div class="fn-row2"><div class="fd"><label>From</label><input type="date" id="lvFrom" value="'+d0+'" min="'+TODAY()+'" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit"></div>'
+    +'<div class="fd"><label>To</label><input type="date" id="lvTo" value="'+d0+'" min="'+TODAY()+'" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font:inherit"></div></div>'
+    +'<div class="fd"><label>Reason</label>'+seg('segLv',[{v:'Personal',l:'Personal'},{v:'Sick',l:'Sick'},{v:'Half day',l:'Half day'},{v:'Other',l:'Other'}],'Personal')+'</div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Mark on leave'; go.className='mbtn go'; modal.hidden=false; wireSegs();
+  goHandler=()=>{
+    const a=document.getElementById('lvFrom').value, b=document.getElementById('lvTo').value||a, why=segVal('segLv')||'Personal';
+    if(!a){ showMErr('Pick the first day of leave.'); return; }
+    if(b<a){ showMErr('“To” is before “From”.'); return; }
+    const days=[]; for(let d=a; d<=b && days.length<31; d=addDays(d,1)) days.push(d);
+    const busy=days.map(d=>[d, plans.filter(p=>p.kind==='supervisor'&&!isLeave(p)&&p.date===d&&normSales(p.supervisor)===normSales(name)).length]).filter(x=>x[1]);
+    if(busy.length && !confirm(name+' already has visits planned on '+busy.map(x=>prettyDate(x[0])+' ('+x[1]+')').join(', ')+'.\n\nMark leave anyway? Move those visits to another supervisor afterwards.')) return;
+    days.forEach(d=>upsertPlan({ id:'l|'+name+'|'+d, kind:'supervisor', date:d, contractor:'', team:'', offer:'', project:why, city:'', salesperson:'', holdBy:'', supervisor:name, task:'Leave', by:SUP, at:new Date().toISOString() }));
+    closeModal(); if(view==='board') renderSupBoard(); renderPlan();
+    setDot('dotS','syncS','ok',name+' on leave · '+(days.length===1?prettyDate(a):prettyDate(a)+' to '+prettyDate(days[days.length-1])));
+  };
+}
+function cancelSupLeave(lv){
+  if(!confirm('Cancel '+lv.supervisor+'’s leave on '+prettyDate(lv.date)+'?')) return;
+  plans=plans.filter(p=>p.id!==lv.id); savePlansLocal(); pushPlanDelete(lv.id);
+  if(view==='board') renderSupBoard(); renderPlan(); setDot('dotS','syncS','ok','Leave cancelled · '+lv.supervisor);
+}
 function upcomingForTeam(name,t){
   const n=String(name||'').toLowerCase(), tk=String(t);
   return plans.filter(p=> p.kind==='team' && p.date>TODAY()
@@ -852,7 +891,8 @@ function openSupPlan(preset){
     const date=chosenPlanDate(), task2=segVal('segTask')||'Measurement';
     const sup=(document.getElementById('mSupName').value||'').trim();
     if(!sup){ showMErr('Supervisor name is required.'); return; }
-    const others=plans.filter(p=>p.kind==='supervisor'&&p.date===date&&p.supervisor===sup&&(!ed||p.id!==ed.id));
+    if(leaveOn(sup,date)){ showMErr(sup+' is on leave on '+prettyDate(date)+'. Pick another supervisor or cancel the leave first.'); return; }
+    const others=plans.filter(p=>p.kind==='supervisor'&&!isLeave(p)&&p.date===date&&p.supervisor===sup&&(!ed||p.id!==ed.id));
     if(others.length>=4){ showMErr(sup+' already has 4 plans that day.'); return; }
     const base = ed ? ed.id.split('|')[1] : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
     const id='s|'+base+'|'+date;
@@ -869,10 +909,14 @@ function renderSupBoard(){
   names.sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
   if(!names.length){ grid.innerHTML='<div class="msg">No supervisors yet.<br><span style="font-size:12px">Add names to the <b>Lingel Supervisors</b> sheet (needs the backend), or just tap ＋ after typing a name in the Day Plan tab.</span></div>'; return; }
   grid.innerHTML=names.map(nm=>{
-    const slots=plans.filter(p=>p.kind==='supervisor'&&p.date===day&&p.supervisor===nm);
+    const slots=plans.filter(p=>p.kind==='supervisor'&&!isLeave(p)&&p.date===day&&p.supervisor===nm);
+    const lv=leaveOn(nm,day);
     let chips=slots.map(p=>{ const cls=p.task==='Measurement'?'tmeas':'tvisit'; const site=p.offer?('#'+esc(p.offer)):(p.project?esc(p.project):'—'); const sub=p.city?esc(p.city):(p.salesperson?esc(p.salesperson):''); return '<button class="schip '+cls+'" data-sid="'+esc(p.id)+'"><div class="tl">'+esc(p.task||'Task')+'</div><div class="ts">'+site+'</div>'+(sub?'<div class="to">'+sub+'</div>':'')+'</button>'; }).join('');
+    if(lv) return '<div class="card sleave"><div class="nm">'+esc(nm)+'</div><div class="role">'+(supDay==='today'?'Today':'Tomorrow')+'</div>'
+      +'<button class="lvstate" data-lvid="'+esc(lv.id)+'">🌴 On leave'+(lv.project?' · '+esc(lv.project):'')+'<span>tap to cancel</span></button>'
+      +(slots.length?'<div class="lvwarn">⚠ '+slots.length+' visit'+(slots.length>1?'s':'')+' still planned — tap to move to another supervisor</div><div class="teams">'+chips+'</div>':'')+'</div>';
     if(slots.length<4) chips+='<button class="schip add" data-supadd="'+esc(nm)+'"><div class="ts">＋ Add plan</div></button>';
-    return '<div class="card"><div class="nm">'+esc(nm)+'</div><div class="role">'+slots.length+' / 4 planned · '+(supDay==='today'?'Today':'Tomorrow')+'</div><div class="teams">'+chips+'</div></div>';
+    return '<div class="card"><div class="nmrow"><div class="nm">'+esc(nm)+'</div><button class="lvbtn" data-supleave="'+esc(nm)+'" title="Mark on leave">🌴 Leave</button></div><div class="role">'+slots.length+' / 4 planned · '+(supDay==='today'?'Today':'Tomorrow')+'</div><div class="teams">'+chips+'</div></div>';
   }).join('');
 }
 function deletePlanEntry(id){
@@ -1120,6 +1164,14 @@ function contractorTable(){
   });
   return h+'</table></div>';
 }
+function leaveSection(){
+  const lv=leavesBetween(TODAY(), addDays(TODAY(),30)); if(!lv.length) return '';
+  const by={}; lv.forEach(p=>{ (by[p.supervisor]=by[p.supervisor]||[]).push(p); });
+  return '<div class="psec"><div class="psectt">🌴 Supervisors on leave <span class="cnt">'+Object.keys(by).length+'</span></div><div class="ptabwrap"><table class="ptab"><thead><tr><th>Supervisor</th><th>Dates</th><th>Reason</th></tr></thead><tbody>'
+    +Object.keys(by).sort().map(n=>{ const ds=by[n]; const first=ds[0].date, last=ds[ds.length-1].date;
+      return '<tr><td class="cn">'+esc(n)+'</td><td>'+esc(first===last?((first===TODAY()||first===TOMORROW())?dayTag(first)+' ':'')+prettyDate(first):prettyDate(first)+' → '+prettyDate(last)+' ('+ds.length+' days)')+'</td><td>'+esc(ds[0].project||'—')+'</td></tr>'; }).join('')
+    +'</tbody></table></div></div>';
+}
 function supTable(){
   const list=[]; planFor(TODAY(),'supervisor').forEach(p=>list.push(p)); planFor(TOMORROW(),'supervisor').forEach(p=>list.push(p));
   const groups=groupBy(list.filter(p=>inRegion(p.salesperson)), p=>p.supervisor, 'Unnamed');
@@ -1159,6 +1211,7 @@ function renderPlan(){
     +planSummaryHTML()
     +'<div class="psec"><div class="psectt">👷 Contractor Teams — grouped by salesperson</div>'+contractorTable()+'</div>'
     +'<div class="psec"><div class="psectt">👔 Supervisors — grouped by supervisor</div>'+supTable()+'</div>'
+    +leaveSection()
     +upcomingSection();
 }
 function planText(){
@@ -1177,6 +1230,8 @@ function planText(){
   if(!sg.length) out+='  (none)\n';
   sg.forEach(function(grp){ out+='\n▸ '+grp.key+'\n'; grp.items.slice().sort((a,b)=>(a.date<b.date?-1:1)).forEach(function(p){
     out+='  • #'+(p.offer||'—')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+(p.salesperson?' | '+p.salesperson:'')+' | '+(p.task||'—')+' | '+dayTag(p.date)+' '+prettyDate(p.date)+'\n'; }); });
+  const lvs=leavesBetween(TODAY(),TOMORROW());
+  if(lvs.length){ out+='\n*🌴 ON LEAVE*\n'; lvs.forEach(p=>{ out+='  • '+p.supervisor+' | '+dayTag(p.date)+' '+prettyDate(p.date)+(p.project?' | '+p.project:'')+'\n'; }); }
   const up=upcomingItems();
   if(up.length){ out+='\n*📅 UPCOMING (LATER DATES)*\n'; up.forEach(function(p){ const who=p.kind==='team'?(p.contractor+' · T'+p.team):(p.supervisor+' · '+(p.task||'')); out+='  • '+prettyDate(p.date)+' | #'+(p.offer||'—')+(p.project?' | '+p.project:'')+(p.city?' | '+p.city:'')+' | '+who+(p.salesperson?' | '+p.salesperson:'')+'\n'; }); }
   return out;
@@ -1356,6 +1411,8 @@ document.getElementById('refreshSup').addEventListener('click',()=>{
   loadSupervisors().then(()=>syncPlansFromServer()).then(ok=>{ renderSupBoard(); btn.classList.remove('spin'); setDot('dotS','syncS',ok?'ok':'err',ok?('Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); });
 });
 document.getElementById('supGrid').addEventListener('click',e=>{
+  const lb=e.target.closest('[data-supleave]'); if(lb){ openSupLeave(lb.getAttribute('data-supleave'), supDay); return; }
+  const lvs=e.target.closest('[data-lvid]'); if(lvs){ const lv=planById(lvs.getAttribute('data-lvid')); if(lv) cancelSupLeave(lv); return; }
   const add=e.target.closest('[data-supadd]'); if(add){ openSupPlan({supervisor:add.getAttribute('data-supadd'), day:supDay}); return; }
   const chip=e.target.closest('[data-sid]'); if(chip){ const p=planById(chip.getAttribute('data-sid')); if(p) openSupPlan({edit:p}); }
 });
