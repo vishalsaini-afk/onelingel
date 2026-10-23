@@ -1801,7 +1801,7 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
     var full=lines.map(function(l){return l.text;}).join('\n');
     var g=function(re,s){ var m=(s==null?full:s).match(re); return m?m[1].trim():''; };
     var out={offer:g(/Dokument-Nr\.?\s*:\s*(\S+)/), customer:g(/Customer:\s*(.+?)\s+Administrator:/), admin:g(/Administrator:\s*([^\n]+)/),
-      sales:g(/Sales by:\s*([^\n]+)/), addr:g(/Delivery Address:\s*([^\n]*)/).replace(/^[,\s]+|[,\s]+$/g,''), color:'', material:/System\s*:\s*u?PVC/i.test(full)?'upvc':'alu', positions:[]};
+      sales:g(/Sales by:\s*([^\n]+)/), addr:(g(/Delivery Address:\s*([\s\S]*?)\n\s*Tel\.?\s*:/)||g(/Delivery Address:\s*([^\n]*)/)).replace(/\s*\n\s*/g,', ').replace(/^[,\s]+|[,\s]+$/g,'').replace(/(,\s*){2,}/g,', '), color:'', material:/System\s*:\s*u?PVC/i.test(full)?'upvc':'alu', positions:[]};
     var ops=lines.map(function(l,i){return /Order-Pos\.?\s*:/.test(l.text)?i:-1;}).filter(function(i){return i>=0;});
     var blocks=[];
     ops.forEach(function(oi,k){
@@ -1902,10 +1902,11 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
     var RE_LBL=/^(?:\d{1,3}-|Add-|ADD-)/i, RE_MEAS=/([A-Za-z]\d?)=([\d.,]+)/g;
     var qLabel=function(l){ var mi=l.search(/\s+[A-Za-z]\d?=[\d.,]+;/); return (mi>=0?l.slice(0,mi):l).trim(); };
     var pdf=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
-    var all=[], offer='', client='', text='', salesRaw='', addrFrom=-1;
+    var all=[], offer='', client='', text='', salesRaw='', addrFrom=-1, hdr=null;
     for (var pn=1;pn<=pdf.numPages;pn++){
-      var tc=await (await pdf.getPage(pn)).getTextContent(), sp=[];
+      var pgo=await pdf.getPage(pn), tc=await pgo.getTextContent(), sp=[];
       tc.items.forEach(function(it){ if(it.str) sp.push({x:it.transform[4],y:it.transform[5],str:it.str}); });
+      if (pn===1 && typeof quoteHeaderLeft==='function') hdr=quoteHeaderLeft(sp, pgo.getViewport({scale:1}).width);
       sp.sort(function(a,b){return b.y-a.y;});
       var bk=[]; sp.forEach(function(s){ var b=bk.find(function(b){return Math.abs(s.y-b.y)<5;}); b?b.items.push(s):bk.push({y:s.y,items:[s]}); });
       bk.sort(function(a,b){return b.y-a.y;}).forEach(function(b){
@@ -1933,11 +1934,13 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
       if (seen[ref]==null) seen[ref]=1; else { seen[ref]++; ref+=' ('+seen[ref]+')'; }
       items.push({ref:ref,w:Math.round(W),h:Math.round(H),qty:1,sqft:+((W*H)/(304.8*304.8)).toFixed(2)});
     });
+    if (hdr && hdr.customer) client=hdr.customer;
     var rawClient=client.split(/\s{2,}|,|\|/)[0].trim();
-    var addrTxt=addrFrom>=0?all.slice(addrFrom,addrFrom+6).join(', '):'';
+    var addrTxt=(hdr&&hdr.customer)?hdr.address.join(', '):(addrFrom>=0?all.slice(addrFrom,addrFrom+6).join(', '):'');
     var upvc=/u\s*pvc|\bpvc\b/i.test(text), alu=/alumin/i.test(text);
+    var city=(hdr&&hdr.customer)?(LD.city(addrTxt)||addrCity(hdr.address)):(LD.city(addrTxt)||LD.city(text.slice(0,1500)));
     return {kind:'quotation', offer:offer, customer:client.replace(/^(M\/s|Mr|Mrs|Ms)\.?\s*/i,'').split(/\s{2,}|,|\|/)[0].trim().slice(0,60),
-      party:LD.party(rawClient), sales:LD.sales(salesRaw), city:LD.city(addrTxt)||LD.city(text.slice(0,1500)), site:addrTxt.slice(0,120),
+      party:LD.party(rawClient), sales:LD.sales(salesRaw), city:city, site:addrTxt.slice(0,120),
       items:items, service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
   }
   LD.readMeta = async function(file){
@@ -2045,10 +2048,34 @@ async function parseQuotationTA(file){
   if(kind==='production'){
     const r=await LD.parseProduction(file,{drawings:false});
     const items=r.positions.map(p=>({ref:p.ref,w:p.w,h:p.h,sqft:p.sqft}));
-    return {kind,offer:r.offer,client:r.customer,party:partyType(r.customer),sales:taSales(r.sales),city:taCity(r.addr),items,total:items.reduce((s,q)=>s+q.sqft,0),
+    const pc=String(r.customer||'').replace(/^(M\/s|Mr|Mrs|Ms)\.?\s*/i,'').trim();
+    return {kind,offer:r.offer,client:pc,party:partyType(r.customer),sales:taSales(r.sales),city:taCity(r.addr)||(r.addr?addrCity([r.addr]):''),items,total:items.reduce((s,q)=>s+q.sqft,0),
       service:r.material==='upvc'?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
   }
   const q=await parseQuotationTA_q(file); q.kind='quotation'; return q;
+}
+/* Quotation page 1, LEFT column only (the right column holds Offer Nr, date, Sales Manager…):
+   rows above the "Position" table header → [Lingel name, Lingel address…, CUSTOMER NAME, customer address…] */
+const LINGEL_ADDR=/Kapriwas[^,]*,?\s*Dharuhera[^,]*,?\s*Dharuhera\s*Rewari\s*,?\s*Haryana\s*-?\s*123106/ig;
+const LINGEL_HDR=/lingel|fensterbau|kapriwas|dharuhera|123106|tel\s*:|e-?mail|www\.|gstin|\bcin\b|pvt\.?\s*ltd/i;
+function quoteHeaderLeft(sp, pageW){
+  const head=sp.find(o=>/^\s*Position\s*$/i.test(o.str));
+  const yTable=head?head.y:-1e9;
+  const left=sp.filter(o=>o.x<pageW*0.48 && o.y>yTable+2).sort((a,b)=>b.y-a.y);
+  const rows=[]; for(const o of left){ const r=rows.find(r=>Math.abs(r.y-o.y)<3); if(r) r.items.push(o); else rows.push({y:o.y,items:[o]}); }
+  const lines=rows.sort((a,b)=>b.y-a.y).map(r=>r.items.sort((a,b)=>a.x-b.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+  let i=0; while(i<lines.length && LINGEL_HDR.test(lines[i])) i++;          // skip Lingel's own name/address block
+  if(i===0 || i>=lines.length) return null;
+  return {customer:lines[i].replace(/\s+/g,' ').trim(), address:lines.slice(i+1)};
+}
+const STATES=/^(haryana|punjab|rajasthan|uttar pradesh|up|uttarakhand|delhi ncr|ncr|himachal pradesh|j\s*&\s*k|jammu and kashmir|maharashtra|gujarat|karnataka|tamil nadu|kerala|goa|india|bihar|madhya pradesh|mp)$/i;
+/* no address on the PDF (production sheets often leave it blank) → the order's Location from the Dispatch Tracker */
+function cityFromTracker(offer){ try{ if(!offer||typeof unRows==='undefined') return ''; const o=unRows.find(r=>offerHit(r.offer,offer)||offerHit(offer,r.offer)); if(!o||!o.location) return '';
+  return taCity(o.location)||addrCity([o.location]); }catch(e){ return ''; } }
+function addrCity(lines){   // last meaningful part of the customer's address: "…, Sector 15, Faridabad - 121007" → Faridabad
+  const parts=lines.join(', ').split(/[,\n]/).map(t=>t.replace(/\b\d{6}\b/g,'').replace(/[-–(]+\s*$/,'').replace(/^\s*[-–]+/,'').trim()).filter(Boolean);
+  for(let k=parts.length-1;k>=0;k--){ const t=parts[k]; if(!/\d/.test(t) && !STATES.test(t) && t.length>2) return t.replace(/\b\w/g,c=>c.toUpperCase()); }
+  return '';
 }
 async function parseQuotationTA_q(file){
   await ensurePdfjsTA();
@@ -2056,10 +2083,11 @@ async function parseQuotationTA_q(file){
   const RE_LBL=/^(?:\d{1,3}-|Add-|ADD-)/i, RE_MEAS=/([A-Za-z]\d?)=([\d.,]+)/g;
   const qLabel=l=>{const mi=l.search(/\s+[A-Za-z]\d?=[\d.,]+;/);return (mi>=0?l.slice(0,mi):l).trim();};
   const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
-  const all=[]; let offer='', client='', text='', salesRaw='', addrFrom=-1;
+  const all=[]; let offer='', client='', text='', salesRaw='', addrFrom=-1, hdr=null;
   for(let pn=1;pn<=pdf.numPages;pn++){
-    const tc=await (await pdf.getPage(pn)).getTextContent();
+    const pg=await pdf.getPage(pn), tc=await pg.getTextContent();
     const sp=[]; tc.items.forEach(it=>{ if(it.str) sp.push({x:it.transform[4],y:it.transform[5],str:it.str}); });
+    if(pn===1) hdr=quoteHeaderLeft(sp, pg.getViewport({scale:1}).width);
     sp.sort((a,b)=>b.y-a.y);
     const bk=[]; for(const s of sp){ let p=false; for(const b of bk){ if(Math.abs(s.y-b.y)<5){ b.items.push(s); p=true; break; } } if(!p) bk.push({y:s.y,items:[s]}); }
     const lines=bk.sort((a,b)=>b.y-a.y).map(b=>b.items.sort((a,c)=>a.x-c.x).map(o=>o.str).join(' ').replace(/\s+/g,' ').trim());
@@ -2087,11 +2115,14 @@ async function parseQuotationTA_q(file){
     if(seen[ref]==null) seen[ref]=1; else { seen[ref]++; ref+=' ('+seen[ref]+')'; }
     items.push({ref,w:W,h:H,sqft:(W*H)/(304.8*304.8)});
   }
+  // top-left block: Lingel name + address, then the CUSTOMER NAME, then the customer's address
+  if(hdr && hdr.customer){ client=hdr.customer; }
   const rawClient=client.split(/\s{2,}|,|\|/)[0].trim();
   client=client.replace(/^(M\/s|Mr|Mrs|Ms)\.?\s*/i,'').split(/\s{2,}|,|\|/)[0].trim().slice(0,60);
   const upvc=/u\s*pvc|\bpvc\b/i.test(text), alu=/alumin/i.test(text);
-  const addrTxt=addrFrom>=0?all.slice(addrFrom,addrFrom+6).join(', '):'';
-  return {offer,client,party:partyType(rawClient),sales:taSales(salesRaw),city:taCity(addrTxt)||taCity(text.slice(0,1500)),items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
+  const addrTxt=(hdr&&hdr.customer)?hdr.address.join(', '):(addrFrom>=0?all.slice(addrFrom,addrFrom+6).join(', '):'');
+  const city=(hdr&&hdr.customer)?(taCity(addrTxt)||addrCity(hdr.address)):(taCity(addrTxt)||taCity(text.slice(0,1500).replace(LINGEL_ADDR,' ')));
+  return {offer,client,party:partyType(rawClient),sales:taSales(salesRaw),city,items,total:items.reduce((s,q)=>s+q.sqft,0),service:(upvc&&!alu)?'UPVC Windows & Doors':'Aluminium Windows & Doors'};
 }
 
 
@@ -2459,7 +2490,7 @@ function wireQuoteField(){
     if(q.offer) o.value=q.offer;
     if(q.client && !p.value) p.value=q.client;
     const sEl=document.getElementById('mSales'), cEl=document.getElementById('mCity');
-    const sales=q.sales||(meta&&taSales(meta.salesperson))||'', city=q.city||(meta&&taCity(meta.site))||'';
+    const sales=q.sales||(meta&&taSales(meta.salesperson))||'', city=q.city||(meta&&taCity(meta.site))||cityFromTracker(q.offer)||'';
     if(sEl && sales && !sEl.value) sEl.value=canonSales(sales);
     if(cEl && city && !cEl.value) cEl.value=city;
     document.getElementById('mWoSvc').value=q.service;
