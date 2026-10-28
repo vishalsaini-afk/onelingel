@@ -259,7 +259,8 @@ function buildDay_(sup, date, ctx) {
     var chk = function (n, res, msg) { st.checks.push({ n: n, res: res, msg: msg }); };
     chk(1, toMs_(pl['First At']) <= cutoff ? 'ok' : 'warn', toMs_(pl['First At']) <= cutoff ? 'Planned in time' : 'Planned after the cut-off');
     if (!offer) { chk(2, 'bad', 'No Offer No in the plan'); st.result = 'bad'; stops.push(st); return; }
-    chk(2, /^\d{3,7}\/\d+[A-Z]?$/.test(offer) ? 'ok' : 'warn', /^\d{3,7}\/\d+[A-Z]?$/.test(offer) ? 'Offer No valid' : 'Offer No looks unusual');
+    var offerOk = /^\d{3,7}(\/\d+[A-Z]?)?$/.test(offer);   // 75165 or 75057/14
+    chk(2, offerOk ? 'ok' : 'warn', offerOk ? 'Offer No valid' : 'Offer No looks unusual');
     var v = null; visits.forEach(function (x) { if (!v && cleanOffer_(x.Offer) === offer) v = x; });
     if (!v) { chk(3, past ? 'bad' : 'wait', past ? 'No site report' : 'Site report pending'); st.result = past ? 'bad' : 'wait'; stops.push(st); return; }
     used[offer] = true; addVisitChecks_(st, v, offer, ctx, S, date, lateBy, chk); stops.push(st);
