@@ -1608,6 +1608,7 @@ async function sheetFlush(){
 }
 
 async function logIssuesToSheet(){
+  try{ if(window.logConveyanceVisit) window.logConveyanceVisit(); }catch(e){}
   if(typeof logDailyReport==="function") logDailyReport({
     visitType:"Site Inspection",
     offerNo:($("#o_no").value||"").trim(),
@@ -2176,4 +2177,55 @@ function slLoadByOffer(){
     finally { _slFromLib = false; }
   }, cur, 'production');
 }
+</script>
+<script>
+/* ===================== ₹ CONVEYANCE: every report is the proof of a visit =====================
+   On every PDF / Share / Drive save, send {Offer No, date, supervisor, live GPS} to the
+   Conveyance backend (link saved by Team Availability on this phone as 'lingel_conv_api').
+   Nothing is sent if that link is not set. Offline → queued and retried.              */
+(function(){
+  var KEY='lingel_conv_api', Q='lingel_conv_visit_q', lastSig='';
+  function api(){ try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
+  function el(id){ return document.getElementById(id); }
+  function who(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); if(s&&s.name) return s.name; }catch(e){} return ((el('o_insp')||{}).value||'').trim(); }
+  function today(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function getPos(){
+    return new Promise(function(res){
+      if(!navigator.geolocation || !window.isSecureContext) return res(null);
+      var done=false, t=setTimeout(function(){ if(!done){ done=true; res(null); } }, 9000);
+      navigator.geolocation.getCurrentPosition(function(p){ if(done) return; done=true; clearTimeout(t); res(p.coords); },
+        function(){ if(!done){ done=true; clearTimeout(t); res(null); } }, {enableHighAccuracy:true, timeout:8000, maximumAge:60000});
+    });
+  }
+  async function send(p){ var a=api(); if(!a) throw new Error('no link'); var r=await fetch(a,{method:'POST',body:new URLSearchParams(p)}); var d=await r.json(); if(!d.ok) throw new Error(d.error||'rejected'); return d; }
+  function queue(p){ try{ var q=JSON.parse(localStorage.getItem(Q)||'[]'); q.push(p); localStorage.setItem(Q, JSON.stringify(q.slice(-40))); }catch(e){} }
+  async function flush(){
+    if(!api() || !navigator.onLine) return; var q=[]; try{ q=JSON.parse(localStorage.getItem(Q)||'[]'); }catch(e){} if(!q.length) return;
+    var left=[]; for(var i=0;i<q.length;i++){ try{ await send(q[i]); }catch(e){ if(/fetch|network|load failed/i.test(String(e.message||e))) left.push(q[i]); } }
+    try{ localStorage.setItem(Q, JSON.stringify(left)); }catch(e){}
+  }
+  window.logConveyanceVisit=async function(){
+    var offer=((el('o_no')||{}).value||'').trim(); if(!offer || !api()) return;
+    var date=((el('o_date')||{}).value||'').trim()||today(), sup=who(); if(!sup) return;
+    var sig=offer+'|'+date+'|'+sup; if(sig===lastSig) return; lastSig=sig;   // PDF + Share + Drive = one visit
+    var c=await getPos(), src='SiteLog';
+    if(!c){ var m=((el('o_loc')||{}).value||'').match(/(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)\)?\s*$/); if(m){ c={latitude:+m[1], longitude:+m[2], accuracy:0}; src='SiteLog (location field)'; } }
+    var p={ action:'logVisit', offer:offer, date:date, supervisor:sup, lat:c?c.latitude:'', lng:c?c.longitude:'', acc:c&&c.accuracy?Math.round(c.accuracy):'',
+            client:((el('o_client')||{}).value||'').trim(), positions:(typeof positions!=='undefined'&&positions)?positions.length:'', createdAt:new Date().toISOString(), source:src };
+    try{ await send(p); if(typeof toast==='function') toast('✓ Visit recorded for conveyance'); }
+    catch(e){ queue(p); }
+  };
+  // opened from Team Availability → "Open SiteLog": fill the Offer No.
+  function prefill(){
+    var qs=new URLSearchParams(location.search), off=(qs.get('offer')||'').trim();
+    if(off){
+      var cur=((el('o_no')||{}).value||'').trim();
+      if(!cur){ el('o_no').value=off; if(qs.get('client') && el('o_client') && !el('o_client').value) el('o_client').value=qs.get('client'); if(typeof saveMeta==='function') saveMeta(); }
+      else if(cur.replace(/\s/g,'')!==off.replace(/\s/g,'') && typeof toast==='function') toast('⚠ SiteLog still has order '+cur+' open — clear it to start #'+off);
+    }
+  }
+  // wait until SiteLog has restored its saved order (it fills the date last), then prefill
+  (function wait(n){ try{ if((el('o_date')&&el('o_date').value) || n>60){ prefill(); return; } }catch(e){ return; } setTimeout(function(){ wait(n+1); }, 250); })(0);
+  window.addEventListener('online', flush); setTimeout(flush, 3000);
+})();
 </script>

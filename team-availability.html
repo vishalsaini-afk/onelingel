@@ -387,6 +387,41 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   .tbadge.meas{background:#dbeafe;color:#1e40af}.tbadge.visit{background:#fde9d3;color:#9a4a00}
   .pempty{color:#888}
 }
+
+/* ===== ₹ CONVEYANCE ===== */
+.cvbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.cvbar input{border:1px solid var(--line);border-radius:9px;padding:11px 12px;font-size:14px;background:var(--panel-2);color:var(--text);font-family:'Spline Sans',sans-serif;height:44px}
+.cvbar .cvme{flex:1;min-width:150px}
+.cvcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.cvcard.cvwarn{border-left:4px solid var(--amber)}
+.cvh{font-family:'Archivo Narrow';font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cvstop{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.cvstop:first-of-type{border-top:none}
+.cvstop .grow{flex:1;min-width:0}
+.cvstop .o{font-family:'JetBrains Mono';font-weight:700;font-size:14px}
+.p{font-size:12px;color:var(--muted);line-height:1.45}
+.chip{display:inline-block;border-radius:999px;padding:4px 9px;font-size:10.5px;font-family:'JetBrains Mono';letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
+.chip.ok{color:#86efac;border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.1)}
+.chip.warn{color:#fcd34d;border-color:rgba(240,166,58,.55);background:rgba(240,166,58,.1)}
+.chip.bad{color:#fca5a5;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.1)}
+.chip.paid{color:#93c5fd;border-color:rgba(91,155,213,.5);background:rgba(91,155,213,.12)}
+.cvlink{font-size:12px;color:var(--hivis);text-decoration:none;border:1px solid var(--line);background:transparent;border-radius:8px;padding:7px 10px;white-space:nowrap;cursor:pointer;font-family:'Spline Sans',sans-serif}
+.cvday{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.cvday summary{list-style:none;display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+.cvday summary::-webkit-details-marker{display:none}
+.cvday .dt{font-family:'Archivo Narrow';font-weight:700;font-size:14px;width:88px;flex-shrink:0}
+.cvday .mid{flex:1;font-size:12px;color:var(--muted);min-width:0}
+.cvday .amt{font-family:Archivo;font-weight:900;font-size:16px}
+.cvbody{padding:2px 14px 12px;border-top:1px solid var(--line);font-size:13px}
+.ck{display:flex;flex-direction:column;gap:2px;margin:5px 0 0}
+.ck span{font-size:11.5px;color:var(--muted)}
+.ck .i{display:inline-block;width:14px;text-align:center}
+.ck .i.ok{color:var(--green)}.ck .i.warn{color:var(--amber)}.ck .i.bad{color:var(--red)}
+.cvextra{display:flex;gap:10px;align-items:center;font-size:13px;padding:9px 0;border-top:1px dashed var(--line)}
+.cvextra a{text-decoration:none;font-size:20px}
+.cvnote{font-size:12px;color:var(--muted);line-height:1.55;text-align:center;padding:8px 10px 18px}
+.cvprev{max-width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:none}
+#mBody .seg{flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -403,6 +438,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     <button class="vtab on" data-view="board">Board</button>
     <button class="vtab" data-view="plan">📋 Day Plan</button>
     <button class="vtab" data-view="un" title="Dispatched sites with no contractor">To Assign<span class="vbadge" id="unBadge" hidden>0</span></button>
+    <button class="vtab" data-view="conv" title="Your conveyance, worked out from your plan and site reports">₹ Conveyance</button>
   </div>
 
   <div id="boardView">
@@ -456,6 +492,25 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     </div>
     <div class="sync"><span class="dot" id="dotU"></span><span id="syncU">—</span></div>
     <div id="unList"></div>
+  </div>
+
+
+  <div id="convView" hidden>
+    <div id="cvSetup" class="cvcard cvwarn" hidden>
+      <div class="cvh"><span>One-time setup</span></div>
+      <div class="p" style="margin-bottom:10px">Paste the Conveyance app link (from HR / Vishal). It ends in <b>/exec</b>.</div>
+      <div class="cvbar" style="margin:0"><input id="cvLink" class="cvme" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"><button class="pbtn" id="cvSave">Save</button></div>
+    </div>
+    <div class="cvbar">
+      <input id="cvMe" class="cvme" list="dlSup" placeholder="Your name (supervisor)" autocomplete="off">
+      <input id="cvMonth" type="month">
+      <button class="rf" id="cvRefresh" title="Refresh">⟳</button>
+    </div>
+    <div class="sync"><span class="dot" id="dotC"></span><span id="syncC">—</span></div>
+    <div id="cvToday"></div>
+    <div class="stats" id="cvStats"></div>
+    <div id="cvDays"></div>
+    <div class="cvnote">No claim to send. Plan your sites by Offer No. before 9 pm, and file a SiteLog report at every site — your conveyance is worked out from that at the company rate. Add only toll, parking, auto/cab or stay bills, with a photo.</div>
   </div>
 
   <div class="foot-note">Lingel Field Operations · Live status in teams · full history in Bookings</div>
@@ -614,8 +669,8 @@ async function syncPlansFromServer(){
   }catch(e){}
   return false;
 }
-async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} }
-async function pushPlanDelete(id){ deletedPlanIds.add(id); saveTombstones(); try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} }
+async function pushPlan(entry){ try{ await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({action:'planUpsert'},entry))}); }catch(e){} if(entry && entry.kind==='supervisor' && typeof convMirror==='function') convMirror('planUpsert', entry); }
+async function pushPlanDelete(id){ deletedPlanIds.add(id); saveTombstones(); try{ await fetch(API,{method:'POST',body:new URLSearchParams({action:'planDelete',id:id})}); }catch(e){} if(/^[sl]\|/.test(String(id)) && typeof convMirror==='function') convMirror('planDelete', {id:id}); }
 function upsertPlan(entry){ if(deletedPlanIds.has(entry.id)){ deletedPlanIds.delete(entry.id); saveTombstones(); } const i=plans.findIndex(p=>p.id===entry.id); if(i>=0) plans[i]=entry; else plans.push(entry); savePlansLocal(); pushPlan(entry); }
 function planById(id){ return plans.find(p=>p.id===id); }
 function planFor(date,kind){ return plans.filter(p=>p.date===date && p.kind===kind && !isLeave(p)); }
@@ -878,14 +933,14 @@ function openSupPlan(preset){
     planDateField(daySel, ed?ed.date:null)
     +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
     +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
-    +'<div class="fd"><label>Offer No. (optional)</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
+    +'<div class="fd"><label>Offer No. (needed for conveyance)</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg" value="'+esc(ed?ed.project:'')+'"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi" value="'+esc(ed?ed.city:'')+'"></div>'
     +'<div class="fd"><label>Salesperson (optional)</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh" value="'+esc(ed?ed.salesperson:'')+'"></div>'
     +(ed?'<button type="button" id="mDelSup" class="mbtn ghost" style="width:100%;margin-top:2px;border-color:var(--red);color:#fda4a4">Remove this plan</button>':'');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent= ed?'Save':'Add to plan →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wirePlanDate();
-  if(ed){ const del=document.getElementById('mDelSup'); if(del) del.onclick=()=>{ plans=plans.filter(p=>p.id!==ed.id); savePlansLocal(); pushPlanDelete(ed.id); closeModal(); if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); setDot('dotS','syncS','ok','Removed plan'); }; }
+  if(ed){ const del=document.getElementById('mDelSup'); if(del) del.onclick=()=>{ plans=plans.filter(p=>p.id!==ed.id); savePlansLocal(); pushPlanDelete(ed.id); closeModal(); if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); if(view==='conv' && typeof cvLoad==='function') setTimeout(cvLoad,600); setDot('dotS','syncS','ok','Removed plan'); }; }
   setTimeout(()=>{ const o=document.getElementById('mSupName'); if(o && !supName) o.focus(); },50);
   goHandler=()=>{
     const date=chosenPlanDate(), task2=segVal('segTask')||'Measurement';
@@ -899,7 +954,7 @@ function openSupPlan(preset){
     const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
     if(ed && ed.id!==id){ plans=plans.filter(p=>p.id!==ed.id); pushPlanDelete(ed.id); }
     upsertPlan(entry); rememberSalesperson(entry.salesperson); closeModal();
-    if(view==='board') renderSupBoard(); if(view==='plan') renderPlan();
+    if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); if(view==='conv' && typeof cvLoad==='function') setTimeout(cvLoad,600);
     setDot('dotS','syncS','ok',(ed?'Updated ':'Added ')+esc(sup)+' · '+task2);
   };
 }
@@ -1465,6 +1520,8 @@ function switchView(v){
   document.getElementById('boardView').hidden = v!=='board';
   document.getElementById('planView').hidden = v!=='plan';
   document.getElementById('unView').hidden = v!=='un';
+  document.getElementById('convView').hidden = v!=='conv';
+  if(v==='conv' && typeof convOpen==='function') convOpen();
   if(v==='un'){ renderUn(); loadDispatch(false); }
   if(v==='board'){ if(!document.getElementById('supBoard').hidden) renderSupBoard(); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); }
   if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
@@ -2776,6 +2833,173 @@ async function reprintWorkOrder(name,team,offer){
   catch(e){ setDot('dot','syncTxt','err','Invoice failed: '+(e.message||e)); }
 }
 
+</script>
+<script>
+/* ===================== ₹ CONVEYANCE (plan-linked) =====================
+   Rule: no plan → no conveyance; no SiteLog report → no approval.
+   Supervisor plans made in this app are mirrored to the Conveyance backend
+   (a separate Apps Script). This tab shows the supervisor their day + month;
+   HR approves in conveyance-hr.html. Nothing here touches the invoice backend. */
+const CONV_KEY='lingel_conv_api', CONV_ME='lingel_conv_me', CONV_Q='lingel_conv_queue';
+const CONV_DEFAULT='';   // optional: paste the conveyance /exec URL here so nobody is asked for it
+let CONV_API=(function(){ try{ return localStorage.getItem(CONV_KEY)||CONV_DEFAULT; }catch(e){ return CONV_DEFAULT; } })();
+let cvData=null, cvInited=false, cvBackfilled=false, cvLoading=false;
+const cvInr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
+const cvNorm=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+const cvOffer=s=>String(s||'').trim().replace(/^#/,'').replace(/\s+/g,'').toUpperCase();
+function cvMe(){ const el=document.getElementById('cvMe'); const v=el?el.value:''; return String(v||SUP||'').trim(); }
+async function convPost(params){
+  if(!CONV_API) throw new Error('no conveyance link');
+  const r=await fetch(CONV_API,{method:'POST',body:new URLSearchParams(params)});
+  const t=(await r.text()).trim(); return t?JSON.parse(t):{ok:false,error:'empty reply'};
+}
+function convQueue(p){ try{ const q=JSON.parse(localStorage.getItem(CONV_Q)||'[]'); q.push(p); localStorage.setItem(CONV_Q, JSON.stringify(q.slice(-80))); }catch(e){} }
+function convMirror(action, entry){ if(!CONV_API) return; const p=Object.assign({}, entry||{}, {action:action}); convPost(p).catch(()=>convQueue(p)); }
+async function convFlush(){
+  if(!CONV_API || !navigator.onLine) return 0;
+  let q=[]; try{ q=JSON.parse(localStorage.getItem(CONV_Q)||'[]'); }catch(e){}
+  if(!q.length) return 0;
+  const left=[]; for(const p of q){ try{ await convPost(p); }catch(e){ left.push(p); } }   // a server "no" is final; only network errors are retried
+  try{ localStorage.setItem(CONV_Q, JSON.stringify(left)); }catch(e){}
+  return q.length-left.length;
+}
+function convBackfill(){
+  if(cvBackfilled || !CONV_API) return; cvBackfilled=true;
+  const from=isoDate(new Date(Date.now()-35*864e5));
+  const list=plans.filter(p=>p.kind==='supervisor' && String(p.date)>=from);
+  if(list.length) convPost({action:'planBulk', plans:JSON.stringify(list)}).catch(()=>{ cvBackfilled=false; });
+}
+window.addEventListener('online',()=>{ convFlush(); });
+
+const CV_LABEL={'auto-approved':['Approved','ok'],'approved':['Approved','ok'],'paid':['Paid','paid'],'review':['HR review','warn'],'in progress':['In progress',''],'not eligible':['Not eligible','bad'],'rejected':['Rejected','bad'],'no plan':['No plan','']};
+function cvChip(s){ const m=CV_LABEL[s]||[s,'']; return '<span class="chip '+m[1]+'">'+esc(m[0])+'</span>'; }
+function cvChecks(st){ return '<div class="ck">'+(st.checks||[]).map(c=>'<span><b class="i '+esc(c.res)+'">'+(c.res==='ok'?'✓':c.res==='warn'?'!':c.res==='bad'?'✕':'…')+'</b> '+esc(c.msg)+'</span>').join('')+'</div>'; }
+function cvSiteLogLink(offer, project){ return 'site-inspection-portal.html?offer='+encodeURIComponent(offer)+(project?('&client='+encodeURIComponent(project)):''); }
+
+function convOpen(){
+  if(!cvInited){
+    cvInited=true;
+    const me=document.getElementById('cvMe'), mo=document.getElementById('cvMonth');
+    let saved=''; try{ saved=localStorage.getItem(CONV_ME)||''; }catch(e){}
+    me.value=SUP||saved; mo.value=TODAY().slice(0,7);
+    me.addEventListener('change',()=>{ try{ localStorage.setItem(CONV_ME, me.value.trim()); }catch(e){} cvLoad(); });
+    mo.addEventListener('change',()=>cvLoad());
+    document.getElementById('cvRefresh').addEventListener('click',()=>cvLoad());
+    document.getElementById('cvSave').addEventListener('click',cvSaveLink);
+    document.getElementById('convView').addEventListener('click',cvClick);
+  }
+  cvLoad();
+}
+async function cvSaveLink(){
+  const u=(document.getElementById('cvLink').value||'').trim();
+  if(!/^https:\/\/script\.google\.com\/.+\/exec/.test(u)){ setDot('dotC','syncC','err','That is not an Apps Script /exec link'); return; }
+  setDot('dotC','syncC','busy','Checking the link…');
+  try{ const r=await fetch(u+'?action=ping&t='+Date.now()); const d=await r.json(); if(!d.ok||d.app!=='lingel-conveyance') throw new Error('not the conveyance app'); }
+  catch(e){ setDot('dotC','syncC','err','Link did not answer: '+(e.message||e)); return; }
+  CONV_API=u; try{ localStorage.setItem(CONV_KEY,u); }catch(e){}
+  cvLoad();
+}
+async function cvLoad(){
+  const setup=document.getElementById('cvSetup');
+  setup.hidden=!!CONV_API;
+  if(!CONV_API){ document.getElementById('cvToday').innerHTML=''; document.getElementById('cvStats').innerHTML=''; document.getElementById('cvDays').innerHTML=''; setDot('dotC','syncC','err','Conveyance link not set yet'); return; }
+  const me=cvMe();
+  if(!me){ cvRender(null); setDot('dotC','syncC','err','Type your name above (or sign in from the Hub)'); return; }
+  if(cvLoading) return; cvLoading=true;
+  setDot('dotC','syncC','busy','Loading…');
+  const sent=await convFlush(); convBackfill();
+  try{
+    const r=await fetch(CONV_API+'?action=my&sup='+encodeURIComponent(me)+'&month='+encodeURIComponent(document.getElementById('cvMonth').value)+'&t='+Date.now(),{cache:'no-store'});
+    const d=await r.json(); if(!d.ok) throw new Error(d.error||'error');
+    cvData=d; cvRender(d);
+    setDot('dotC','syncC','ok','Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+(sent?(' · sent '+sent+' saved item'+(sent>1?'s':'')):'')+(d.known?'':' · ask HR to add you'));
+  }catch(e){ cvRender(null); setDot('dotC','syncC','err','Could not load: '+(e.message||e)+' — showing this phone only'); }
+  finally{ cvLoading=false; }
+}
+function cvRender(d){
+  const me=cvMe(), today=TODAY(), tomorrow=TOMORROW();
+  const mine=p=>p.kind==='supervisor' && !isLeave(p) && cvNorm(p.supervisor)===cvNorm(me);
+  // ---- today: local plan merged with what the server has checked
+  const srv={}; ((d&&d.today&&d.today.stops)||[]).forEach(s=>{ srv[s.offer]=s; });
+  const local=plans.filter(p=>mine(p) && p.date===today);
+  const seen={}; let rowsH='';
+  local.forEach(p=>{
+    const o=cvOffer(p.offer); seen[o]=1; const s=srv[o];
+    let chip, act='';
+    let warnTxt='';
+    if(!o){ chip='<span class="chip bad">No Offer No</span>'; warnTxt='<div class="p" style="color:#fca5a5">Add the Offer No. to this plan, or it is not paid</div>'; }
+    else if(s && (s.result==='ok'||s.result==='warn')){ chip='<span class="chip '+(s.result==='ok'?'ok':'warn')+'">Report ✓'+(s.result==='warn'?' · check':'')+'</span>'; }
+    else { chip='<span class="chip">Report pending</span>'; act='<a class="cvlink" href="'+cvSiteLogLink(o,p.project)+'">Open SiteLog →</a>'; }
+    rowsH+='<div class="cvstop"><div class="grow"><div class="o">'+(o?('#'+esc(o)):'—')+'</div><div class="p">'+esc([p.task,p.project,p.city].filter(Boolean).join(' · '))+'</div>'+warnTxt+(s&&s.checks&&s.result==='warn'?cvChecks(s):'')+'</div>'+chip+act+'</div>';
+  });
+  Object.keys(srv).forEach(o=>{ if(seen[o]) return; const s=srv[o]; rowsH+='<div class="cvstop"><div class="grow"><div class="o">#'+esc(o)+'</div><div class="p">'+esc(s.task+(s.project?(' · '+s.project):''))+'</div>'+cvChecks(s)+'</div><span class="chip '+(s.result==='ok'?'ok':'warn')+'">'+(s.planned?'Report ✓':'Not planned')+'</span></div>'; });
+  if(!rowsH) rowsH='<div class="p" style="padding:6px 0 4px;color:var(--muted)">Nothing planned for today. Only planned sites are paid.</div>';
+  const tmr=plans.filter(p=>mine(p) && p.date===tomorrow);
+  const late=new Date().getHours()>=18;
+  const tmrH= tmr.length
+    ? '<div class="cvstop"><div class="grow"><div class="p">Tomorrow: <b style="color:var(--text)">'+tmr.length+' site'+(tmr.length>1?'s':'')+'</b> planned'+(tmr.some(p=>!cvOffer(p.offer))?' · <span style="color:#fca5a5">'+tmr.filter(p=>!cvOffer(p.offer)).length+' without Offer No</span>':'')+'</div></div><button class="cvlink" data-cv="plan">＋ Add</button></div>'
+    : '<div class="cvstop"><div class="grow"><div class="p" style="color:'+(late?'#fcd34d':'var(--muted)')+'">'+(late?'⚠ ':'')+'No plan for tomorrow yet — plan before 9 pm</div></div><button class="cvlink" data-cv="plan">Plan tomorrow</button></div>';
+  const t=d&&d.today; const ex=(t&&t.extras)||[];
+  const exH=ex.map(x=>'<div class="cvextra">'+(x.url?'<a href="'+esc(x.url)+'" target="_blank" rel="noopener">🧾</a>':'⚠')+'<div class="grow" style="flex:1"><b>'+esc(x.type)+'</b> '+cvInr(x.amount)+(x.offer?(' · #'+esc(x.offer)):'')+'<div class="p">'+esc(x.reason||'')+(x.url?'':' · no bill photo, not paid')+'</div></div>'+((x.status==='pending'||x.status==='no bill')?'<button class="cvlink" data-cvdel="'+esc(x.id)+'">✕</button>':'<span class="chip ok">'+esc(x.status)+'</span>')+'</div>').join('');
+  document.getElementById('cvToday').innerHTML='<div class="cvcard"><div class="cvh"><span>Today · '+esc(prettyDate(today))+'</span>'+(t?cvChip(t.status):'')+'</div>'+rowsH+tmrH+exH
+    +'<button class="pbtn" data-cv="extra" style="width:100%;margin-top:12px">＋ Add bill (toll, parking, auto, stay)</button></div>';
+  // ---- month
+  if(!d){ document.getElementById('cvStats').innerHTML=''; document.getElementById('cvDays').innerHTML=''; return; }
+  const review=d.days.filter(x=>x.status==='review').length;
+  document.getElementById('cvStats').innerHTML=
+     '<div class="stat g"><div class="n">'+cvInr(d.total)+'</div><div class="l">Approved</div></div>'
+    +'<div class="stat n"><div class="n">'+cvInr(d.pending)+'</div><div class="l">Pending'+(review?(' · '+review+' in review'):'')+'</div></div>'
+    +'<div class="stat"><div class="n" style="color:var(--text)">'+d.days.reduce((a,x)=>a+x.reported,0)+'</div><div class="l">Sites paid</div></div>';
+  document.getElementById('cvDays').innerHTML= d.days.length ? d.days.map(cvDayHTML).join('') : '<div class="msg">No plans or reports this month yet.</div>';
+}
+function cvDayHTML(x){
+  const stops=x.stops.map(s=>'<div class="cvstop"><div class="grow"><div class="o">'+(s.offer?('#'+esc(s.offer)):'— no Offer No')+(s.planned?'':' <span class="chip warn">not planned</span>')+'</div><div class="p">'+esc([s.task,s.project,s.city].filter(Boolean).join(' · '))+'</div>'+cvChecks(s)+'</div><span class="chip '+(s.result==='ok'?'ok':s.result==='warn'?'warn':s.result==='bad'?'bad':'')+'">'+(s.result==='ok'?'Paid':s.result==='warn'?'Check':s.result==='bad'?'Not paid':'Pending')+'</span></div>').join('');
+  const ex=x.extras.map(e=>'<div class="cvextra">'+(e.url?'<a href="'+esc(e.url)+'" target="_blank" rel="noopener">🧾</a>':'⚠')+'<div style="flex:1"><b>'+esc(e.type)+'</b> '+cvInr(e.amount)+'<div class="p">'+esc(e.reason||'')+(e.note?(' · HR: '+esc(e.note)):'')+'</div></div><span class="chip '+(e.result==='bad'?'bad':e.status==='approved'?'ok':'')+'">'+esc(e.result==='bad'&&!e.url?'no bill':e.status)+'</span></div>').join('');
+  const money='<div class="p" style="margin:8px 0 2px">'+x.km+' km × '+cvInr(x.rate)+(x.capped?' (daily cap)':'')+' = '+cvInr(x.travel)+(x.extrasOk?(' + bills '+cvInr(x.extrasOk)):'')+(x.kmNote?(' · '+esc(x.kmNote)):'')+'</div>';
+  return '<details class="cvday"><summary><div class="dt">'+esc(prettyDate(x.date))+'</div><div class="mid">'+x.reported+' of '+x.stops.length+' site'+(x.stops.length===1?'':'s')+' paid · '+x.km+' km</div><div class="amt">'+cvInr(x.amount)+'</div>'+cvChip(x.status)+'</summary><div class="cvbody">'+(x.reason?('<div class="p" style="margin:8px 0;color:#fcd34d">HR: '+esc(x.reason)+'</div>'):'')+stops+ex+money+'</div></details>';
+}
+async function cvClick(e){
+  const b=e.target.closest('[data-cv],[data-cvdel]'); if(!b) return;
+  if(b.getAttribute('data-cv')==='plan'){ openSupPlan({supervisor:cvMe(), day:'tomorrow'}); return; }
+  if(b.getAttribute('data-cv')==='extra'){ cvOpenExtra(); return; }
+  const id=b.getAttribute('data-cvdel');
+  if(id){ if(!confirm('Remove this bill?')) return; try{ const d=await convPost({action:'deleteExtra', id:id, supervisor:cvMe()}); if(!d.ok) throw new Error(d.error); cvLoad(); }catch(err){ setDot('dotC','syncC','err','Could not remove: '+(err.message||err)); } }
+}
+function cvCompress(file){
+  return new Promise((res,rej)=>{ const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{ const m=1280, k=Math.min(1, m/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg',0.72)); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('not an image')); }; img.src=url; });
+}
+function cvOpenExtra(){
+  const me=cvMe(); if(!me){ setDot('dotC','syncC','err','Type your name first'); return; }
+  if(!CONV_API){ setDot('dotC','syncC','err','Conveyance link not set yet'); return; }
+  setBox('');
+  document.getElementById('mTtl').textContent='Add a bill';
+  document.getElementById('mSub').textContent='Only for costs the rate card cannot know — with a photo of the bill';
+  const offers=[...new Set(plans.filter(p=>p.kind==='supervisor'&&cvNorm(p.supervisor)===cvNorm(me)&&(p.date===TODAY()||p.date===isoDate(new Date(Date.now()-864e5)))).map(p=>cvOffer(p.offer)).filter(Boolean))];
+  document.getElementById('mBody').innerHTML=
+     '<div class="fd"><label>Day</label>'+seg('cvDay',[{v:'today',l:'Today'},{v:'yesterday',l:'Yesterday'}],'today')+'</div>'
+    +'<div class="fd"><label>Type</label>'+seg('cvType',[{v:'Toll',l:'Toll'},{v:'Parking',l:'Parking'},{v:'Auto/Cab',l:'Auto/Cab'},{v:'Bus/Train',l:'Bus/Train'},{v:'Stay',l:'Stay'},{v:'Other',l:'Other'}],'Toll')+'</div>'
+    +'<div class="fd"><label>Amount (₹)</label><input id="cvAmt" type="number" inputmode="decimal" min="1" placeholder="e.g. 120"></div>'
+    +'<div class="fd"><label>Offer No.</label><input id="cvOff" list="dlCvOff" autocomplete="off" placeholder="Site this was for" value="'+esc(offers[0]||'')+'"><datalist id="dlCvOff">'+offers.map(o=>'<option value="'+esc(o)+'">').join('')+'</datalist></div>'
+    +'<div class="fd"><label>Reason</label><input id="cvWhy" autocomplete="off" placeholder="e.g. Expressway toll to site"></div>'
+    +'<div class="fd"><label>Bill photo</label><input id="cvPic" type="file" accept="image/*" capture="environment"><img id="cvPrev" class="cvprev" alt=""></div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='Save bill'; go.className='mbtn go'; modal.hidden=false; wireSegs();
+  let photo='';
+  document.getElementById('cvPic').onchange=async ev=>{ const f=ev.target.files&&ev.target.files[0]; if(!f) return; try{ photo=await cvCompress(f); const pv=document.getElementById('cvPrev'); pv.src=photo; pv.style.display='block'; }catch(err){ showMErr('Could not read that photo'); } };
+  goHandler=async()=>{
+    const amt=parseFloat(document.getElementById('cvAmt').value);
+    if(!(amt>0)){ showMErr('Enter the amount.'); return; }
+    if(!photo){ showMErr('Add a photo of the bill — bills without a photo are not paid.'); return; }
+    const off=cvOffer(document.getElementById('cvOff').value);
+    if(!off){ showMErr('Which site (Offer No.) was this for?'); return; }
+    const p={ action:'addExtra', date: segVal('cvDay')==='yesterday'?isoDate(new Date(Date.now()-864e5)):TODAY(), supervisor:me, offer:off, type:segVal('cvType')||'Other', amount:String(amt), reason:(document.getElementById('cvWhy').value||'').trim(), photo:photo };
+    go.disabled=true; go.textContent='Saving…';
+    try{ const d=await convPost(p); if(!d.ok) throw new Error(d.error||'not saved'); closeModal(); setDot('dotC','syncC','ok','Bill saved'); cvLoad(); }
+    catch(err){ if(!navigator.onLine||/Failed to fetch|NetworkError|Load failed/i.test(String(err.message||err))){ convQueue(p); closeModal(); setDot('dotC','syncC','busy','No network — bill saved on this phone, will send later'); } else { go.disabled=false; go.textContent='Save bill'; showMErr('Not saved: '+(err.message||err)); } }
+  };
+}
 </script>
 </body>
 </html>

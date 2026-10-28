@@ -140,6 +140,15 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
       </div>
       <div class="arr">→</div>
     </a>
+
+    <a class="tile" href="conveyance-hr.html" id="convTile" style="display:none">
+      <div class="ic">₹</div>
+      <div class="txt">
+        <div class="tt">Conveyance · HR</div>
+        <div class="td">Office only · supervisor conveyance from plan + site report · review · month close</div>
+      </div>
+      <div class="arr">→</div>
+    </a>
   </div>
 
   <div class="foot">Lingel Field Operations · Works offline after first load</div>
@@ -196,6 +205,7 @@ function isOffice(name){ const n=String(name||'').trim().toLowerCase(); return O
 function showLoggedIn(name){
   document.getElementById('loginOverlay').style.display='none';
   const lt=document.getElementById('ledgerTile'); if(lt) lt.style.display=isOffice(name)?'':'none';
+  const ct=document.getElementById('convTile'); if(ct) ct.style.display=isOffice(name)?'':'none';
   document.getElementById('whoami').innerHTML='<span>Signed in as</span> <b>'+name+'</b> <button class="logout" onclick="doLogout()">Logout</button>';
 }
 function doLogout(){

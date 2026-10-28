@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Lingel — Conveyance HR</title>
+<meta name="theme-color" content="#13161b">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#ffce1f;--green:#22c55e;--red:#ef4444;--blue:#5b9bd5;--amber:#f0a63a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:var(--text);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:16px 16px 48px}
+.top{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.home{text-decoration:none;color:var(--muted);border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+.hdr{padding-bottom:14px;border-bottom:2px solid var(--line);margin-bottom:14px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.hdr .t{font-family:Archivo;font-weight:900;font-size:22px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
+.hdr .s{font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.hdr .grow{flex:1}
+input,select{border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:14px;background:var(--panel-2);color:var(--text);font-family:'Spline Sans',sans-serif}
+input:focus,select:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+.btn{border:none;border-radius:9px;padding:10px 14px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;background:var(--hivis);color:#111}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+.btn.ok{background:var(--green);color:#06210f}.btn.bad{background:transparent;border:1px solid var(--red);color:#fca5a5}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+.tabs{display:flex;gap:6px;margin-bottom:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px}
+.tab{flex:1;border:none;background:transparent;color:var(--muted);border-radius:9px;padding:11px 6px;font-family:'Archivo Narrow';font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.tab.on{background:var(--hivis);color:#111}
+.badge{display:inline-block;min-width:20px;padding:1px 6px;border-radius:999px;background:var(--amber);color:#111;font-size:11px;margin-left:6px}
+.sync{display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono';font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;min-height:16px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}.dot.ok{background:var(--green)}.dot.err{background:var(--red)}.dot.busy{background:var(--hivis)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 10px}
+.stat .n{font-family:Archivo;font-weight:900;font-size:22px;line-height:1}
+.stat .l{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.card.warn{border-left:4px solid var(--amber)}
+.ch{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.ch .who{font-family:Archivo;font-weight:900;font-size:16px}
+.ch .dt{font-family:'Archivo Narrow';font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-size:13px}
+.ch .amt{margin-left:auto;font-family:Archivo;font-weight:900;font-size:20px}
+.p{font-size:12.5px;color:var(--muted);line-height:1.5}
+.stop{display:flex;gap:12px;padding:9px 0;border-top:1px solid var(--line);align-items:flex-start}
+.stop .o{font-family:'JetBrains Mono';font-weight:700;font-size:13.5px;min-width:96px}
+.stop .grow{flex:1;min-width:0}
+.ck{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:3px}
+.ck span{font-size:12px;color:var(--muted)}
+.i.ok{color:var(--green)}.i.warn{color:var(--amber)}.i.bad{color:var(--red)}
+.chip{display:inline-block;border-radius:999px;padding:3px 9px;font-size:10.5px;font-family:'JetBrains Mono';letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
+.chip.ok{color:#86efac;border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.1)}
+.chip.warn{color:#fcd34d;border-color:rgba(240,166,58,.55);background:rgba(240,166,58,.1)}
+.chip.bad{color:#fca5a5;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.1)}
+.chip.paid{color:#93c5fd;border-color:rgba(91,155,213,.5);background:rgba(91,155,213,.12)}
+a.lnk{color:var(--hivis);text-decoration:none;font-size:12px}
+.ex{display:flex;gap:10px;align-items:center;padding:8px 0;border-top:1px dashed var(--line);font-size:13px;flex-wrap:wrap}
+.ex .grow{flex:1;min-width:180px}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.acts input{width:110px}.acts .why{flex:1;min-width:180px;width:auto}
+.msg{text-align:center;color:var(--muted);padding:40px 20px;font-size:14px;line-height:1.6}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px;border-bottom:1px solid var(--line);font-weight:400}
+.tbl td{padding:9px 8px;border-bottom:1px solid var(--line)}
+.tbl td.r,.tbl th.r{text-align:right}
+.tbl tfoot td{font-weight:700;border-top:2px solid var(--line)}
+.scroll{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px}
+.board td,.board th{padding:4px 3px;text-align:center;border-bottom:1px solid var(--line)}
+.board th.nm,.board td.nm{text-align:left;white-space:nowrap;padding-right:10px;position:sticky;left:0;background:var(--panel);font-weight:600}
+.cell{width:42px;height:34px;border-radius:6px;font-size:10px;font-family:'JetBrains Mono';display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid transparent}
+.cell.ok{background:rgba(34,197,94,.22);color:#bbf7d0}.cell.warn{background:rgba(240,166,58,.3);color:#fde68a}.cell.bad{background:rgba(239,68,68,.25);color:#fecaca}
+.cell.paid{background:rgba(91,155,213,.25);color:#bfdbfe}.cell.wait{background:var(--panel-2);color:var(--muted)}.cell.none{cursor:default}
+.board th.wk{color:#5b6472}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:10px 4px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.fd{display:flex;flex-direction:column;gap:5px}
+.fd label{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.fd .m{font-size:11.5px;color:var(--muted)}
+.sup input,.sup select{width:100%;padding:8px 9px;font-size:13px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;padding:40px 14px;overflow:auto;z-index:20}
+.modal[hidden]{display:none}
+.mbox{background:var(--bg);border:1px solid var(--line);border-radius:16px;max-width:760px;width:100%;padding:6px}
+.setup{max-width:520px;margin:40px auto}
+.setup .fd{margin-bottom:12px}
+.setup input{width:100%}
+@media(max-width:700px){.stats{grid-template-columns:repeat(2,1fr)}.stop{flex-direction:column;gap:4px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="home" href="index.html">← Hub</a></div>
+  <div class="hdr">
+    <div class="grow"><div class="t">Conveyance · HR</div><div class="s">Plan → site report → approve → pay</div></div>
+    <input type="month" id="month">
+    <button class="btn ghost" id="refresh" title="Refresh">⟳ Refresh</button>
+    <button class="btn ghost" id="logout" title="Forget the HR key on this computer">Lock</button>
+  </div>
+
+  <div id="setup" class="setup" hidden>
+    <div class="card">
+      <div class="ch"><div class="who">Connect</div></div>
+      <div class="p" style="margin-bottom:12px">Paste the Conveyance web-app link and the HR key. They are saved on this computer only.</div>
+      <div class="fd"><label>Conveyance link (/exec)</label><input id="sLink" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
+      <div class="fd"><label>HR key</label><input id="sKey" type="password" autocomplete="off"></div>
+      <button class="btn" id="sGo" style="width:100%">Open dashboard</button>
+      <div class="p" id="sErr" style="color:#fca5a5;margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="app" hidden>
+    <div class="tabs">
+      <button class="tab on" data-tab="review">Review<span class="badge" id="revN" hidden>0</span></button>
+      <button class="tab" data-tab="board">Board</button>
+      <button class="tab" data-tab="close">Month close</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </div>
+    <div class="sync"><span class="dot" id="dot"></span><span id="syncTxt">—</span></div>
+    <div class="stats" id="stats"></div>
+    <div id="vReview"></div>
+    <div id="vBoard" hidden></div>
+    <div id="vClose" hidden></div>
+    <div id="vSettings" hidden></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" hidden><div class="mbox" id="mbox"></div></div>
+
+<script>
+const K_API='lingel_conv_api', K_KEY='lingel_conv_hrkey';
+let API=localStorage.getItem(K_API)||'', KEY=localStorage.getItem(K_KEY)||'', DATA=null, SET=null, tab='review';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
+const pd=iso=>{ const p=String(iso).split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); };
+const LBL={'auto-approved':['Approved','ok'],'approved':['Approved','ok'],'paid':['Paid','paid'],'review':['Review','warn'],'in progress':['In progress',''],'not eligible':['Not eligible','bad'],'rejected':['Rejected','bad'],'no plan':['No plan','']};
+const chip=s=>{ const m=LBL[s]||[s,'']; return '<span class="chip '+m[1]+'">'+esc(m[0])+'</span>'; };
+function dot(k,t){ $('dot').className='dot '+(k||''); $('syncTxt').textContent=t; }
+function nowMonth(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+$('month').value=nowMonth();
+
+async function get(params){ const q=new URLSearchParams(Object.assign({key:KEY,t:Date.now()},params)); const r=await fetch(API+'?'+q,{cache:'no-store'}); const d=await r.json(); if(!d.ok) throw new Error(d.error||'error'); return d; }
+async function post(params){ const r=await fetch(API,{method:'POST',body:new URLSearchParams(Object.assign({key:KEY,by:'HR'},params))}); const d=JSON.parse((await r.text()).trim()||'{}'); if(!d.ok) throw new Error(d.error||'not saved'); return d; }
+
+/* ---------- connect ---------- */
+function showSetup(err){ $('setup').hidden=false; $('app').hidden=true; $('sLink').value=API; $('sKey').value=''; $('sErr').textContent=err||''; }
+$('sGo').onclick=async()=>{
+  API=$('sLink').value.trim(); KEY=$('sKey').value;
+  if(!/^https:\/\/script\.google\.com\/.+\/exec/.test(API)){ $('sErr').textContent='That is not an Apps Script /exec link.'; return; }
+  $('sGo').disabled=true; $('sErr').textContent='Checking…';
+  try{ await get({action:'hrSettings'}); localStorage.setItem(K_API,API); localStorage.setItem(K_KEY,KEY); $('setup').hidden=true; $('app').hidden=false; load(); }
+  catch(e){ $('sErr').textContent='Could not open: '+(e.message||e); }
+  $('sGo').disabled=false;
+};
+$('logout').onclick=()=>{ localStorage.removeItem(K_KEY); KEY=''; showSetup(); };
+$('refresh').onclick=()=>load();
+$('month').onchange=()=>load();
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b)); render(); });
+
+async function load(){
+  if(!API||!KEY){ showSetup(); return; }
+  $('setup').hidden=true; $('app').hidden=false;
+  dot('busy','Loading '+$('month').value+'…');
+  try{
+    const [d,s]=await Promise.all([get({action:'hr',month:$('month').value}), get({action:'hrSettings'})]);
+    DATA=d; SET=s; render(); dot('ok','Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+  }catch(e){ if(/HR key/i.test(e.message)) showSetup(e.message); else dot('err','Could not load: '+(e.message||e)); }
+}
+
+/* ---------- render ---------- */
+function allDays(){ return DATA?DATA.people.flatMap(p=>p.days):[]; }
+function render(){
+  if(!DATA) return;
+  const days=allDays(), review=days.filter(d=>d.status==='review');
+  $('revN').hidden=!review.length; $('revN').textContent=review.length;
+  const approved=DATA.people.reduce((a,p)=>a+p.approved,0), paid=DATA.people.reduce((a,p)=>a+p.paid,0);
+  const visits=DATA.people.reduce((a,p)=>a+p.visits,0), planned=DATA.people.reduce((a,p)=>a+p.planned,0);
+  $('stats').innerHTML=
+    '<div class="stat"><div class="n" style="color:var(--green)">'+inr(approved+paid)+'</div><div class="l">Approved this month</div></div>'
+   +'<div class="stat"><div class="n" style="color:var(--amber)">'+review.length+'</div><div class="l">Days waiting for you</div></div>'
+   +'<div class="stat"><div class="n">'+visits+' / '+planned+'</div><div class="l">Sites reported / planned</div></div>'
+   +'<div class="stat"><div class="n">'+(visits?inr((approved+paid)/visits):'—')+'</div><div class="l">Conveyance per site</div></div>';
+  ['review','board','close','settings'].forEach(t=>$('v'+t[0].toUpperCase()+t.slice(1)).hidden=t!==tab);
+  if(tab==='review') renderReview(review);
+  if(tab==='board') renderBoard();
+  if(tab==='close') renderClose();
+  if(tab==='settings') renderSettings();
+}
+function checks(st){ return '<div class="ck">'+st.checks.map(c=>'<span><b class="i '+esc(c.res)+'">'+(c.res==='ok'?'✓':c.res==='warn'?'!':c.res==='bad'?'✕':'…')+'</b> '+esc(c.msg)+'</span>').join('')+'</div>'; }
+function dayCard(d, withActs){
+  const k=d.supervisor+'|'+d.date;
+  const stops=d.stops.map((s,i)=>{
+    const map=s.lat&&s.lng?' <a class="lnk" target="_blank" rel="noopener" href="https://www.google.com/maps?q='+s.lat+','+s.lng+'">📍 report location</a>':'';
+    const pin=(s.lat&&s.lng&&s.checks.some(c=>c.n===4&&c.res==='warn'))?' <button class="btn ghost sm" data-pin="'+esc(s.offer)+'" data-lat="'+s.lat+'" data-lng="'+s.lng+'">Use as site pin</button>':'';
+    return '<div class="stop"><div class="o">'+(s.offer?('#'+esc(s.offer)):'—')+'</div><div class="grow"><div class="p" style="color:var(--text)">'+esc([s.task,s.project,s.city].filter(Boolean).join(' · '))+(s.planned?'':' <span class="chip warn">not planned</span>')+map+pin+'</div>'+checks(s)+'</div><span class="chip '+(s.result==='ok'?'ok':s.result==='warn'?'warn':s.result==='bad'?'bad':'')+'">'+(s.result==='ok'?'OK':s.result==='warn'?'Check':s.result==='bad'?'Not paid':'Pending')+'</span></div>';
+  }).join('');
+  const ex=d.extras.map(x=>'<div class="ex"><div class="grow"><b>'+esc(x.type)+'</b> '+inr(x.amount)+(x.offer?(' · #'+esc(x.offer)):'')+'<div class="p">'+esc(x.reason||'')+'</div></div>'
+    +(x.url?'<a class="lnk" target="_blank" rel="noopener" href="'+esc(x.url)+'">🧾 View bill</a>':'<span class="chip bad">no bill</span>')
+    +' <span class="chip '+(x.status==='approved'?'ok':x.status==='rejected'?'bad':'')+'">'+esc(x.status)+'</span>'
+    +(x.url&&withActs?' <button class="btn ghost sm" data-ex="'+esc(x.id)+'" data-st="approved">✓</button><button class="btn bad sm" data-ex="'+esc(x.id)+'" data-st="rejected">✕</button>':'')+'</div>').join('');
+  const money='<div class="p" style="margin-top:8px">Travel: '+d.km+' km × '+inr(d.rate)+' ('+esc(d.vehicle||'bike')+')'+(d.capped?' — capped at daily limit':'')+' = <b style="color:var(--text)">'+inr(d.travel)+'</b> · Bills OK: '+inr(d.extrasOk)+(d.kmNote?(' · '+esc(d.kmNote)):'')+'</div>';
+  const acts=withActs?'<div class="acts"><input type="number" min="0" data-amt="'+esc(k)+'" value="'+d.amount+'" title="Amount to pay"><button class="btn ok" data-ok="'+esc(k)+'">Approve</button><input class="why" data-why="'+esc(k)+'" placeholder="Reason (needed to reject)" value="'+esc(d.reason||'')+'"><button class="btn bad" data-no="'+esc(k)+'">Reject</button>'+((d.status==='approved'||d.status==='rejected')?'<button class="btn ghost" data-clear="'+esc(k)+'">Undo decision</button>':'')+'</div>':(d.reason?'<div class="p" style="color:#fcd34d;margin-top:8px">Note: '+esc(d.reason)+'</div>':'');
+  return '<div class="card'+(d.status==='review'?' warn':'')+'"><div class="ch"><div class="who">'+esc(d.supervisor)+'</div><div class="dt">'+esc(pd(d.date))+'</div>'+chip(d.status)+'<div class="amt">'+inr(d.amount)+'</div></div><div class="p">'+d.reported+' of '+d.stops.length+' site'+(d.stops.length===1?'':'s')+' paid · '+d.planned+' planned</div>'+stops+ex+money+acts+'</div>';
+}
+function renderReview(list){
+  const noBase=DATA.people.filter(p=>!p.hasBase);
+  let h='';
+  if(noBase.length) h+='<div class="card warn"><div class="p" style="color:var(--text)">⚠ No base location for: <b>'+noBase.map(p=>esc(p.supervisor)).join(', ')+'</b>. Their km cannot be worked out — add it in <a class="lnk" href="#" data-goto="settings">Settings</a>.</div></div>';
+  h+= list.length ? list.sort((a,b)=>a.date<b.date?-1:1).map(d=>dayCard(d,true)).join('') : '<div class="msg">Nothing waiting. Clean days approve themselves.</div>';
+  $('vReview').innerHTML=h;
+}
+function cellOf(d){
+  if(!d) return '<div class="cell none"></div>';
+  const cls={'auto-approved':'ok','approved':'ok','paid':'paid','review':'warn','rejected':'bad','not eligible':'bad','in progress':'wait','no plan':'wait'}[d.status]||'wait';
+  return '<div class="cell '+cls+'" data-day="'+esc(d.supervisor+'|'+d.date)+'" title="'+esc(pd(d.date)+' · '+(LBL[d.status]||[d.status])[0]+' · '+inr(d.amount))+'">'+(d.amount?Math.round(d.amount):'·')+'</div>';
+}
+function renderBoard(){
+  const days=DATA.days;
+  const head='<tr><th class="nm">Supervisor</th>'+days.map(x=>{ const dt=new Date(x+'T00:00:00'); return '<th class="'+(dt.getDay()===0?'wk':'')+'">'+Number(x.slice(8))+'</th>'; }).join('')+'</tr>';
+  const body=DATA.people.map(p=>{ const by={}; p.days.forEach(d=>by[d.date]=d); return '<tr><td class="nm">'+esc(p.supervisor)+'</td>'+days.map(x=>'<td>'+cellOf(by[x])+'</td>').join('')+'</tr>'; }).join('');
+  $('vBoard').innerHTML='<div class="scroll"><table class="board">'+head+body+'</table></div><div class="legend"><span><i style="background:rgba(34,197,94,.5)"></i>Approved</span><span><i style="background:rgba(240,166,58,.6)"></i>Needs review</span><span><i style="background:rgba(239,68,68,.5)"></i>Rejected / not eligible</span><span><i style="background:rgba(91,155,213,.5)"></i>Paid</span><span><i style="background:var(--panel-2)"></i>In progress / no plan</span><span>Number = ₹ for the day · tap a day to open it</span></div>';
+}
+function renderClose(){
+  const rows=DATA.people.map(p=>'<tr><td>'+esc(p.supervisor)+(p.known?'':' <span class="chip warn">not in list</span>')+'</td><td>'+esc(p.vehicle||'—')+'</td><td class="r">'+p.planned+'</td><td class="r">'+p.visits+'</td><td class="r">'+p.km+'</td><td class="r">'+(p.review?'<span class="chip warn">'+p.review+'</span>':'0')+'</td><td class="r"><b>'+inr(p.approved+p.paid)+'</b></td><td>'+(p.isPaid?'<span class="chip paid">Paid</span>':(p.review?'<span class="p">Clear review first</span>':'<button class="btn sm" data-paid="'+esc(p.supervisor)+'" data-amt="'+(p.approved)+'">Mark paid</button>'))+'</td></tr>').join('');
+  const t=f=>DATA.people.reduce((a,p)=>a+f(p),0);
+  $('vClose').innerHTML='<div class="scroll"><table class="tbl"><thead><tr><th>Supervisor</th><th>Vehicle</th><th class="r">Planned</th><th class="r">Sites paid</th><th class="r">km</th><th class="r">In review</th><th class="r">Approved ₹</th><th></th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td>Total</td><td></td><td class="r">'+t(p=>p.planned)+'</td><td class="r">'+t(p=>p.visits)+'</td><td class="r">'+t(p=>p.km)+'</td><td class="r">'+t(p=>p.review)+'</td><td class="r">'+inr(t(p=>p.approved+p.paid))+'</td><td></td></tr></tfoot></table></div>'
+   +'<div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button class="btn" id="csvSum">⤓ Payroll CSV (one row per person)</button><button class="btn ghost" id="csvDay">⤓ Detail CSV (one row per day)</button></div>'
+   +'<div class="p" style="margin-top:10px">Mark paid only after payroll: it locks that month for the supervisor and shows “Paid” in their app.</div>';
+  $('csvSum').onclick=()=>csv('conveyance-'+DATA.month+'-payroll.csv',[['Month','Supervisor','Vehicle','Planned sites','Sites paid','km','Days in review','Approved INR','Paid']].concat(DATA.people.map(p=>[DATA.month,p.supervisor,p.vehicle,p.planned,p.visits,p.km,p.review,Math.round(p.approved+p.paid),p.isPaid?'yes':'no'])));
+  $('csvDay').onclick=()=>csv('conveyance-'+DATA.month+'-days.csv',[['Date','Supervisor','Status','Planned','Reported','km','Rate','Travel INR','Bills INR','Amount INR','Offers','HR note']].concat(allDays().map(d=>[d.date,d.supervisor,d.status,d.planned,d.reported,d.km,d.rate,d.travel,d.extrasOk,d.amount,d.stops.map(s=>s.offer+':'+s.result).join(' '),d.reason])));
+}
+function csv(name,rows){ const t=rows.map(r=>r.map(v=>{ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(',')).join('\n'); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['﻿'+t],{type:'text/csv'})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+const SET_INFO=[['rate_bike','Bike ₹ / km'],['rate_car','Car ₹ / km'],['rate_public','Bus/auto cap ₹ / km'],['daily_cap','Daily cap ₹'],['cutoff_hour','Plan cut-off (hour, day before)'],['gps_radius_m','At-site radius (m)'],['late_report_hour','Late report after (hour, next day)'],['extra_flag_amount','Review bills above ₹']];
+function renderSettings(){
+  const s=SET.settings, sups=SET.supervisors;
+  const fields=SET_INFO.map(([k,l])=>'<div class="fd"><label>'+esc(l)+'</label><input type="number" step="any" data-set="'+k+'" value="'+esc(s[k])+'"></div>').join('');
+  const supRow=(x,i)=>'<tr class="sup" data-old="'+esc(x?x.name:'')+'"><td><input data-f="name" value="'+esc(x?x.name:'')+'" placeholder="Name as in the plan"></td><td><input data-f="base" value="'+esc(x?x.base:'')+'" placeholder="Home / office address"></td><td><input data-f="ll" value="'+esc(x&&x.lat?(x.lat+', '+x.lng):'')+'" placeholder="28.4595, 77.0266 or a Maps link"></td><td><select data-f="vehicle">'+['bike','car','public'].map(v=>'<option'+((x?x.vehicle:'bike')===v?' selected':'')+'>'+v+'</option>').join('')+'</select></td><td><select data-f="active"><option value="yes">yes</option><option value="no"'+(x&&!x.active?' selected':'')+'>no</option></select></td><td><button class="btn sm" data-savesup>Save</button></td></tr>';
+  $('vSettings').innerHTML='<div class="card"><div class="ch"><div class="who">Rate card</div></div><div class="grid2">'+fields+'</div><div style="margin-top:12px"><button class="btn" id="saveSet">Save rate card</button></div><div class="p" style="margin-top:8px">Changes apply to every day not yet approved or paid.</div></div>'
+   +'<div class="card"><div class="ch"><div class="who">Supervisors</div><div class="p">Name must match the name used in Team Availability plans. Base = where their day starts and ends.</div></div><div class="scroll" style="border:none;padding:0"><table class="tbl"><thead><tr><th>Name</th><th>Base address</th><th>Base location (lat, lng)</th><th>Vehicle</th><th>Active</th><th></th></tr></thead><tbody>'+sups.map(supRow).join('')+supRow(null)+'</tbody></table></div><div class="p" style="margin-top:8px">Tip: in Google Maps, long-press the base, copy the coordinates (or the share link) and paste them here.</div></div>';
+  $('saveSet').onclick=async()=>{ const v={}; document.querySelectorAll('[data-set]').forEach(i=>v[i.dataset.set]=i.value); try{ dot('busy','Saving…'); await post({action:'hrSaveSettings',settings:JSON.stringify(v)}); await load(); }catch(e){ dot('err',e.message); } };
+}
+function parseLL(t){ t=String(t||''); let m=t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)||t.match(/[?&](?:q|query|ll)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/)||t.match(/(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/); return m?{lat:m[1],lng:m[2]}:null; }
+
+/* ---------- actions ---------- */
+function findDay(k){ const [sup,date]=k.split('|'); return allDays().find(d=>d.supervisor===sup&&d.date===date); }
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('button,[data-day],[data-goto]'); if(!b) return;
+  try{
+    if(b.dataset.goto){ e.preventDefault(); document.querySelector('.tab[data-tab="'+b.dataset.goto+'"]').click(); return; }
+    if(b.dataset.day){ const d=findDay(b.dataset.day); if(!d) return; $('mbox').innerHTML=dayCard(d,true)+'<div style="text-align:right;padding:0 8px 8px"><button class="btn ghost" data-close>Close</button></div>'; $('modal').hidden=false; return; }
+    if(b.hasAttribute('data-close')){ $('modal').hidden=true; return; }
+    const k=b.dataset.ok||b.dataset.no||b.dataset.clear;
+    if(k){
+      const [sup,date]=k.split('|'), scope=b.closest('.card');
+      const amt=scope.querySelector('[data-amt]').value, why=scope.querySelector('[data-why]').value.trim();
+      const status=b.dataset.ok?'approved':b.dataset.no?'rejected':'clear';
+      if(status==='rejected'&&!why){ scope.querySelector('[data-why]').focus(); dot('err','Write a reason to reject — the supervisor sees it'); return; }
+      b.disabled=true; dot('busy','Saving…');
+      await post({action:'hrDecide',supervisor:sup,date:date,status:status,amount:status==='approved'?amt:'',note:why});
+      $('modal').hidden=true; await load(); return;
+    }
+    if(b.dataset.ex){ b.disabled=true; await post({action:'hrExtra',id:b.dataset.ex,status:b.dataset.st,note:''}); await load(); return; }
+    if(b.dataset.pin){ if(!confirm('Make this report location the official site pin for #'+b.dataset.pin+'?')) return; await post({action:'hrPin',offer:b.dataset.pin,lat:b.dataset.lat,lng:b.dataset.lng}); $('modal').hidden=true; await load(); return; }
+    if(b.dataset.paid){ if(!confirm('Mark '+b.dataset.paid+' as paid '+inr(b.dataset.amt)+' for '+DATA.month+'?')) return; await post({action:'hrPaid',month:DATA.month,supervisor:b.dataset.paid,amount:b.dataset.amt}); await load(); return; }
+    if(b.hasAttribute('data-savesup')){
+      const tr=b.closest('tr'), f=n=>tr.querySelector('[data-f="'+n+'"]').value.trim(), ll=parseLL(f('ll'));
+      if(!f('name')){ dot('err','Name is required'); return; }
+      if(f('ll')&&!ll){ dot('err','Could not read the location — paste "lat, lng" or a Google Maps link'); return; }
+      b.disabled=true; dot('busy','Saving…');
+      await post({action:'hrSaveSupervisor',oldName:tr.dataset.old,name:f('name'),base:f('base'),lat:ll?ll.lat:'',lng:ll?ll.lng:'',vehicle:f('vehicle'),active:f('active')});
+      await load(); return;
+    }
+  }catch(err){ dot('err','Not saved: '+(err.message||err)); b.disabled=false; }
+});
+$('modal').addEventListener('click',e=>{ if(e.target===$('modal')) $('modal').hidden=true; });
+load();
+</script>
+</body>
+</html>
