@@ -29,7 +29,11 @@
 - **Supervisor**: at the site, files the SiteLog report as usual. The PDF/Share/Drive button also records the visit with GPS. The ₹ Conveyance tab shows today's sites, the "Open SiteLog" button, bills, and the month.
 - **Bills**: toll, parking, auto/cab, bus/train, stay, with a photo, from ₹ Conveyance → Add bill.
 - **System**: matches plan ↔ report, works out km (Google Maps, base → sites → base) × rate, and runs the 6 checks. Clean days approve themselves.
-- **HR**: Review tab = only days that need a human. Approve (amount can be changed) or Reject with a reason. Month close → Payroll CSV → Mark paid.
+- **HR**: Review tab = only days that need a human. Approve (amount can be changed) or Reject with a reason.
+- **Month end for accounts**: Month close tab → **Close month** (freezes every approved day, with route and km, into the **Ledger** tab) → **Accounts statement (PDF)** (summary + one page per supervisor, signature lines) → after payment, **Mark paid**.
+
+## Updating the script later
+After replacing the code in Apps Script: **Deploy → Manage deployments → ✏️ → Version: New version → Deploy**. The link stays the same.
 
 ## Notes
 - The first GPS for an Offer No. becomes its site pin; HR can replace it with "Use as site pin".

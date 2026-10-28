@@ -11,7 +11,7 @@
  *  5. Copy the /exec URL into the apps (they ask for it once).
  *
  * Tabs (created by setup): Settings, Supervisors, Plans, SiteVisits, Extras,
- *                          Pins, Decisions, Paid
+ *                          Pins, Decisions, Paid, Ledger (frozen at month close, for accounts)
  */
 
 var TZ = 'Asia/Kolkata';
@@ -23,7 +23,8 @@ var TABS = {
   Extras:      ['Id', 'Date', 'Supervisor', 'Offer', 'Type', 'Amount', 'Reason', 'Bill URL', 'Status', 'HR Note', 'Added At'],
   Pins:        ['Offer', 'Lat', 'Lng', 'Source', 'Set At'],
   Decisions:   ['Date', 'Supervisor', 'Status', 'Amount', 'Note', 'By', 'At'],
-  Paid:        ['Month', 'Supervisor', 'Amount', 'Paid At', 'By']
+  Paid:        ['Month', 'Supervisor', 'Amount', 'Paid At', 'By'],
+  Ledger:      ['Month', 'Date', 'Supervisor', 'Vehicle', 'Sites', 'Route', 'km', 'Rate', 'Travel', 'Bills', 'Total', 'Status', 'Approved By', 'Closed At']
 };
 var DEFAULTS = [
   ['rate_bike', 4, '₹ per km, own bike'],
@@ -68,6 +69,7 @@ function doPost(e) {
     if (a === 'hrSaveSupervisor') { hrGuard_(p.key); return out(hrSaveSupervisor_(p)); }
     if (a === 'hrPin') { hrGuard_(p.key); return out(hrPin_(p)); }
     if (a === 'hrPaid') { hrGuard_(p.key); return out(hrPaid_(p)); }
+    if (a === 'hrCloseMonth') { hrGuard_(p.key); return out(hrCloseMonth_(p)); }
     return out({ ok: false, error: 'unknown action ' + a });
   } catch (err) {
     return out({ ok: false, error: String(err.message || err) });
@@ -274,11 +276,16 @@ function buildDay_(sup, date, ctx) {
 
   // route: base → paid-eligible stops in plan order → base
   var pts = stops.filter(function (s) { return (s.result === 'ok' || s.result === 'warn') && s.lat && s.lng; });
-  var km = 0, kmNote = '';
+  var km = 0, kmNote = '', legs = [];
+  var names = ['Base'].concat(pts.map(function (s) { return '#' + s.offer; })).concat(['Base']);
   if (pts.length) {
-    if (supRec.lat && supRec.lng) { var r = routeKm_([{ lat: supRec.lat, lng: supRec.lng }].concat(pts).concat([{ lat: supRec.lat, lng: supRec.lng }]), ctx); km = r.km; kmNote = r.how; }
+    if (supRec.lat && supRec.lng) {
+      var r = routeKm_([{ lat: supRec.lat, lng: supRec.lng }].concat(pts).concat([{ lat: supRec.lat, lng: supRec.lng }]), ctx); km = r.km; kmNote = r.how;
+      (r.legs || []).forEach(function (k, i) { legs.push({ from: names[i], to: names[i + 1], km: k }); });
+    }
     else kmNote = 'No base location set for this supervisor';
   }
+  var route = pts.length ? names.join(' → ') : '';
   var rate = supRec.vehicle === 'car' ? S.rate_car : (supRec.vehicle === 'public' ? S.rate_public : S.rate_bike);
   var travel = Math.min(Math.round(km * rate), S.daily_cap);
   var capped = Math.round(km * rate) > S.daily_cap;
@@ -299,7 +306,8 @@ function buildDay_(sup, date, ctx) {
   else status = 'auto-approved';
   if (ctx.paidKey[n + '|' + date.slice(0, 7)] && (status === 'approved' || status === 'auto-approved')) status = 'paid';
 
-  return { date: date, supervisor: supRec.name || sup, vehicle: supRec.vehicle, rate: rate, km: Math.round(km * 10) / 10, kmNote: kmNote,
+  var approvedBy = dec ? (String(dec.By || 'HR') + (dec.At ? ' · ' + dayStr_(dec.At) : '')) : (status === 'auto-approved' || status === 'paid' ? 'Auto (all checks passed)' : '');
+  return { date: date, supervisor: supRec.name || sup, vehicle: supRec.vehicle, rate: rate, km: Math.round(km * 10) / 10, kmNote: kmNote, route: route, legs: legs, approvedBy: approvedBy, base: supRec.base || '',
            travel: travel, capped: capped, extras: ex, extrasOk: exOk, amount: Math.round(amount), status: status, reason: reason,
            stops: stops, planned: plans.length, reported: stops.filter(function (s) { return s.result === 'ok' || s.result === 'warn'; }).length };
 }
@@ -328,13 +336,15 @@ function routeKm_(pts, ctx) {
     for (var i = 1; i < pts.length - 1; i++) df.addWaypoint(pts[i].lat, pts[i].lng);
     var d = df.getDirections();
     if (d && d.routes && d.routes.length) {
+      var legs = d.routes[0].legs.map(function (l) { return Math.round(l.distance.value / 100) / 10; });
       var m = d.routes[0].legs.reduce(function (a, l) { return a + l.distance.value; }, 0);
-      res = { km: Math.round(m / 100) / 10, how: 'Google Maps driving distance' };
+      res = { km: Math.round(m / 100) / 10, legs: legs, how: 'Google Maps driving distance' };
     }
   } catch (x) {}
   if (!res) {
-    var s = 0; for (var j = 1; j < pts.length; j++) s += metres_(pts[j - 1].lat, pts[j - 1].lng, pts[j].lat, pts[j].lng);
-    res = { km: Math.round(s * 1.3 / 100) / 10, how: 'Estimated (straight line × 1.3)' };
+    var s = 0, lg = [];
+    for (var j = 1; j < pts.length; j++) { var mm = metres_(pts[j - 1].lat, pts[j - 1].lng, pts[j].lat, pts[j].lng); s += mm; lg.push(Math.round(mm * 1.3 / 100) / 10); }
+    res = { km: Math.round(s * 1.3 / 100) / 10, legs: lg, how: 'Estimated (straight line × 1.3)' };
   }
   cache.put(key, JSON.stringify(res), 21600);
   return res;
@@ -432,4 +442,24 @@ function hrPaid_(p) {
   var exists = rows_('Paid').some(function (r) { return String(r.Month).slice(0, 7) === month && norm_(r.Supervisor) === norm_(sup); });
   if (!exists) append_('Paid', { Month: month, Supervisor: sup, Amount: num_(p.amount), 'Paid At': new Date().toISOString(), By: p.by || 'HR' });
   return { ok: true };
+}
+
+/* Freeze the month for accounts: every approved / paid day → Ledger tab (re-closing replaces that month's rows). */
+function hrCloseMonth_(p) {
+  var data = hrMonth_(p.month), month = data.month, now = new Date().toISOString();
+  var sh = sheet_('Ledger'), old = rows_('Ledger').filter(function (r) { return String(r.Month).slice(0, 7) === month; });
+  old.map(function (r) { return r._row; }).sort(function (a, b) { return b - a; }).forEach(function (n) { sh.deleteRow(n); });
+  var out = [], review = 0, total = 0;
+  data.people.forEach(function (pp) {
+    pp.days.forEach(function (d) {
+      if (d.status === 'review' || d.status === 'in progress') { review++; return; }
+      if (['approved', 'auto-approved', 'paid'].indexOf(d.status) < 0) return;
+      var sites = d.stops.filter(function (s) { return s.result === 'ok' || s.result === 'warn'; }).map(function (s) { return '#' + s.offer; }).join(', ');
+      out.push([month, d.date, d.supervisor, d.vehicle, sites, d.route, d.km, d.rate, d.travel, d.extrasOk, d.amount, d.status, d.approvedBy, now]);
+      total += d.amount;
+    });
+  });
+  out.sort(function (a, b) { return a[2] === b[2] ? (a[1] < b[1] ? -1 : 1) : (a[2] < b[2] ? -1 : 1); });
+  if (out.length) sh.getRange(sh.getLastRow() + 1, 1, out.length, TABS.Ledger.length).setValues(out);
+  return { ok: true, month: month, rows: out.length, total: total, stillInReview: review, closedAt: now };
 }
