@@ -2185,7 +2185,8 @@ function slLoadByOffer(){
    Nothing is sent if that link is not set. Offline → queued and retried.              */
 (function(){
   var KEY='lingel_conv_api', Q='lingel_conv_visit_q', lastSig='';
-  function api(){ try{ return localStorage.getItem(KEY)||''; }catch(e){ return ''; } }
+  var CONV_DEFAULT='https://script.google.com/a/macros/lingel.in/s/AKfycbzyGC6pKl3URjpAqHI5hTSr3dEw03VRTDuuQ6-KAixS8l-BZ_0SnRTDo3F6bkMKweMSCw/exec';
+  function api(){ try{ return localStorage.getItem(KEY)||CONV_DEFAULT; }catch(e){ return CONV_DEFAULT; } }
   function el(id){ return document.getElementById(id); }
   function who(){ try{ var s=JSON.parse(localStorage.getItem('lingel_supervisor')||'null'); if(s&&s.name) return s.name; }catch(e){} return ((el('o_insp')||{}).value||'').trim(); }
   function today(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }

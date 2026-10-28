@@ -127,7 +127,8 @@ a.lnk{color:var(--hivis);text-decoration:none;font-size:12px}
 
 <script>
 const K_API='lingel_conv_api', K_KEY='lingel_conv_hrkey';
-let API=localStorage.getItem(K_API)||'', KEY=localStorage.getItem(K_KEY)||'', DATA=null, SET=null, tab='review';
+const API_DEFAULT='https://script.google.com/a/macros/lingel.in/s/AKfycbzyGC6pKl3URjpAqHI5hTSr3dEw03VRTDuuQ6-KAixS8l-BZ_0SnRTDo3F6bkMKweMSCw/exec';
+let API=localStorage.getItem(K_API)||API_DEFAULT, KEY=localStorage.getItem(K_KEY)||'', DATA=null, SET=null, tab='review';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');

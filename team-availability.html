@@ -2848,7 +2848,7 @@ async function reprintWorkOrder(name,team,offer){
    (a separate Apps Script). This tab shows the supervisor their day + month;
    HR approves in conveyance-hr.html. Nothing here touches the invoice backend. */
 const CONV_KEY='lingel_conv_api', CONV_ME='lingel_conv_me', CONV_Q='lingel_conv_queue';
-const CONV_DEFAULT='';   // optional: paste the conveyance /exec URL here so nobody is asked for it
+const CONV_DEFAULT='https://script.google.com/a/macros/lingel.in/s/AKfycbzyGC6pKl3URjpAqHI5hTSr3dEw03VRTDuuQ6-KAixS8l-BZ_0SnRTDo3F6bkMKweMSCw/exec';   // optional: paste the conveyance /exec URL here so nobody is asked for it
 let CONV_API=(function(){ try{ return localStorage.getItem(CONV_KEY)||CONV_DEFAULT; }catch(e){ return CONV_DEFAULT; } })();
 let cvData=null, cvInited=false, cvBackfilled=false, cvLoading=false;
 const cvInr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
