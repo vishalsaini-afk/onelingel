@@ -420,6 +420,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .cvextra{display:flex;gap:10px;align-items:center;font-size:13px;padding:9px 0;border-top:1px dashed var(--line)}
 .cvextra a{text-decoration:none;font-size:20px}
 .cvnote{font-size:12px;color:var(--muted);line-height:1.55;text-align:center;padding:8px 10px 18px}
+.cvkm{display:flex;gap:6px;align-items:center;margin-top:6px}.cvkm input{width:84px;border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:15px;background:var(--panel-2);color:var(--text);font-family:'JetBrains Mono'}.cvkm span{font-size:12px;color:var(--muted)}
 .cvprev{max-width:100%;max-height:180px;border-radius:8px;margin-top:6px;display:none}
 #mBody .seg{flex-wrap:wrap}
 
@@ -517,7 +518,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
     <div id="cvToday"></div>
     <div class="stats" id="cvStats"></div>
     <div id="cvDays"></div>
-    <div class="cvnote">No claim to send. Plan your sites by Offer No. before 9 pm, and file a SiteLog report at every site — your conveyance is worked out from that at the company rate. Add only toll, parking, auto/cab or stay bills, with a photo.</div>
+    <div class="cvnote">No claim to send. Plan your sites by Offer No. before 9 pm, and file a Site Inspection report or a Handover form at every site visit — Measurement visits are approved automatically — just type the km you travelled for each one. Conveyance is worked out at the company rate. Add only toll, parking, auto/cab or stay bills, with a photo.</div>
   </div>
 
   <div class="foot-note">Lingel Field Operations · Live status in teams · full history in Bookings</div>
@@ -2843,7 +2844,7 @@ async function reprintWorkOrder(name,team,offer){
 </script>
 <script>
 /* ===================== ₹ CONVEYANCE (plan-linked) =====================
-   Rule: no plan → no conveyance; no SiteLog report → no approval.
+   Rule: no plan → no conveyance. Site Visit → approved when a Site Inspection report OR a Handover form exists. Measurement → auto-approved (no report needed); supervisor types the km.
    Supervisor plans made in this app are mirrored to the Conveyance backend
    (a separate Apps Script). This tab shows the supervisor their day + month;
    HR approves in conveyance-hr.html. Nothing here touches the invoice backend. */
@@ -2881,6 +2882,9 @@ window.addEventListener('online',()=>{ convFlush(); });
 const CV_LABEL={'auto-approved':['Approved','ok'],'approved':['Approved','ok'],'paid':['Paid','paid'],'review':['HR review','warn'],'in progress':['In progress',''],'not eligible':['Not eligible','bad'],'rejected':['Rejected','bad'],'no plan':['No plan','']};
 function cvChip(s){ const m=CV_LABEL[s]||[s,'']; return '<span class="chip '+m[1]+'">'+esc(m[0])+'</span>'; }
 function cvChecks(st){ return '<div class="ck">'+(st.checks||[]).map(c=>'<span><b class="i '+esc(c.res)+'">'+(c.res==='ok'?'✓':c.res==='warn'?'!':c.res==='bad'?'✕':'…')+'</b> '+esc(c.msg)+'</span>').join('')+'</div>'; }
+function cvIsMeas(t){ return /measure/i.test(String(t||'')); }
+function cvHandoverLink(offer, project){ return 'lingel_handover_form.html?offer='+encodeURIComponent(offer)+(project?('&client='+encodeURIComponent(project)):''); }
+function cvKmBox(offer, date, km){ return '<div class="cvkm"><input type="number" inputmode="decimal" min="0" max="500" step="0.1" placeholder="km" value="'+(km?esc(km):'')+'" data-kmoff="'+esc(offer)+'" data-kmdate="'+esc(date)+'"><span>km</span><button class="cvlink" data-cvkm="1">Save</button></div>'; }
 function cvSiteLogLink(offer, project){ return 'site-inspection-portal.html?offer='+encodeURIComponent(offer)+(project?('&client='+encodeURIComponent(project)):''); }
 
 function convOpen(){
@@ -2936,7 +2940,8 @@ function cvRender(d){
     let warnTxt='';
     if(!o){ chip='<span class="chip bad">No Offer No</span>'; warnTxt='<div class="p" style="color:#fca5a5">Add the Offer No. to this plan, or it is not paid</div>'; }
     else if(s && (s.result==='ok'||s.result==='warn')){ chip='<span class="chip '+(s.result==='ok'?'ok':'warn')+'">Report ✓'+(s.result==='warn'?' · check':'')+'</span>'; }
-    else { chip='<span class="chip">Report pending</span>'; act='<a class="cvlink" href="'+cvSiteLogLink(o,p.project)+'">Open SiteLog →</a>'; }
+    else if(cvIsMeas(p.task)){ chip='<span class="chip ok">Measurement · auto-approved</span>'; warnTxt=cvKmBox(o,today,s&&s.manualKm)+(s&&s.manualKm?'':'<div class="p" style="color:#fcd34d">Type the km you travelled for this measurement</div>'); }
+    else { chip='<span class="chip">Report pending</span>'; act='<div style="display:flex;flex-direction:column;gap:5px"><a class="cvlink" href="'+cvSiteLogLink(o,p.project)+'">Site report →</a><a class="cvlink" href="'+cvHandoverLink(o,p.project)+'">Handover →</a></div>'; }
     rowsH+='<div class="cvstop"><div class="grow"><div class="o">'+(o?('#'+esc(o)):'—')+'</div><div class="p">'+esc([p.task,p.project,p.city].filter(Boolean).join(' · '))+'</div>'+warnTxt+(s&&s.checks&&s.result==='warn'?cvChecks(s):'')+'</div>'+chip+act+'</div>';
   });
   Object.keys(srv).forEach(o=>{ if(seen[o]) return; const s=srv[o]; rowsH+='<div class="cvstop"><div class="grow"><div class="o">#'+esc(o)+'</div><div class="p">'+esc(s.task+(s.project?(' · '+s.project):''))+'</div>'+cvChecks(s)+'</div><span class="chip '+(s.result==='ok'?'ok':'warn')+'">'+(s.planned?'Report ✓':'Not planned')+'</span></div>'; });
@@ -2961,12 +2966,20 @@ function cvRender(d){
     + (d.days.length ? d.days.map(cvDayHTML).join('') : '<div class="msg">No plans or reports this month yet.</div>');
 }
 function cvDayHTML(x){
-  const stops=x.stops.map(s=>'<div class="cvstop"><div class="grow"><div class="o">'+(s.offer?('#'+esc(s.offer)):'— no Offer No')+(s.planned?'':' <span class="chip warn">not planned</span>')+'</div><div class="p">'+esc([s.task,s.project,s.city].filter(Boolean).join(' · '))+'</div>'+cvChecks(s)+'</div><span class="chip '+(s.result==='ok'?'ok':s.result==='warn'?'warn':s.result==='bad'?'bad':'')+'">'+(s.result==='ok'?'Paid':s.result==='warn'?'Check':s.result==='bad'?'Not paid':'Pending')+'</span></div>').join('');
+  const stops=x.stops.map(s=>'<div class="cvstop"><div class="grow"><div class="o">'+(s.offer?('#'+esc(s.offer)):'— no Offer No')+(s.planned?'':' <span class="chip warn">not planned</span>')+'</div><div class="p">'+esc([s.task,s.project,s.city].filter(Boolean).join(' · '))+'</div>'+cvChecks(s)+(cvIsMeas(s.task)&&s.offer&&x.status!=='paid'?cvKmBox(s.offer,x.date,s.manualKm):'')+'</div><span class="chip '+(s.result==='ok'?'ok':s.result==='warn'?'warn':s.result==='bad'?'bad':'')+'">'+(s.result==='ok'?'Paid':s.result==='warn'?'Check':s.result==='bad'?'Not paid':'Pending')+'</span></div>').join('');
   const ex=x.extras.map(e=>'<div class="cvextra">'+(e.url?'<a href="'+esc(e.url)+'" target="_blank" rel="noopener">🧾</a>':'⚠')+'<div style="flex:1"><b>'+esc(e.type)+'</b> '+cvInr(e.amount)+'<div class="p">'+esc(e.reason||'')+(e.note?(' · HR: '+esc(e.note)):'')+'</div></div><span class="chip '+(e.result==='bad'?'bad':e.status==='approved'?'ok':'')+'">'+esc(e.result==='bad'&&!e.url?'no bill':e.status)+'</span></div>').join('');
   const money='<div class="p" style="margin:8px 0 2px">'+x.km+' km × '+cvInr(x.rate)+(x.capped?' (daily cap)':'')+' = '+cvInr(x.travel)+(x.extrasOk?(' + bills '+cvInr(x.extrasOk)):'')+(x.kmNote?(' · '+esc(x.kmNote)):'')+'</div>';
   return '<details class="cvday"><summary><div class="dt">'+esc(prettyDate(x.date))+'</div><div class="mid">'+x.reported+' of '+x.stops.length+' site'+(x.stops.length===1?'':'s')+' paid · '+x.km+' km</div><div class="amt">'+cvInr(x.amount)+'</div>'+cvChip(x.status)+'</summary><div class="cvbody">'+(x.reason?('<div class="p" style="margin:8px 0;color:#fcd34d">HR: '+esc(x.reason)+'</div>'):'')+stops+ex+money+'</div></details>';
 }
 async function cvClick(e){
+  const kb=e.target.closest('[data-cvkm]');
+  if(kb){ e.preventDefault(); e.stopPropagation(); const inp=kb.parentNode.querySelector('input'); const km=parseFloat(inp.value);
+    if(inp.value!=='' && !(km>=0 && km<=500)){ setDot('dotC','syncC','err','Km must be between 0 and 500'); return; }
+    const p={action:'setMeasureKm', date:inp.getAttribute('data-kmdate'), supervisor:cvMe(), offer:inp.getAttribute('data-kmoff'), km:String(inp.value===''?0:km)};
+    kb.disabled=true; kb.textContent='…';
+    try{ const d=await convPost(p); if(!d.ok) throw new Error(d.error||'not saved'); setDot('dotC','syncC','ok', d.cleared?'Km cleared':'Saved '+km+' km for #'+p.offer); cvLoad(); }
+    catch(err){ if(!navigator.onLine||/Failed to fetch|NetworkError|Load failed/i.test(String(err.message||err))){ convQueue(p); setDot('dotC','syncC','busy','No network — km saved on this phone, will send later'); kb.textContent='Saved'; } else { kb.disabled=false; kb.textContent='Save'; setDot('dotC','syncC','err','Not saved: '+(err.message||err)); } }
+    return; }
   const b=e.target.closest('[data-cv],[data-cvdel]'); if(!b) return;
   if(b.getAttribute('data-cv')==='plan'){ openSupPlan({supervisor:cvMe(), day:'tomorrow'}); return; }
   if(b.getAttribute('data-cv')==='extra'){ cvOpenExtra(); return; }
@@ -2989,7 +3002,7 @@ function cvStatement(){
    +'</tbody><tfoot><tr><td>Total</td><td>'+sum(x=>x.reported)+' sites</td><td></td><td class="r">'+Math.round(sum(x=>x.km)*10)/10+'</td><td class="r">'+rs(sum(x=>x.travel))+'</td><td class="r">'+rs(sum(x=>x.extrasOk))+'</td><td class="r">'+rs(sum(x=>x.amount))+'</td><td></td></tr></tfoot></table>'
    +(ex.length?'<h2>Bills included</h2><table><thead><tr><th>Date</th><th>Type</th><th>Offer No.</th><th>Reason</th><th class="r">Amount</th><th>Bill photo</th></tr></thead><tbody>'+ex.map(e=>'<tr><td class="nw">'+esc(prettyDate(e.date))+'</td><td>'+esc(e.type)+'</td><td>#'+esc(e.offer)+'</td><td>'+esc(e.reason||'')+'</td><td class="r">'+rs(e.amount)+'</td><td>'+(e.url?'<a href="'+esc(e.url)+'">open</a>':'—')+'</td></tr>').join('')+'</tbody></table>':'')
    +(pend.length?'<p class="warn">Not included yet: '+pend.map(x=>esc(prettyDate(x.date))+' ('+esc((CV_LABEL[x.status]||[x.status])[0])+')').join(', ')+'</p>':'')
-   +'<p class="how">km = base → reported sites in planned order → back to base, Google Maps driving distance. Only sites with a SiteLog report are paid. Travel = km × company rate, capped per day; bills need a photo and HR approval.</p>'
+   +'<p class="how">km = base → reported sites in planned order → back to base, Google Maps driving distance. Site visits are paid when a Site Inspection report or a Handover form exists; Measurement visits are approved automatically. Travel = km × company rate, capped per day; bills need a photo and HR approval.</p>'
    +'<div class="sigs"><div class="sig"><div class="line"></div>Supervisor</div><div class="sig"><div class="line"></div>Checked by (HR)</div></div>';
   const css='@page{size:A4;margin:14mm 12mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;margin:0}.hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #14432f;padding-bottom:8px;margin-bottom:12px;gap:10px}.co{font-size:10px;color:#555;text-transform:uppercase;letter-spacing:.05em}h1{font-size:19px;margin:3px 0}h2{font-size:13px;margin:16px 0 6px}.sub{color:#555}.tot{text-align:right;color:#555}.tot .n{font-size:22px;font-weight:700;color:#14432f}table{width:100%;border-collapse:collapse;margin-bottom:8px}th{background:#14432f;color:#fff;text-align:left;padding:6px;font-size:10px}td{padding:5px 6px;border-bottom:1px solid #ddd;vertical-align:top}tfoot td{font-weight:700;border-top:2px solid #14432f;background:#eef6f1}.r{text-align:right;white-space:nowrap}.nw{white-space:nowrap}.rt{font-size:10px}.km{color:#666}.ap{font-size:9.5px;color:#444}.warn{color:#9a6700;background:#fff7e0;padding:6px 8px;border-radius:4px}.how{color:#444;background:#f4f6f8;padding:8px 10px;border-radius:6px;line-height:1.5}.sigs{display:flex;gap:18px;margin-top:40px}.sig{flex:1;text-align:center;color:#444;font-size:10px}.sig .line{border-top:1px solid #333;margin-bottom:5px}a{color:#14432f}.bar{position:sticky;top:0;background:#14432f;color:#fff;padding:10px 12px;display:flex;gap:10px;align-items:center;font-family:Arial;font-size:13px}.bar button{margin-left:auto;background:#ffce1f;color:#111;border:0;border-radius:6px;padding:9px 14px;font-weight:700;font-size:14px}@media print{.bar{display:none}}@media(max-width:600px){table{font-size:10px}.rt{font-size:9px}}';
   const w=window.open('','_blank'); if(!w){ setDot('dotC','syncC','err','Allow pop-ups to open the statement'); return; }

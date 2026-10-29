@@ -1,7 +1,9 @@
 /**
  * LINGEL — Plan-linked conveyance backend  (standalone Apps Script web app)
  * ---------------------------------------------------------------------------
- * Rule: no plan → no conveyance; no SiteLog report → no approval.
+ * Rule: no plan → no conveyance.
+ *       Site Visit  → approved when a Site Inspection report OR a Handover form exists (logVisit, source SiteLog / Handover).
+ *       Measurement → approved automatically, no report needed; km typed by the supervisor (MeasureKm tab).
  *
  * SETUP (once):
  *  1. Create a new Google Sheet "Lingel Conveyance" → Extensions → Apps Script.
@@ -11,7 +13,7 @@
  *  5. Copy the /exec URL into the apps (they ask for it once).
  *
  * Tabs (created by setup): Settings, Supervisors, Plans, SiteVisits, Extras,
- *                          Pins, Decisions, Paid, Ledger (frozen at month close, for accounts)
+ *                          Pins, Decisions, Paid, MeasureKm, Ledger (frozen at month close, for accounts)
  */
 
 var TZ = 'Asia/Kolkata';
@@ -24,6 +26,7 @@ var TABS = {
   Pins:        ['Offer', 'Lat', 'Lng', 'Source', 'Set At'],
   Decisions:   ['Date', 'Supervisor', 'Status', 'Amount', 'Note', 'By', 'At'],
   Paid:        ['Month', 'Supervisor', 'Amount', 'Paid At', 'By'],
+  MeasureKm:   ['Date', 'Supervisor', 'Offer', 'Km', 'Note', 'Updated At'],
   Ledger:      ['Month', 'Date', 'Supervisor', 'Vehicle', 'Sites', 'Route', 'km', 'Rate', 'Travel', 'Bills', 'Total', 'Status', 'Approved By', 'Closed At']
 };
 var DEFAULTS = [
@@ -63,6 +66,7 @@ function doPost(e) {
     if (a === 'logVisit') return out(logVisit_(p));
     if (a === 'addExtra') return out(addExtra_(p));
     if (a === 'deleteExtra') return out(deleteExtra_(p));
+    if (a === 'setMeasureKm') return out(setMeasureKm_(p));
     if (a === 'hrDecide') { hrGuard_(p.key); return out(hrDecide_(p)); }
     if (a === 'hrExtra') { hrGuard_(p.key); return out(hrExtra_(p)); }
     if (a === 'hrSaveSettings') { hrGuard_(p.key); return out(hrSaveSettings_(p)); }
@@ -198,11 +202,12 @@ function logVisit_(p) {
     }
   }
   append_('SiteVisits', { 'Created At': created, Date: date, Offer: offer, Supervisor: sup, Lat: num_(p.lat) || '', Lng: num_(p.lng) || '',
-    'Accuracy m': num_(p.acc) || '', Client: p.client || '', Positions: p.positions || '', Source: p.source || 'SiteLog' });
+    'Accuracy m': num_(p.acc) || '', Client: p.client || '', Positions: p.positions || '', Source: /handover/i.test(String(p.source || '')) ? 'Handover' : (p.source || 'SiteLog') });
   // first GPS for an offer becomes its (unconfirmed) site pin
   if (num_(p.lat) && num_(p.lng) && !pinOf_(offer)) append_('Pins', { Offer: offer, Lat: num_(p.lat), Lng: num_(p.lng), Source: 'first visit', 'Set At': created });
   return { ok: true };
 }
+function isMeasurement_(task) { return /measure/i.test(String(task || '')); }
 function pinOf_(offer) {
   var o = cleanOffer_(offer), best = null;
   rows_('Pins').forEach(function (r) { if (cleanOffer_(r.Offer) === o && num_(r.Lat) && num_(r.Lng)) { if (!best || String(r.Source) === 'HR') best = r; } });
@@ -237,6 +242,20 @@ function deleteExtra_(p) {
   }
   return { ok: false, error: 'not found' };
 }
+/* supervisor types the km for a Measurement visit (0 clears it) */
+function setMeasureKm_(p) {
+  var date = dayStr_(p.date), sup = String(p.supervisor || '').trim(), offer = cleanOffer_(p.offer), km = num_(p.km);
+  if (!date || !sup || !offer) return { ok: false, error: 'date, supervisor and Offer No are required' };
+  if (date > today_()) return { ok: false, error: 'km can be entered only on the day or later' };
+  if (km < 0 || km > 500) return { ok: false, error: 'km must be between 0 and 500' };
+  var paid = rows_('Paid').some(function (r) { return String(r.Month).slice(0, 7) === date.slice(0, 7) && norm_(r.Supervisor) === norm_(sup); });
+  if (paid) return { ok: false, error: 'this month is already paid' };
+  var hit = null; rows_('MeasureKm').forEach(function (r) { if (norm_(r.Supervisor) === norm_(sup) && dayStr_(r.Date) === date && cleanOffer_(r.Offer) === offer) hit = r; });
+  if (!km) { if (hit) sheet_('MeasureKm').deleteRow(hit._row); return { ok: true, cleared: true }; }
+  var row = { Date: date, Supervisor: sup, Offer: offer, Km: km, Note: p.note || '', 'Updated At': new Date().toISOString() };
+  if (hit) update_('MeasureKm', hit._row, row); else append_('MeasureKm', row);
+  return { ok: true, km: km };
+}
 function billFolder_() {
   var props = PropertiesService.getScriptProperties(), id = props.getProperty('BILL_FOLDER_ID');
   if (id) { try { return DriveApp.getFolderById(id); } catch (x) {} }
@@ -262,7 +281,17 @@ function buildDay_(sup, date, ctx) {
     var offerOk = /^\d{3,7}(\/\d+[A-Z]?)?$/.test(offer);   // 75165 or 75057/14
     chk(2, offerOk ? 'ok' : 'warn', offerOk ? 'Offer No valid' : 'Offer No looks unusual');
     var v = null; visits.forEach(function (x) { if (!v && cleanOffer_(x.Offer) === offer) v = x; });
-    if (!v) { chk(3, past ? 'bad' : 'wait', past ? 'No site report' : 'Site report pending'); st.result = past ? 'bad' : 'wait'; stops.push(st); return; }
+    if (isMeasurement_(pl.Task)) {
+      used[offer] = true;
+      chk(3, 'ok', 'Measurement — approved automatically');
+      var mk = ctx.measKm[n + '|' + date + '|' + offer];
+      st.manualKm = mk ? num_(mk.Km) : null;
+      if (mk) chk(4, 'ok', 'Km entered by supervisor: ' + num_(mk.Km));
+      else if (!past) { chk(4, 'wait', 'Enter the km for this measurement'); st.result = 'wait'; stops.push(st); return; }
+      else chk(4, 'ok', 'No km entered — ₹0 travel for this visit');
+      st.result = 'ok'; stops.push(st); return;
+    }
+    if (!v) { chk(3, past ? 'bad' : 'wait', past ? 'No Site Inspection report or Handover form' : 'Site report / Handover pending'); st.result = past ? 'bad' : 'wait'; stops.push(st); return; }
     used[offer] = true; addVisitChecks_(st, v, offer, ctx, S, date, lateBy, chk); stops.push(st);
   });
   // reports with no plan behind them
@@ -286,7 +315,11 @@ function buildDay_(sup, date, ctx) {
     }
     else kmNote = 'No base location set for this supervisor';
   }
-  var route = pts.length ? names.join(' → ') : '';
+  // measurement visits: km typed by the supervisor, added to the route km
+  stops.forEach(function (st) { if (st.manualKm) { km += st.manualKm; legs.push({ from: 'Measurement', to: '#' + st.offer, km: st.manualKm }); } });
+  var mNames = stops.filter(function (st) { return st.manualKm; }).map(function (st) { return '#' + st.offer + ' (meas. ' + st.manualKm + ' km)'; });
+  if (mNames.length && kmNote === 'No base location set for this supervisor') kmNote += ' (measurement km still counted)';
+  var route = (pts.length ? names.join(' → ') : '') + (mNames.length ? (pts.length ? ' + ' : '') + mNames.join(' + ') : '');
   var rate = supRec.vehicle === 'car' ? S.rate_car : (supRec.vehicle === 'public' ? S.rate_public : S.rate_bike);
   var travel = Math.min(Math.round(km * rate), S.daily_cap);
   var capped = Math.round(km * rate) > S.daily_cap;
@@ -314,7 +347,7 @@ function buildDay_(sup, date, ctx) {
 }
 function addVisitChecks_(st, v, offer, ctx, S, date, lateBy, chk) {
   st.lat = num_(v.Lat); st.lng = num_(v.Lng); st.reportAt = String(v['Created At']);
-  chk(3, 'ok', 'Site report filed');
+  chk(3, 'ok', /handover/i.test(String(v.Source || '')) ? 'Handover form filed' : 'Site report filed');
   var pin = ctx.pinByOffer[offer];
   if (!st.lat || !st.lng) chk(4, 'warn', 'Report has no GPS');
   else if (!pin) chk(4, 'ok', 'First visit — GPS becomes the site pin');
@@ -353,10 +386,11 @@ function routeKm_(pts, ctx) {
 
 function ctx_() {
   var S = settings_(), supByNorm = {}; supervisors_().forEach(function (s) { supByNorm[norm_(s.name)] = s; });
+  var measKm = {}; rows_('MeasureKm').forEach(function (r) { measKm[norm_(r.Supervisor) + '|' + dayStr_(r.Date) + '|' + cleanOffer_(r.Offer)] = r; });
   var pinByOffer = {}; rows_('Pins').forEach(function (r) { var o = cleanOffer_(r.Offer); if (num_(r.Lat) && num_(r.Lng) && (!pinByOffer[o] || String(r.Source) === 'HR')) pinByOffer[o] = { lat: num_(r.Lat), lng: num_(r.Lng), source: String(r.Source) }; });
   var decByKey = {}; rows_('Decisions').forEach(function (r) { decByKey[norm_(r.Supervisor) + '|' + dayStr_(r.Date)] = r; });
   var paidKey = {}; rows_('Paid').forEach(function (r) { paidKey[norm_(r.Supervisor) + '|' + String(r.Month).slice(0, 7)] = r; });
-  return { settings: S, supByNorm: supByNorm, pinByOffer: pinByOffer, decByKey: decByKey, paidKey: paidKey,
+  return { settings: S, measKm: measKm, supByNorm: supByNorm, pinByOffer: pinByOffer, decByKey: decByKey, paidKey: paidKey,
            plans: rows_('Plans'), visits: rows_('SiteVisits'), extras: rows_('Extras'), today: today_() };
 }
 function monthDays_(month) {
