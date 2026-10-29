@@ -127,6 +127,10 @@
   .obs textarea:focus{border-color:var(--hivis-deep)}
 
   .photos{display:flex;gap:9px;flex-wrap:wrap}
+  .pos-no{font-weight:800;opacity:.7;margin-right:4px;white-space:nowrap}
+  .ph-req{background:#e5382d;color:#fff;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap;margin-right:4px}
+  .pos.nophoto .addphoto{border-color:#e5382d!important;background:rgba(229,56,45,.12)}
+  .pos.nophoto-flash{outline:3px solid #e5382d;outline-offset:2px}
   .thumb{width:96px;height:96px;border-radius:9px;overflow:hidden;position:relative;background:#ddd;flex:none;border:1px solid var(--paper-line);}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
   .thumb .x{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:6px;border:none;
@@ -409,6 +413,8 @@ async function loadAll(){
   const order=(meta&&meta.order)||[];
   loaded.sort((a,b)=>{const ia=order.indexOf(a.id),ib=order.indexOf(b.id);return (ia<0?1e9:ia)-(ib<0?1e9:ib);});
   positions=loaded;
+  // legacy: imported positions carry the quotation drawing as photos[0] — mark it so it doesn't count as a site photo
+  for(const p of positions){if(p.designId===undefined){p.designId=(p.spec&&(p.photos||[]).length)?p.photos[0]:"";try{await savePos(p);}catch(e){}}}
   for(const p of positions){for(const ph of (p.photos||[])){
     try{const v=await idbGet("photos",ph);if(v)imgCache[ph]=v;}catch(e){}}}
   for(const p of positions){for(const a of (p.audios||[])){
@@ -427,6 +433,17 @@ async function loadAll(){
 }
 
 /* ---- render ---- */
+/* ---- mandatory site photo per position ---- */
+function sitePhotos(p){return (p.photos||[]).filter(ph=>ph&&ph!==p.designId);}
+function missingPhotoNos(){return positions.map((p,i)=>sitePhotos(p).length?0:i+1).filter(Boolean);}
+function photoGate(){
+  const miss=missingPhotoNos(); if(!miss.length)return true;
+  const list=miss.length>8?miss.slice(0,8).join(", ")+" +"+(miss.length-8)+" more":miss.join(", ");
+  toast("📷 Photo required for position #"+list);
+  const first=positions[miss[0]-1]; const el=first&&document.querySelector('.pos[data-pid="'+first.id+'"]');
+  if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.classList.add("nophoto-flash");setTimeout(()=>el.classList.remove("nophoto-flash"),1600);}
+  return false;
+}
 function render(){
   const wrap=$("#positions");
   if(!positions.length){
@@ -443,8 +460,10 @@ function render(){
               ${Object.keys(RESP).map(k=>`<button class="spill ${p.resp===k?'sel':''}" data-resp="${k}" style="background:${RESP[k].color}">${RESP[k].label}</button>`).join("")}
             </div>
           </div>` : "";
-      return `<div class="pos" data-st="${p.status}" style="border-left-color:${stColor}">
+      const noPh=!sitePhotos(p).length;
+      return `<div class="pos${noPh?' nophoto':''}" data-pid="${p.id}" data-st="${p.status}" style="border-left-color:${stColor}">
         <div class="pos-head">
+          <span class="pos-no">#${i+1}</span>${noPh?'<span class="ph-req">📷 Photo required</span>':''}
           
           <span class="pos-ref"><input data-f="ref" data-id="${p.id}" value="${esc(p.ref)}" placeholder="Description / element (e.g. Bedroom window W-03)"></span>
           <button class="pos-del" data-delpos="${p.id}" title="Delete position">🗑</button>
@@ -458,7 +477,7 @@ function render(){
               <button class="dictate" data-dictate="${p.id}" title="Voice typing">🎤 Dictate</button></label>
             <textarea data-f="obs" data-id="${p.id}" placeholder="Type, or tap Dictate to speak…">${esc(p.obs)}</textarea></div>
           ${p.videoId?`<div><span class="tiny-label">Video</span><div class="vid-thumb"><video src="${vidCache[p.videoId]||''}" preload="metadata" onclick="this.paused?this.play():this.pause()"></video><span class="vplay">▶</span><button class="vdel" data-delvideo="${p.id}">✕</button></div></div>`:''}
-          <div><span class="tiny-label">Photos</span>
+          <div><span class="tiny-label">Photos${noPh?' <b style="color:#ff5a4a">· required</b>':''}</span>
             <div class="photos">${photos}
               <label class="addphoto"><input type="file" accept="image/*" capture="environment" hidden data-addphoto="${p.id}">
                 <span class="p">📷</span><small>CAMERA</small></label>
@@ -1182,7 +1201,7 @@ async function importQuotation(file){
         const cw=right-left,chh=Math.max(20,Math.round(bottom-top));
         if(cw>10&&chh>20){const crop=document.createElement("canvas");crop.width=cw;crop.height=chh;crop.getContext("2d").drawImage(canvas,left,Math.round(top),cw,chh,0,0,cw,chh);const data=crop.toDataURL("image/jpeg",0.82);designId=uid();imgCache[designId]=data;await savePhoto(designId,data);}
       }catch(e){}}
-      newPos.push({id:uid(),ref:_lbl,status:"notstarted",onrType:"",resp:"",obs:"",spec:descClean||desc||"",photos:designId?[designId]:[],audios:[]});
+      newPos.push({id:uid(),ref:_lbl,status:"notstarted",onrType:"",resp:"",obs:"",spec:descClean||desc||"",photos:designId?[designId]:[],designId,audios:[]});
     }
   }
   if(!newPos.length){toast("⚠ No positions found in this PDF");return;}
@@ -1273,6 +1292,7 @@ function fallbackReport(){
 }
 $("#pdfBtn").onclick=async()=>{
   if(!positions.length&&!materials.length){toast("Add at least one position or material item first");return;}
+  if(!photoGate())return;
   // Videos first (when online) so their Drive links land in the report + issue table below.
   const _api=luApi(); const _vids=positions.filter(p=>p.videoId);
   if(_api && _vids.length && navigator.onLine){ try{ await uploadVideosAS(_api, ($("#o_no").value||"").trim()||"Misc", _vids); }catch(e){ console.error("pre-upload videos failed",e); } }
@@ -1289,6 +1309,7 @@ $("#pdfBtn").onclick=async()=>{
 };
 $("#shareBtn").onclick=async()=>{
   if(!positions.length&&!materials.length){toast("Add at least one position or material item first");return;}
+  if(!photoGate())return;
   toast("📄 Preparing report…");
   let blob;
   try{await ensureLibs();const pdf=await makePDF();blob=pdf.output("blob");}
@@ -2135,7 +2156,7 @@ async function slImportProduction(file){
     let designId = "";
     if (p.drawing){ designId = uid(); imgCache[designId] = p.drawing; await savePhoto(designId, p.drawing); }
     const spec = [Math.round(p.w)+' × '+Math.round(p.h)+' mm', p.qty>1 ? 'Qty '+p.qty : '', LD.describe(p)].filter(Boolean).join(' · ');
-    newPos.push({id:uid(), ref:lbl, status:"notstarted", onrType:"", resp:"", obs:"", spec, photos:designId?[designId]:[], audios:[]});
+    newPos.push({id:uid(), ref:lbl, status:"notstarted", onrType:"", resp:"", obs:"", spec, photos:designId?[designId]:[], designId, audios:[]});
   }
   for (const p of newPos){ positions.push(p); await savePos(p); }
   if (r.offer && !$("#o_no").value) $("#o_no").value = r.offer;
