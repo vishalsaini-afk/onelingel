@@ -60,6 +60,14 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .unbar{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
 .unbar .seg{margin:0}.unbar .search{flex:1}
 .unrow{display:flex;gap:8px;align-items:center}
+.unfil{display:flex;flex-direction:column;gap:6px}
+.unchips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.unchip{flex:0 0 auto;border:1px solid var(--line);background:var(--panel-2);color:var(--text);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:800;font-family:'Spline Sans',sans-serif;cursor:pointer}
+.unchip small{font-weight:600;color:var(--muted);margin-left:4px}
+.unchip.on{background:var(--hivis);border-color:var(--hivis);color:#111}.unchip.on small{color:#333}
+.unfrow{display:flex;gap:8px;align-items:center}.unfrow .msel{padding:9px 11px;font-size:14px}
+.unclr{flex:0 0 auto;border:none;background:none;color:var(--hivis);font-weight:700;font-size:13px;cursor:pointer;padding:6px}
+.pdep.code{background:var(--hivis);border-color:var(--hivis);color:#111}
 .uncard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;padding:12px 13px;margin-bottom:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .uncard:active{background:var(--panel-2)}
 .uncard.has-p{border-left-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(240,166,58,.02))}
@@ -495,6 +503,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
   <div id="unView" hidden>
     <div class="unbar">
       <div class="seg" id="unSeg"><button type="button" data-val="un" class="on">Unassigned</button><button type="button" data-val="pend">⚠ Pending / Site req</button><button type="button" data-val="all">All dispatched</button></div>
+      <div class="unfil" id="unFil"></div>
       <div class="unrow"><div class="search"><span class="mag">🔍</span><input id="unQ" placeholder="Offer, client, city, salesperson…" autocomplete="off"></div>
       <button class="rf" id="refreshU" title="Re-check the production plan now">⟳</button></div>
     </div>
@@ -1570,6 +1579,27 @@ window.addEventListener('online',()=>{ if(view==='board'){ loadBoard(true); sync
 const DISPATCH_API = INVOICE_EXEC;   // dispatch tracker runs inside the same invoice web app
 const UN_CACHE='lingel_dispatch_cache_v1', UN_JUST='lingel_dispatch_just_v1';
 let unRows=[], unMode='un', unQ='', unLoading=false, unLast='';
+/* filter bar: order CODE chips (none picked = all) + salesperson. Remembered on this phone. */
+const UN_FIL='lingel_un_filter_v1'; let unCodes=[], unSales='';
+try{ const f=JSON.parse(localStorage.getItem(UN_FIL)||'{}'); unCodes=Array.isArray(f.codes)?f.codes:[]; unSales=f.sales||''; }catch(e){}
+function saveUnFil(){ try{ localStorage.setItem(UN_FIL,JSON.stringify({codes:unCodes,sales:unSales})); }catch(e){} }
+function unCode(o){ return String(o.code||'').trim().toUpperCase()||'—'; }
+function unFilterOk(o){ return (!unCodes.length || unCodes.includes(unCode(o))) && (!unSales || String(o.sales||'').trim()===unSales); }
+function drawUnFilter(all){
+  const el=document.getElementById('unFil'); if(!el) return;
+  const pool=all.filter(o=> unMode==='un' ? (!o.assigned && !o.closed) : (unMode==='pend' ? (o.pending&&o.pending.length) : true));
+  const cnt={}; pool.filter(o=>!unSales||String(o.sales||'').trim()===unSales).forEach(o=>{ const c=unCode(o); cnt[c]=(cnt[c]||0)+1; });
+  unCodes.forEach(c=>{ if(!(c in cnt)) cnt[c]=0; });
+  const codes=Object.keys(cnt).sort((a,b)=>(cnt[b]-cnt[a])||a.localeCompare(b));
+  const sp={}; pool.filter(o=>!unCodes.length||unCodes.includes(unCode(o))).forEach(o=>{ const n=String(o.sales||'').trim(); if(n) sp[n]=(sp[n]||0)+1; });
+  if(unSales && !(unSales in sp)) sp[unSales]=0;
+  const names=Object.keys(sp).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));
+  el.innerHTML='<div class="unchips"><button type="button" class="unchip'+(unCodes.length?'':' on')+'" data-code="">All codes</button>'
+    +codes.map(c=>'<button type="button" class="unchip'+(unCodes.includes(c)?' on':'')+'" data-code="'+esc(c)+'">'+esc(c)+'<small>'+cnt[c]+'</small></button>').join('')+'</div>'
+    +'<div class="unfrow"><select class="msel" id="unSalesSel"><option value="">All salespeople</option>'
+    +names.map(n=>'<option value="'+esc(n)+'"'+(n===unSales?' selected':'')+'>'+esc(n)+' ('+sp[n]+')</option>').join('')+'</select>'
+    +((unCodes.length||unSales)?'<button type="button" class="unclr" id="unClr">Clear</button>':'')+'</div>';
+}
 let unJust={}; try{ unJust=JSON.parse(localStorage.getItem(UN_JUST)||'{}')||{}; }catch(e){}
 try{ const c=JSON.parse(localStorage.getItem(UN_CACHE)||'null'); if(c&&Array.isArray(c.rows)){ unRows=c.rows; unLast=c.lastSync||''; } }catch(e){}
 function offerKeys(s){ const keys=[]; let base='';
@@ -1593,28 +1623,30 @@ function pendingBox(list){ if(!list||!list.length) return '';
   return '<div class="pwarn">⚠ <b>'+[pd?pd+' pending':'', sr?sr+' site requirement'+(sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b><ul>'+list.map(p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')+(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':'')+'</li>').join('')+'</ul></div>'; }
 function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+' days')); }
 function renderUn(){
-  const all=unView(), un=all.filter(o=>!o.assigned && !o.closed);
+  const all=unView(), un=all.filter(o=>!o.assigned && !o.closed && unFilterOk(o));
   const b=document.getElementById('unBadge'); if(b){ b.textContent=un.length; b.hidden=!un.length; }
+  drawUnFilter(all);
   const box=document.getElementById('unList'); if(!box) return;
   if(!DISPATCH_API){ box.innerHTML='<div class="msg">Dispatch list is not connected yet.<br><span style="font-size:12px">Paste the dispatch-tracker /exec URL into <b>DISPATCH_API</b> in this file.</span></div>'; return; }
-  let list = unMode==='un' ? un : (unMode==='pend' ? all.filter(o=>o.pending&&o.pending.length) : all);
+  let list = unMode==='un' ? un : (unMode==='pend' ? all.filter(o=>o.pending&&o.pending.length&&unFilterOk(o)) : all.filter(unFilterOk));
   const q=unQ.trim().toLowerCase();
-  if(q) list=list.filter(o=>[o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q));
+  if(q) list=list.filter(o=>[o.offer,o.client,o.location,o.sales,o.contractor,o.code].join(' ').toLowerCase().includes(q));
   if(!unRows.length && unLoading){ box.innerHTML=Array.from({length:4}).map(()=>'<div class="skel" style="height:86px;margin-bottom:9px"></div>').join(''); return; }
+  if(!list.length && (unCodes.length||unSales)){ box.innerHTML='<div class="msg">No orders for this filter.<br><span style="font-size:12px">Tap <b>All codes</b> / <b>All salespeople</b> to see everything.</span></div>'; return; }
   if(!list.length){ box.innerHTML='<div class="msg">'+(unMode==='un'?'✅ Every dispatched site has a contractor.':(unMode==='pend'?'No dispatched order has pending items or site requirements.':'No dispatched orders.'))+'</div>'; return; }
   // group orders that share the same base offer (71071/63, /64, /65 → one card)
   const groups=[], gmap={};
   list.forEach(o=>{ const b=unBase(o.offer); if(!gmap[b]){ gmap[b]={base:b,items:[]}; groups.push(gmap[b]); } gmap[b].items.push(o); });
   box.innerHTML=groups.map(g=> g.items.length===1 ? unCard(g.items[0]) : unGroupCard(g)).join('');
 }
-function unVisible(o){ if(unMode==='un'&&(o.assigned||o.closed)) return false; if(unMode==='pend'&&!(o.pending&&o.pending.length)) return false;
+function unVisible(o){ if(!unFilterOk(o)) return false; if(unMode==='un'&&(o.assigned||o.closed)) return false; if(unMode==='pend'&&!(o.pending&&o.pending.length)) return false;
   const q=unQ.trim().toLowerCase(); return !q || [o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q); }
 function unBase(offer){ const k=offerKeys(offer)[0]; return k?k.split('/')[0]:String(offer||'').split('/')[0].trim(); }
 function unSub(offer){ const b=unBase(offer); return String(offer||'').trim().replace(new RegExp('^'+b),'') || offer; }
 function unState(o){ return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(o.contractor||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
 function unCard(o){ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
   return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':'')+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
-    +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
+    +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
     +'<div class="unmeta">🧑‍💼 '+esc(o.sales||'—')+(o.location?' · 📍 '+esc(o.location):'')+'<br>🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+(o.supervisor?' · 👔 '+esc(o.supervisor):'')+(o.startDate?' · ▶ '+esc(prettyDate(o.startDate)):'')+'</div>'
     +(o.closed&&o.closedNote?'<div class="unmeta">🔒 '+esc(o.closedNote)+' · tap to reopen</div>':'')
     +pendingBox(o.pending)+'</div>'; }
@@ -1634,11 +1666,12 @@ function unGroupCard(g){
   const allPend=pendUnion(g.items);
   const days=Math.max(...open.map(o=>o.days==null?-1:o.days));
   const depts=[...new Set(g.items.map(o=>o.dept).filter(Boolean))].join(' + ');
+  const gcodes=[...new Set(g.items.map(o=>o.code).filter(Boolean))].join(' + ');
   const rowsH=g.items.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer), hp=o.pending&&o.pending.length;
     return '<div class="ungrow'+(o.closed?' closed':(o.assigned?' done':''))+'" data-ui="'+i+'"><span class="unsub">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+'</span>'
       +'<span class="unrmeta">'+esc(o.dept||'')+(o.location&&o.location!==f.location?' · '+esc(o.location):'')+(hp?' · '+o.pending.length+' item'+(o.pending.length>1?'s':''):'')+'</span>'+unState(o)+'</div>'; }).join('');
   return '<div class="uncard ungrp'+(allPend.length?' has-p':'')+(open.length?'':' done')+'">'
-    +'<div class="unh"><div><div class="unoff">'+(allPend.length?'⚠ ':'')+'#'+esc(g.base)+' <span class="pdep">'+g.items.length+' orders</span> <span class="pdep">'+esc(depts)+'</span></div><div class="uncl">'+esc(f.client||'—')+'</div></div>'
+    +'<div class="unh"><div><div class="unoff">'+(allPend.length?'⚠ ':'')+'#'+esc(g.base)+' <span class="pdep">'+g.items.length+' orders</span>'+(gcodes?' <span class="pdep code">'+esc(gcodes)+'</span>':'')+' <span class="pdep">'+esc(depts)+'</span></div><div class="uncl">'+esc(f.client||'—')+'</div></div>'
     +(open.length&&days>=0?'<span class="undays">'+esc(daysTxt(days))+'</span>':(open.length?'':'<span class="undays ok">✓ all done</span>'))+'</div>'
     +'<div class="unmeta">🧑‍💼 '+esc(f.sales||'—')+(f.location?' · 📍 '+esc(f.location):'')+'</div>'
     +'<div class="ungrows">'+rowsH+'</div>'
@@ -1712,6 +1745,13 @@ async function setSiteClosed(o,close,reason){
   const seg=document.getElementById('unSeg');
   seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); unMode=b.getAttribute('data-val'); renderUn(); }));
   document.getElementById('unQ').addEventListener('input',e=>{ unQ=e.target.value; renderUn(); });
+  const fil=document.getElementById('unFil');
+  fil.addEventListener('click',e=>{
+    if(e.target.closest('#unClr')){ unCodes=[]; unSales=''; saveUnFil(); renderUn(); return; }
+    const c=e.target.closest('.unchip'); if(!c) return; const v=c.getAttribute('data-code');
+    if(!v) unCodes=[]; else unCodes = unCodes.includes(v) ? unCodes.filter(x=>x!==v) : unCodes.concat([v]);   // tap several codes to combine
+    saveUnFil(); renderUn(); });
+  fil.addEventListener('change',e=>{ if(e.target.id==='unSalesSel'){ unSales=e.target.value; saveUnFil(); renderUn(); } });
   document.getElementById('refreshU').addEventListener('click',()=>loadDispatch(true));
   document.getElementById('unList').addEventListener('click',e=>{
     const all=e.target.closest('.unall'); if(all){ const base=all.getAttribute('data-grp'); const items=unView().filter(o=>unBase(o.offer)===base && unVisible(o)); openAssign(unGroupOrder({base:base,items:items})); return; }
