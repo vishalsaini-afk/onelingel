@@ -892,16 +892,19 @@ function openBook(name,team,pre){
   if(pre){ [['mSales',canonSales(pre.sales)],['mCity',pre.city],['mOffer',pre.offer],['mProject',pre.project]].forEach(function(f){ const el=document.getElementById(f[0]); if(el&&f[1]) el.value=f[1]; });
     if(pre.pending&&pre.pending.length){ const b=document.getElementById('mBody'); b.insertAdjacentHTML('afterbegin', pendingBox(pre.pending)); } }
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
-  goHandler=()=>{
+  goHandler=async()=>{
+   const goB=document.getElementById('mGo'); if(goB.disabled) return;
    try{
     const holdBy=segVal('segHold');
     const offer=(document.getElementById('mOffer').value||'').trim();
     const project=(document.getElementById('mProject').value||'').trim();
     const city=(document.getElementById('mCity').value||'').trim();
     const sales=canonSales(document.getElementById('mSales').value);
-    if(!offer && !holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
+    const q=bookQ;
+    // RULE: no quotation → no booking (an uploaded PDF, or one already saved in the library for this Offer No)
+    if(!q){ const ok=await needQuote(offer,'team',goB); if(!ok) return; }
     const date=chosenPlanDate();
-    const q=bookQ, woSvc=q?document.getElementById('mWoSvc').value:'', woBill=q?(segVal('segBill')||'lingel'):'';
+    const woSvc=q?document.getElementById('mWoSvc').value:'', woBill=q?(segVal('segBill')||'lingel'):'';
     if(q && !offer){ showMErr('Quotation uploaded — enter its Offer No. to make the invoice.'); return; }
     const woMake=q?!!(document.getElementById('mWoMake')||{}).checked:false;
     const runWO=()=>{ if(q) afterBookWithQuote(q,{name,team,offer,project,city,sales,date,service:woSvc,billTo:woBill,makeInvoice:woMake}); };
@@ -941,19 +944,31 @@ function openSupPlan(preset){
     planDateField(daySel, ed?ed.date:null)
     +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
     +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
-    +'<div class="fd"><label>Offer No. (needed for conveyance)</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
+    +'<div class="fd"><label>Quotation or production sheet (required)</label><div id="mSQPick"></div></div>'
+    +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg" value="'+esc(ed?ed.project:'')+'"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi" value="'+esc(ed?ed.city:'')+'"></div>'
     +'<div class="fd"><label>Salesperson (optional)</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh" value="'+esc(ed?ed.salesperson:'')+'"></div>'
     +(ed?'<button type="button" id="mDelSup" class="mbtn ghost" style="width:100%;margin-top:2px;border-color:var(--red);color:#fda4a4">Remove this plan</button>':'');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent= ed?'Save':'Add to plan →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wirePlanDate();
+  const supPk=wireSupQuote();
   if(ed){ const del=document.getElementById('mDelSup'); if(del) del.onclick=()=>{ plans=plans.filter(p=>p.id!==ed.id); savePlansLocal(); pushPlanDelete(ed.id); closeModal(); if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); if(view==='conv' && typeof cvLoad==='function') setTimeout(cvLoad,600); setDot('dotS','syncS','ok','Removed plan'); }; }
   setTimeout(()=>{ const o=document.getElementById('mSupName'); if(o && !supName) o.focus(); },50);
-  goHandler=()=>{
+  goHandler=async()=>{
+    const goB=document.getElementById('mGo'); if(goB.disabled) return;
     const date=chosenPlanDate(), task2=segVal('segTask')||'Measurement';
     const sup=(document.getElementById('mSupName').value||'').trim();
     if(!sup){ showMErr('Supervisor name is required.'); return; }
+    // RULE: no quotation → no supervisor plan (unchanged Offer No on an existing plan is left alone)
+    const offNow=(document.getElementById('mOffer').value||'').trim();
+    const keepOld = ed && ed.offer && cleanOffer(ed.offer).toUpperCase()===cleanOffer(offNow).toUpperCase();
+    if(!keepOld){
+      const L=supPk?supPk.list:[];
+      if(L.some(x=>x._st==='saving')){ showMErr('Wait — the quotation is still uploading.'); return; }
+      const good=L.some(x=>x.fromLib||x._st==='saved');
+      if(!good){ const ok=await needQuote(offNow,'supervisor',goB); if(!ok) return; }
+    }
     if(leaveOn(sup,date)){ showMErr(sup+' is on leave on '+prettyDate(date)+'. Pick another supervisor or cancel the leave first.'); return; }
     const others=plans.filter(p=>p.kind==='supervisor'&&!isLeave(p)&&p.date===date&&p.supervisor===sup&&(!ed||p.id!==ed.id));
     if(others.length>=4){ showMErr(sup+' already has 4 plans that day.'); return; }
@@ -1038,7 +1053,8 @@ function openTeamEdit(src){
     const n={ contractor:eCon.value, team:String(eTeam.value), date:chosenPlanDate(),
       offer:cleanOffer(document.getElementById('mOffer').value), project:document.getElementById('mProject').value.trim(),
       city:document.getElementById('mCity').value.trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:segVal('segHold')||'' };
-    if(!n.offer && !n.holdBy){ showMErr('Enter an Offer No. — or pick a “Hold by”.'); return; }
+    if(!n.offer){ showMErr('Enter the Offer No. — a team can’t be booked without its quotation.'); return; }
+    if(cleanOffer(n.offer).toUpperCase()!==cleanOffer(src.offer||'').toUpperCase()){ const ok=await needQuote(n.offer,'team',go); if(!ok) return; }
     const same=['contractor','team','date','offer','project','city','salesperson','holdBy'].every(k=>String(n[k]||'')===String(src[k]||''));
     if(same){ closeModal(); return; }
     const moved = n.contractor!==src.contractor || n.team!==String(src.team) || n.date!==src.date;
@@ -2107,6 +2123,46 @@ const WO_RATES={'Aluminium Windows & Doors':45,'UPVC Windows & Doors':25,'Skylig
 const WO_CO={lingel:{n:'Lingel Windows & Doors Technology Pvt. Ltd',a:'Kapriwas Sec-14, Kapriwas, Haryana 123110',g:'06AABCL1537B2Z3'},fensterbau:{n:'Fensterbau Lingel India Private Limited',a:'1st floor, 12A & 22, near Subhash chowk, Central Park II, Sector 48, Gurugram, Haryana 122018',g:'06AACCF0423D1ZI'}};
 const WO_STORE='lingel_workorders_v1';
 let bookQ=null;   // parsed quotation in the open Book popup
+
+/* ===== RULE: no quotation → no booking (teams AND supervisors) =====
+   Passes when a quotation / production sheet is picked in the popup, or the
+   library already holds one for this Offer No (all parts of a split order). */
+async function quoteOnFile(offer){
+  const o=cleanOffer(offer); if(!o) return {ok:false};
+  const chk=async x=>{ const r=await LD.has(x,'quotation'); return {hit:!!(r&&(r.exists||(r.kinds&&r.kinds.length))), offline:!!(r&&r.offline)}; };
+  const r=await chk(o); if(r.hit) return {ok:true};
+  if(r.offline) return {ok:false,offline:true};
+  const pp=LD.parts(o);
+  if(pp.parts.length>1){ for(const p of pp.parts){ const x=await chk(pp.base+'/'+p); if(!x.hit) return {ok:false,missing:pp.base+'/'+p,offline:x.offline}; } return {ok:true}; }
+  return {ok:false};
+}
+async function needQuote(offer,who,btn){
+  const what = who==='supervisor' ? 'A supervisor' : 'A team';
+  if(!cleanOffer(offer)){ showMErr('📄 Upload the quotation (or 🔎 load it By Offer No). '+what+' can’t be booked without it.'); return false; }
+  const t0=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='Checking quotation…'; } showMErr('');
+  let r; try{ r=await quoteOnFile(offer); } finally { if(btn){ btn.disabled=false; btn.textContent=t0; } }
+  if(r.ok) return true;
+  if(r.offline) showMErr('Can’t check the quotation library (no internet). Upload the quotation PDF to book.');
+  else showMErr('No quotation saved for #'+(r.missing||cleanOffer(offer))+'. 📄 Upload it first — '+what.toLowerCase()+' can’t be booked without it.');
+  return false;
+}
+/* quotation picker in the Plan Supervisor popup: fills offer/site/city/salesperson, saves to the library right away */
+function wireSupQuote(){
+  const root=document.getElementById('mSQPick'); if(!root) return null;
+  return pdfPicker(root,{offerEl:document.getElementById('mOffer'),
+    onChange:q=>{ if(!q) return; const o=document.getElementById('mOffer'), p=document.getElementById('mProject'), c=document.getElementById('mCity'), sl=document.getElementById('mSales'), meta=q.meta||null;
+      if(q.offer) o.value=q.offer;
+      if(q.client && !p.value) p.value=q.client;
+      const city=q.city||(meta&&taCity(meta.site))||cityFromTracker(q.offer)||'', sales=q.sales||(meta&&taSales(meta.salesperson))||'';
+      if(c && city && !c.value) c.value=city;
+      if(sl && sales && !sl.value) sl.value=canonSales(sales); },
+    saveNow:async one=>{ const off=cleanOffer(one.offer||''); if(!off) throw new Error('no Offer No found in this PDF');
+      await LD.save(one.file,{offer:off,kind:one.kind,customer:one.client||'',salesperson:one.sales||'',site:one.city||'',
+        positions:String(one.items.length),sqft:one.total.toFixed(2),
+        items:one.kind==='quotation'?one.items.map(i=>({ref:i.ref,w:Math.round(i.w||0),h:Math.round(i.h||0),qty:1,sqft:+(+i.sqft||0).toFixed(2)})):undefined,
+        by:SUP,app:'Team Availability'}); }
+  });
+}
 
 function woAll(){ try{ return JSON.parse(localStorage.getItem(WO_STORE)||'{}'); }catch(e){ return {}; } }
 function woPut(o){ try{ const a=woAll(); a[String(o.offer).toUpperCase()]=o; const ks=Object.keys(a); if(ks.length>200) delete a[ks[0]]; localStorage.setItem(WO_STORE,JSON.stringify(a)); }catch(e){} }
