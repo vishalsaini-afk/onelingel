@@ -1826,7 +1826,8 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
     throw new Error((r&&r.error)||('Nothing saved for '+offer));
   };
   LD.api = api;
-  LD.list = async function(){ try{ var r=await post({action:'docList'}); return (r&&r.ok&&r.list)||[]; }catch(e){ return []; } };
+  LD.listX = async function(){ try{ var r=await post({action:'docList'}); return (r&&r.ok&&r.list)?r.list:null; }catch(e){ return null; } };   // null = server did not answer
+  LD.list = async function(){ return (await LD.listX())||[]; };
 
   /* ---------- orders split into parts: 23456/7, 23456/8, 23456/9 (one quotation each) ----------
      LD.parts("23456/7/8/9") → {base:'23456', parts:['7','8','9']}   ·   "23456" → all parts            */
@@ -1840,22 +1841,32 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
   };
   LD.joinParts = function(base, parts){ return parts.length ? base+'/'+parts.join('/') : base; };
   /* Every saved part of a multi-part (or base-only) Offer No → {docs:[{file,kind,meta,offer,part}], missing:['9'], combined:'23456/7/8'} */
-  LD.loadMany = async function(offer, prefer){
-    var want=LD.parts(offer), list=await LD.list(), hits=[];
-    list.forEach(function(x){ var p=LD.parts(x.offer);
-      if (p.base!==want.base) return;
+  LD.loadMany = async function(offer, prefer, onProgress){
+    var want=LD.parts(offer), list=await LD.listX();
+    if (!list) list=await LD.listX();                      // one retry — Apps Script is sometimes slow
+    if (!list) throw new Error('Could not get the list of saved quotations (internet or server slow). Try again.');
+    var hits=[], seen={};
+    list.forEach(function(x){ var p=LD.parts(x.offer), k=key(x.offer);
+      if (p.base!==want.base || seen[k]) return;
       if (want.parts.length && !p.parts.some(function(q){ return want.parts.indexOf(q)>=0; })) return;
-      hits.push(x); });
+      seen[k]=1; hits.push(x); });
     hits.sort(function(a,b){ return (+LD.parts(a.offer).parts[0]||0)-(+LD.parts(b.offer).parts[0]||0); });
-    var docs=[], got=[];
-    for (var i=0;i<hits.length;i++){
-      try{ var r=await LD.load(hits[i].offer, prefer), pp=LD.parts(hits[i].offer).parts;
-        docs.push({file:r.file, kind:r.kind, meta:Object.assign({offer:hits[i].offer}, r.meta||{}), offer:hits[i].offer, part:pp.join('/'), offline:r.offline});
-        pp.forEach(function(q){ if(got.indexOf(q)<0) got.push(q); }); }catch(e){}
+    var out=new Array(hits.length), failed=[], done=0;
+    async function one(i){
+      var h=hits[i];
+      for (var t=0;t<2;t++){                               // each PDF gets a second try
+        try{ var r=await LD.load(h.offer, prefer), pp=LD.parts(h.offer).parts;
+          out[i]={file:r.file, kind:r.kind, meta:Object.assign({offer:h.offer}, r.meta||{}), offer:h.offer, part:pp.join('/'), offline:r.offline}; break; }
+        catch(e){ if(t===1) failed.push(h.offer); }
+      }
+      done++; if (onProgress) try{ onProgress(done, hits.length); }catch(e){}
     }
+    for (var i=0;i<hits.length;i+=3){ var batch=[]; for (var k=i;k<Math.min(i+3,hits.length);k++) batch.push(one(k)); await Promise.all(batch); }
+    var docs=out.filter(Boolean), got=[];
+    docs.forEach(function(d){ LD.parts(d.offer).parts.forEach(function(q){ if(got.indexOf(q)<0) got.push(q); }); });
     var missing=want.parts.filter(function(q){ return got.indexOf(q)<0; });
     got.sort(function(a,b){return a-b;});
-    return {docs:docs, missing:missing, combined:LD.joinParts(want.base, got)};
+    return {docs:docs, missing:missing, failed:failed, found:hits.length, combined:LD.joinParts(want.base, got)};
   };
   /* tag for positions that came from one part of a split order: "[/8] " */
   LD.partTag = function(meta){ return meta && meta.partCount>1 && meta.part ? '[/'+meta.part+'] ' : ''; };
@@ -1880,7 +1891,13 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
     var inp=w.querySelector('#ldOff'), msg=w.querySelector('#ldMsg'), go=w.querySelector('#ldGo');
     if (preset) inp.value=preset;
     setTimeout(function(){ inp.focus(); },50);
-    LD.list().then(function(list){ w.querySelector('#ldDl').innerHTML=list.map(function(x){
+    var known=null;
+    function hint(){ if(!known) return; var t=inp.value.trim(), pp=LD.parts(t); if(!pp.base||pp.base.length<4){ msg.textContent=''; return; }
+      var hs=known.filter(function(x){ return LD.parts(x.offer).base===pp.base; }).map(function(x){ return x.offer; });
+      hs=hs.filter(function(o,i){ return hs.indexOf(o)===i; });
+      msg.style.color='#7c8694'; msg.textContent = hs.length ? hs.length+' saved for '+pp.base+': '+hs.join(', ') : 'Nothing saved yet for '+pp.base; }
+    inp.addEventListener('input',hint);
+    LD.list().then(function(list){ known=list; hint(); w.querySelector('#ldDl').innerHTML=list.map(function(x){
       var tag=(x.kinds||[]).map(function(k){return k==='production'?'Production sheet':'Quotation';}).join(' + ');
       return '<option value="'+esc(x.offer)+'">'+esc((x.customer||'')+(tag?' · '+tag:''))+'</option>'; }).join(''); });
     function close(){ w.remove(); }
@@ -1891,13 +1908,22 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
       go.disabled=true; msg.style.color='#7c8694'; msg.textContent='Loading…';
       try{
         var pp=LD.parts(off), many=pp.parts.length!==1, res=null;
-        if (!many){ try{ res=await LD.load(off, prefer); }catch(e){ if(!pp.parts.length) throw e; many=true; } }
-        else { try{ res=await LD.load(off, prefer); many=false; }catch(e){} }      // a combined PDF saved under the full number wins
+        /* one part (71071/72) → that PDF. Several parts (71071/72/73) → a combined PDF saved under that full number wins.
+           Just the number (71071) → ALWAYS every quote saved for it; the server's single answer is never trusted here
+           (it used to return only one quote, e.g. 71071/72). */
+        if (!many){ try{ res=await LD.load(off, prefer); }catch(e){ many=true; } }
+        else if (pp.parts.length>1){ try{ res=await LD.load(off, prefer); many=false; }catch(e){} }
         if (!many){ close(); await onLoaded(res.file, res.kind, Object.assign({offer:off}, res.meta||{}), res.offline); return; }
-        msg.textContent='Loading every part of '+pp.base+'…';
-        var M=await LD.loadMany(off, prefer);
-        if (!M.docs.length) throw new Error('Nothing saved for any part of '+off);
-        if (M.missing.length && !confirm('Not uploaded yet: part '+M.missing.map(function(x){return '/'+x;}).join(', ')+'.\n\nContinue with '+M.docs.map(function(d){return d.offer;}).join(', ')+'?')){ go.disabled=false; msg.textContent=''; return; }
+        msg.textContent='Finding every quote saved for '+pp.base+'…';
+        var M=await LD.loadMany(off, prefer, function(d,n){ msg.textContent='Loading '+d+' of '+n+' quotes for '+pp.base+'…'; });
+        if (!M.docs.length){
+          if (!M.found){ try{ res=await LD.load(off, prefer); close(); await onLoaded(res.file, res.kind, Object.assign({offer:off}, res.meta||{}), res.offline); return; }catch(e){} }
+          throw new Error(M.found ? 'Found '+M.found+' saved for '+pp.base+' but none would download — check internet and try again' : 'Nothing saved for '+off);
+        }
+        var warn=[];
+        if (M.missing.length) warn.push('Not uploaded yet: part '+M.missing.map(function(x){return '/'+x;}).join(', '));
+        if (M.failed.length) warn.push('Could not download: '+M.failed.join(', '));
+        if (warn.length && !confirm(warn.join('\n')+'\n\nContinue with '+M.docs.map(function(d){return d.offer;}).join(', ')+'?')){ go.disabled=false; msg.textContent=''; return; }
         close();
         M.docs.forEach(function(d){ d.meta.part=d.part; d.meta.partCount=M.docs.length; d.meta.combined=M.combined; });
         if (opts.onMany){ await opts.onMany(M.docs, M.combined); return; }
