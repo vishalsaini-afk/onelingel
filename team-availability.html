@@ -630,6 +630,13 @@ function TODAY(){ return isoDate(new Date()); }
 function TOMORROW(){ const t=new Date(); t.setDate(t.getDate()+1); return isoDate(t); }
 function prettyDate(iso){ const p=String(iso||'').split('-').map(Number); if(p.length<3) return iso||'—'; const dt=new Date(p[0],p[1]-1,p[2]); return dt.toLocaleDateString([], {weekday:'short',day:'2-digit',month:'short'}); }
 function normPlan(p){ p=p||{}; return { id:String(p.id||''), kind:(p.kind==='supervisor'?'supervisor':'team'), date:isoDateAny(p.date), contractor:String(p.contractor||p.name||''), team:String(p.team||''), offer:cleanOffer(p.offer), project:String(p.project||''), city:String(p.city||''), salesperson:canonSales(p.salesperson), holdBy:String(p.holdBy||''), supervisor:String(p.supervisor||''), task:String(p.task||''), by:String(p.by||''), at:String(p.at||'') }; }
+/* ONE ORDER, TWO (OR MORE) OFFERS: "75057/14 + 75060/3" → ['75057/14','75060/3'].
+   Parts of one offer stay together: "23456/7/8" and "23456/7,8" are ONE offer. */
+const OFFER_JOIN=' + ';
+function splitOffers(v){ const s=String(v==null?'':v), out=[];
+  (s.match(/\d{4,7}(?:\s*[\/,]\s*\d{1,4}(?!\d))*/g)||[]).forEach(x=>{ x=x.replace(/\s+/g,''); if(!out.some(o=>o.toUpperCase()===x.toUpperCase())) out.push(x); });
+  return out.length?out:(s.trim()?[s.trim()]:[]); }
+function joinOffers(list){ return (list||[]).filter(Boolean).join(OFFER_JOIN); }
 function cleanOffer(v){
   if(v==null) return '';
   if(v instanceof Date) return isNaN(v)?'':String(v.getFullYear());
@@ -883,7 +890,7 @@ function openBook(name,team,pre){
     +quoteFieldHTML()
     +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
-    +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
+    +'<div class="fd"><label>Offer No. <span style="font-weight:400;opacity:.7">(two offers? 75057/14 + 75060/3)</span></label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>'
     +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
     +planDateField(pre&&pre.day||'today');
@@ -945,7 +952,7 @@ function openSupPlan(preset){
     +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
     +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
     +'<div class="fd"><label>Quotation or production sheet (required)</label><div id="mSQPick"></div></div>'
-    +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
+    +'<div class="fd"><label>Offer No. <span style="font-weight:400;opacity:.7">(two offers? 75057/14 + 75060/3)</span></label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg" value="'+esc(ed?ed.project:'')+'"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi" value="'+esc(ed?ed.city:'')+'"></div>'
     +'<div class="fd"><label>Salesperson (optional)</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh" value="'+esc(ed?ed.salesperson:'')+'"></div>'
@@ -1410,7 +1417,7 @@ function openRelease(name,team,tm){
       saveNow:async one=>{                        // upload-once: a part already in the library is not sent again
         const off=cleanOffer(one.offer||'');
         if(!off) throw new Error('no Offer No found in this PDF');
-        if(tm.offer && LD.parts(off).base!==LD.parts(tm.offer).base && !confirm('This PDF is for #'+off+', but Team '+team+' is booked for #'+tm.offer+'.\n\nSave it anyway?')) throw new Error('different order, not saved');
+        if(tm.offer && !offerHit(tm.offer,off) && LD.parts(off).base!==LD.parts(tm.offer).base && !confirm('This PDF is for #'+off+', but Team '+team+' is booked for #'+tm.offer+'.\n\nSave it anyway?')) throw new Error('different order, not saved');
         await LD.save(one.file,{offer:off,kind:one.kind,customer:one.client||tm.project||'',salesperson:one.sales||tm.salesperson||'',site:one.city||tm.city||'',
           positions:String(one.items.length),sqft:one.total.toFixed(2),
           items:one.kind==='quotation'?one.items.map(i=>({ref:i.ref,w:Math.round(i.w||0),h:Math.round(i.h||0),qty:1,sqft:+(+i.sqft||0).toFixed(2)})):undefined,
@@ -2128,6 +2135,11 @@ let bookQ=null;   // parsed quotation in the open Book popup
    Passes when a quotation / production sheet is picked in the popup, or the
    library already holds one for this Offer No (all parts of a split order). */
 async function quoteOnFile(offer){
+  const all=splitOffers(cleanOffer(offer)); if(!all.length) return {ok:false};
+  if(all.length>1){ for(const one of all){ const r=await quoteOnFile1(one); if(!r.ok) return Object.assign({missing:one},r); } return {ok:true}; }
+  return quoteOnFile1(all[0]);
+}
+async function quoteOnFile1(offer){
   const o=cleanOffer(offer); if(!o) return {ok:false};
   const chk=async x=>{ const r=await LD.has(x,'quotation'); return {hit:!!(r&&(r.exists||(r.kinds&&r.kinds.length))), offline:!!(r&&r.offline)}; };
   const r=await chk(o); if(r.hit) return {ok:true};
@@ -2210,6 +2222,19 @@ function taSales(raw){
 /* several quotations / production sheets of ONE order (23456/7, /8, /9) → one combined booking:
    positions tagged [/7] [/8] [/9], sq.ft added up, Offer No 23456/7/8/9, each PDF saved under its own number */
 function combineQs(list){
+  if (list.length===1) return list[0];
+  const groups={}; list.forEach(q=>{ const b=LD.parts(q.offer).base||('?'+Object.keys(groups).length); (groups[b]=groups[b]||[]).push(q); });
+  const keys=Object.keys(groups);
+  if(keys.length===1) return combineOneQs(list);
+  // two or more different Offer Nos in one order → one booking, positions tagged with their own offer
+  const subs=keys.map(k=>combineOneQs(groups[k].slice()));
+  const items=[]; list.forEach(q=>{ const tag='['+cleanOffer(q.offer)+'] '; q.items.forEach(i=>items.push(Object.assign({},i,{ref:tag+i.ref}))); });
+  const first=k=>{ const q=list.find(x=>x[k]); return q?q[k]:''; };
+  return {kind:list.every(q=>q.kind==='production')?'production':'quotation', offer:joinOffers(subs.map(x=>x.offer)), offers:subs.map(x=>x.offer),
+    client:first('client'), party:first('party'), sales:first('sales'), city:first('city'), items, total:items.reduce((s,i)=>s+(+i.sqft||0),0), service:list[0].service,
+    parts:list.map(q=>({offer:q.offer, kind:q.kind, positions:q.items.length, sqft:q.total, file:q.file, fromLib:q.fromLib}))};
+}
+function combineOneQs(list){
   if (list.length===1) return list[0];
   list.sort((a,b)=>(+LD.parts(a.offer).parts[0]||0)-(+LD.parts(b.offer).parts[0]||0));
   const base=LD.parts(list[0].offer).base, parts=[];
@@ -2329,7 +2354,7 @@ function pdfPicker(root, opts){
   function combined(){ return list.length?combineQs(list.slice()):null; }
   function changed(){
     draw(); const q=combined();
-    if(q && list.length>1) say('Total '+list.length+' parts · #'+q.offer+' · '+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft','ok'); else say('');
+    if(q && list.length>1) say('Total '+list.length+(q.offers?' PDFs · '+q.offers.length+' offers':' parts')+' · #'+q.offer+' · '+q.items.length+' positions · '+q.total.toFixed(2)+' sq.ft','ok'); else say('');
     if(opts.onChange) opts.onChange(q);
   }
   async function add(arr){
@@ -2344,7 +2369,7 @@ function pdfPicker(root, opts){
       const dup=list.findIndex(x=>x.offer && one.offer && cleanOffer(x.offer).toUpperCase()===cleanOffer(one.offer).toUpperCase());
       if(dup>=0){ if(confirm('#'+one.offer+' is already added.\n\nOK = replace it with this PDF\nCancel = keep the one already added')) list[dup]=one; continue; }
       const bases=[...new Set(list.concat([one]).map(x=>LD.parts(x.offer).base).filter(Boolean))];
-      if(bases.length>1 && !confirm('#'+one.offer+' is a different order ('+bases.join(', ')+').\n\nAdd it to this booking anyway?')) continue;
+      if(bases.length>1 && !confirm('#'+one.offer+' is a different Offer No.\n\nOK = this order has two offers — book them together ('+bases.join(' + ')+')\nCancel = don’t add it')) continue;
       list.push(one);
     }
     changed();
@@ -2616,8 +2641,9 @@ function woFind(offer){
 async function showSavedDocs(offer, box, done){
   if(!box) return;
   box.innerHTML='<div class="pk-row busy"><div class="tk">…</div><div class="tx">Checking saved documents for #'+esc(offer)+'…</div></div>';
-  const want=LD.parts(offer); let list=[], offline=false, errTxt='';
-  const same=x=>{ const p=LD.parts(x.offer); return p.base===want.base && (!want.parts.length||!p.parts.length||p.parts.some(q=>want.parts.includes(q))); };
+  const wants=splitOffers(offer).map(o=>LD.parts(o)); let list=[], offline=false, errTxt='';
+  const same1=(x,want)=>{ const p=LD.parts(x.offer); return p.base===want.base && (!want.parts.length||!p.parts.length||p.parts.some(q=>want.parts.includes(q))); };
+  const same=x=>wants.some(w=>same1(x,w));
   try{
     const r=await fetch(LD.api(),{method:'POST',body:new URLSearchParams({action:'docList'})});
     const d=JSON.parse((await r.text()).trim()||'{}');
@@ -2625,7 +2651,7 @@ async function showSavedDocs(offer, box, done){
   }catch(e){ offline=!navigator.onLine; errTxt=offline?'offline':'library not reachable'; }
   /* also ask for each part by its own number (68499/25, 68499/28 …) — both kinds */
   if(!errTxt){
-    const asks=want.parts.length?want.parts.map(x=>want.base+'/'+x):[want.base];
+    const asks=[].concat(...wants.map(want=>want.parts.length?want.parts.map(x=>want.base+'/'+x):[want.base]));
     for(const o of asks){ if(list.some(x=>cleanOffer(x.offer).toUpperCase()===o.toUpperCase())) continue;
       try{ const hq=await LD.has(o,'quotation'); if(hq&&hq.kinds&&hq.kinds.length) list.push({offer:o,kinds:hq.kinds}); }catch(e){} }
   }
@@ -2634,11 +2660,11 @@ async function showSavedDocs(offer, box, done){
   const kindTxt=k=>(k||[]).map(x=>x==='production'?'Production sheet':'Quotation').join(' + ')||'Document';
   let html=list.map(x=>'<div class="pk-row"><div class="tk">✓</div><div class="tx"><b>#'+esc(x.offer)+'</b> · '+kindTxt(x.kinds)+' · uploaded'
       +'<span>'+(x.customer?esc(x.customer)+' · ':'')+'saved in library</span></div></div>').join('');
-  const got=[]; list.forEach(x=>LD.parts(x.offer).parts.forEach(q=>{ if(!got.includes(q)) got.push(q); }));
-  const miss=want.parts.filter(q=>!got.includes(q));
+  const got=[]; list.forEach(x=>{ const p=LD.parts(x.offer); p.parts.forEach(q=>{ const k=p.base+'/'+q; if(!got.includes(k)) got.push(k); }); if(!p.parts.length) got.push(p.base); });
+  const miss=[]; wants.forEach(want=>{ if(!want.parts.length){ if(!list.some(x=>LD.parts(x.offer).base===want.base)) miss.push(want.base); } else want.parts.forEach(q=>{ if(!got.includes(want.base+'/'+q)) miss.push(wants.length>1?want.base+'/'+q:'/'+q); }); });
   if(!list.length) html='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>'+(errTxt?'Could not check':'Not uploaded yet')+'</b>'
       +'<span>'+(errTxt?'Could not check the library ('+esc(errTxt)+') — try again when online':'No quotation or production sheet saved for #'+esc(offer))+'</span></div></div>';
-  else if(miss.length) html+='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>Part /'+miss.join(', /')+' not uploaded</b><span>Tap + to add it</span></div></div>';
+  else if(miss.length) html+='<div class="pk-row none"><div class="tk">!</div><div class="tx"><b>'+(wants.length>1?'#'+miss.join(', #'):'Part '+miss.join(', '))+' not uploaded</b><span>Tap + to add it</span></div></div>';
   if(inv) html+='<div class="pk-row"><div class="tk">✓</div><div class="tx"><b>Invoice '+esc(inv)+'</b> · made'
       +'<span>#'+esc(w.offer)+' · '+(+w.sqft||0).toFixed(2)+' sq.ft'+(w.parts?' · '+w.parts.length+' parts':'')+'</span></div></div>';
   box.innerHTML=html;
@@ -2866,7 +2892,7 @@ async function uploadForBooked(name,team,tm,q){
   let offer=booked||pdfOffer;
   if(!offer){ say('⚠ No Offer No on this booking or in the PDF','err'); return; }
   if(booked && pdfOffer && q.parts && LD.parts(booked).base===LD.parts(pdfOffer).base) offer=pdfOffer;   // parts of the same order → invoice for all of them
-  else if(booked && pdfOffer && booked.toUpperCase()!==pdfOffer.toUpperCase()){
+  else if(booked && pdfOffer && booked.toUpperCase()!==pdfOffer.toUpperCase() && !offerHit(booked,pdfOffer)){
     if(!confirm('This PDF is for #'+pdfOffer+', but Team '+team+' is booked for #'+booked+'.\n\nUse it for this booking anyway?')){ say('Cancelled — PDF is for a different order','err'); return; }
   }
   const prev=woFind(offer);

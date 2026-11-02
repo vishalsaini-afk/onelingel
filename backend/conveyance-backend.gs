@@ -278,11 +278,14 @@ function buildDay_(sup, date, ctx) {
     var chk = function (n, res, msg) { st.checks.push({ n: n, res: res, msg: msg }); };
     chk(1, toMs_(pl['First At']) <= cutoff ? 'ok' : 'warn', toMs_(pl['First At']) <= cutoff ? 'Planned in time' : 'Planned after the cut-off');
     if (!offer) { chk(2, 'bad', 'No Offer No in the plan'); st.result = 'bad'; stops.push(st); return; }
-    var offerOk = /^\d{3,7}(\/\d+[A-Z]?)?$/.test(offer);   // 75165 or 75057/14
+    // one order can have two offers: "75057/14+75060/3" — a report for either one counts
+    var offs = offer.split('+').filter(String);
+    var offerOk = offs.every(function (o) { return /^\d{3,7}(\/\d+[A-Z]?)*$/.test(o); });   // 75165 or 75057/14
     chk(2, offerOk ? 'ok' : 'warn', offerOk ? 'Offer No valid' : 'Offer No looks unusual');
-    var v = null; visits.forEach(function (x) { if (!v && cleanOffer_(x.Offer) === offer) v = x; });
+    var v = null; visits.forEach(function (x) { if (!v && (cleanOffer_(x.Offer) === offer || offs.indexOf(cleanOffer_(x.Offer)) >= 0)) v = x; });
+    var markUsed = function () { used[offer] = true; offs.forEach(function (o) { used[o] = true; }); };
     if (isMeasurement_(pl.Task)) {
-      used[offer] = true;
+      markUsed();
       chk(3, 'ok', 'Measurement — approved automatically');
       var mk = ctx.measKm[n + '|' + date + '|' + offer];
       st.manualKm = mk ? num_(mk.Km) : null;
@@ -292,7 +295,7 @@ function buildDay_(sup, date, ctx) {
       st.result = 'ok'; stops.push(st); return;
     }
     if (!v) { chk(3, past ? 'bad' : 'wait', past ? 'No Site Inspection report or Handover form' : 'Site report / Handover pending'); st.result = past ? 'bad' : 'wait'; stops.push(st); return; }
-    used[offer] = true; addVisitChecks_(st, v, offer, ctx, S, date, lateBy, chk); stops.push(st);
+    markUsed(); addVisitChecks_(st, v, cleanOffer_(v.Offer), ctx, S, date, lateBy, chk); stops.push(st);
   });
   // reports with no plan behind them
   visits.forEach(function (v) {
