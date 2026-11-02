@@ -890,12 +890,23 @@ function wireDutySwitch(name,team){ const s=document.getElementById('mSw'); if(s
 function seg(id,opts,active){ return '<div class="seg" id="'+id+'">'+opts.map(o=>'<button type="button" data-val="'+esc(o.v)+'"'+(o.v===active?' class="on"':'')+'>'+esc(o.l)+'</button>').join('')+'</div>'; }
 function wireSegs(){ document.querySelectorAll('#mBody .seg').forEach(s=>{ s.querySelectorAll('button').forEach(b=>b.onclick=()=>{ s.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }); }); }
 function segVal(id){ const on=document.querySelector('#'+id+' button.on'); return on?on.getAttribute('data-val'):''; }
+/* JOB TYPE: Regular installation needs the quotation; Rework does not.
+   Saved by tagging the site name "Rework – …", so it shows on the Board, Day Plan, WhatsApp text and the sheet. */
+function isRework(project){ return /^\s*rework\b/i.test(String(project||'')); }
+function stripRework(project){ return String(project||'').replace(/^\s*rework\b\s*[–—:-]?\s*/i,''); }
+function withRework(project,rework){ const p=stripRework(project).trim(); return rework ? ('Rework'+(p?' – '+p:'')) : p; }
+function jobSeg(rework){ return '<div class="fd"><label>Job type</label>'+seg('segJob',[{v:'regular',l:'Regular installation'},{v:'rework',l:'🔧 Rework'}],rework?'rework':'regular')+'</div>'; }
+function wireJobSeg(){   // the quotation label follows the job type
+  const set=()=>{ const rw=segVal('segJob')==='rework', l=document.querySelector('#mQPick')?.closest('.fd')?.querySelector('label');
+    if(l) l.innerHTML = rw ? 'Quotation or production sheet <span style="font-weight:400;opacity:.7">(optional for rework)</span>' : 'Quotation or production sheet (fills offer &amp; site · makes invoice)'; };
+  document.querySelectorAll('#segJob button').forEach(b=>b.addEventListener('click',()=>{ showMErr(''); setTimeout(set,0); })); set(); }
 function openBook(name,team,pre){
   pre=pre||null;
   setBox('');
   document.getElementById('mTtl').textContent='Book '+name;
   document.getElementById('mSub').textContent='Team '+team+' · assign a job (stays until released/held)';
   document.getElementById('mBody').innerHTML=dutyRow(true)
+    +jobSeg(!!(pre&&pre.rework))
     +quoteFieldHTML()
     +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
@@ -904,7 +915,7 @@ function openBook(name,team,pre){
     +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
     +planDateField(pre&&pre.day||'today');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
-  wireSegs(); wireDutySwitch(name,team); wirePlanDate(); wireQuoteField();
+  wireSegs(); wireDutySwitch(name,team); wirePlanDate(); wireQuoteField(); wireJobSeg();
   if(pre){ [['mSales',canonSales(pre.sales)],['mCity',pre.city],['mOffer',pre.offer],['mProject',pre.project]].forEach(function(f){ const el=document.getElementById(f[0]); if(el&&f[1]) el.value=f[1]; });
     if(pre.pending&&pre.pending.length){ const b=document.getElementById('mBody'); b.insertAdjacentHTML('afterbegin', pendingBox(pre.pending)); } }
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
@@ -913,12 +924,14 @@ function openBook(name,team,pre){
    try{
     const holdBy=segVal('segHold');
     const offer=(document.getElementById('mOffer').value||'').trim();
-    const project=(document.getElementById('mProject').value||'').trim();
+    const rework=segVal('segJob')==='rework';
+    const project=withRework((document.getElementById('mProject').value||'').trim(), rework);
     const city=(document.getElementById('mCity').value||'').trim();
     const sales=canonSales(document.getElementById('mSales').value);
     const q=bookQ;
-    // RULE: no quotation → no booking (an uploaded PDF, or one already saved in the library for this Offer No)
-    if(!q){ const ok=await needQuote(offer,'team',goB); if(!ok) return; }
+    // RULE: Regular installation → no quotation, no booking. Rework → quotation not needed, but say which site.
+    if(rework){ if(!offer && !stripRework(project)){ showMErr('Rework: enter the Offer No. or the site name.'); return; } }
+    else if(!q){ const ok=await needQuote(offer,'team',goB); if(!ok) return; }
     const date=chosenPlanDate();
     const woSvc=q?document.getElementById('mWoSvc').value:'', woBill=q?(segVal('segBill')||'lingel'):'';
     if(q && !offer){ showMErr('Quotation uploaded — enter its Offer No. to make the invoice.'); return; }
@@ -960,7 +973,7 @@ function openSupPlan(preset){
     planDateField(daySel, ed?ed.date:null)
     +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
     +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
-    +'<div class="fd"><label>Quotation or production sheet (required)</label><div id="mSQPick"></div></div>'
+    +'<div class="fd"><label id="mSQLbl">Quotation or production sheet</label><div id="mSQPick"></div></div>'
     +'<div class="fd"><label>Offer No. <span style="font-weight:400;opacity:.7">(two offers? 75057/14 + 75060/3)</span></label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg" value="'+esc(ed?ed.project:'')+'"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi" value="'+esc(ed?ed.city:'')+'"></div>'
@@ -969,6 +982,8 @@ function openSupPlan(preset){
   showMErr(''); const go=document.getElementById('mGo'); go.textContent= ed?'Save':'Add to plan →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wirePlanDate();
   const supPk=wireSupQuote();
+  const supLbl=()=>{ const l=document.getElementById('mSQLbl'); if(l) l.innerHTML='Quotation or production sheet '+(segVal('segTask')==='Measurement'?'<span style="font-weight:400;opacity:.7">(optional for measurement)</span>':'(required for site visit)'); };
+  document.querySelectorAll('#segTask button').forEach(b=>b.addEventListener('click',()=>{ showMErr(''); setTimeout(supLbl,0); })); supLbl();
   if(ed){ const del=document.getElementById('mDelSup'); if(del) del.onclick=()=>{ plans=plans.filter(p=>p.id!==ed.id); savePlansLocal(); pushPlanDelete(ed.id); closeModal(); if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); if(view==='conv' && typeof cvLoad==='function') setTimeout(cvLoad,600); setDot('dotS','syncS','ok','Removed plan'); }; }
   setTimeout(()=>{ const o=document.getElementById('mSupName'); if(o && !supName) o.focus(); },50);
   goHandler=async()=>{
@@ -976,10 +991,10 @@ function openSupPlan(preset){
     const date=chosenPlanDate(), task2=segVal('segTask')||'Measurement';
     const sup=(document.getElementById('mSupName').value||'').trim();
     if(!sup){ showMErr('Supervisor name is required.'); return; }
-    // RULE: no quotation → no supervisor plan (unchanged Offer No on an existing plan is left alone)
+    // RULE: Site Visit needs the quotation; Measurement does not (unchanged Offer No on an existing plan is left alone)
     const offNow=(document.getElementById('mOffer').value||'').trim();
     const keepOld = ed && ed.offer && cleanOffer(ed.offer).toUpperCase()===cleanOffer(offNow).toUpperCase();
-    if(!keepOld){
+    if(task2!=='Measurement' && !keepOld){
       const L=supPk?supPk.list:[];
       if(L.some(x=>x._st==='saving')){ showMErr('Wait — the quotation is still uploading.'); return; }
       const good=L.some(x=>x.fromLib||x._st==='saved');
@@ -1052,11 +1067,12 @@ function openTeamEdit(src){
   const names=rows.map(r=>r.name); if(names.indexOf(src.contractor)<0) names.unshift(src.contractor);
   const teamOpts=c=>{ const r=rows.find(x=>x.name===c); const n=r?r.teams.length:Math.max(2,+src.team||1); let o=''; for(let t=1;t<=n;t++) o+='<option value="'+t+'"'+(String(t)===String(src.team)?' selected':'')+'>Team '+t+'</option>'; return o; };
   document.getElementById('mBody').innerHTML=
-     planDateField(daySel, src.date>TOMORROW()?src.date:null)
+     jobSeg(isRework(src.project))
+    +planDateField(daySel, src.date>TOMORROW()?src.date:null)
     +'<div class="fn-row2"><div class="fd"><label>Contractor</label><select id="eCon" class="msel">'+names.map(n=>'<option'+(n===src.contractor?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></div>'
     +'<div class="fd"><label>Team</label><select id="eTeam" class="msel">'+teamOpts(src.contractor)+'</select></div></div>'
     +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" value="'+esc(src.offer)+'"></div>'
-    +'<div class="fd"><label>Project / Site</label><input id="mProject" autocomplete="off" value="'+esc(src.project)+'"></div>'
+    +'<div class="fd"><label>Project / Site</label><input id="mProject" autocomplete="off" value="'+esc(stripRework(src.project))+'"></div>'
     +'<div class="fn-row2"><div class="fd"><label>City</label><input id="mCity" autocomplete="off" value="'+esc(src.city)+'"></div>'
     +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" value="'+esc(src.salesperson)+'"></div></div>'
     +'<div class="fd"><label>Hold by</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],src.holdBy||'')+'</div>'
@@ -1067,10 +1083,13 @@ function openTeamEdit(src){
   eCon.onchange=()=>{ eTeam.innerHTML=teamOpts(eCon.value); };
   goHandler=async()=>{
     const n={ contractor:eCon.value, team:String(eTeam.value), date:chosenPlanDate(),
-      offer:cleanOffer(document.getElementById('mOffer').value), project:document.getElementById('mProject').value.trim(),
+      offer:cleanOffer(document.getElementById('mOffer').value), project:withRework(document.getElementById('mProject').value.trim(), segVal('segJob')==='rework'),
       city:document.getElementById('mCity').value.trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:segVal('segHold')||'' };
-    if(!n.offer){ showMErr('Enter the Offer No. — a team can’t be booked without its quotation.'); return; }
-    if(cleanOffer(n.offer).toUpperCase()!==cleanOffer(src.offer||'').toUpperCase()){ const ok=await needQuote(n.offer,'team',go); if(!ok) return; }
+    if(isRework(n.project)){ if(!n.offer && !stripRework(n.project)){ showMErr('Rework: enter the Offer No. or the site name.'); return; } }
+    else {
+      if(!n.offer){ showMErr('Enter the Offer No. — a team can’t be booked without its quotation.'); return; }
+      if(cleanOffer(n.offer).toUpperCase()!==cleanOffer(src.offer||'').toUpperCase() || isRework(src.project)){ const ok=await needQuote(n.offer,'team',go); if(!ok) return; }
+    }
     const same=['contractor','team','date','offer','project','city','salesperson','holdBy'].every(k=>String(n[k]||'')===String(src[k]||''));
     if(same){ closeModal(); return; }
     const moved = n.contractor!==src.contractor || n.team!==String(src.team) || n.date!==src.date;
