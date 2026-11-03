@@ -54,7 +54,10 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .meta{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
 .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
 .btn{border:none;border-radius:9px;padding:10px 14px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
-.btn.go{background:var(--green);color:#06210f}.btn.hv{background:var(--hivis);color:#111}
+.btn.go{background:var(--green);color:#06210f}
+.btn.pay{background:none;border:1px solid var(--muted);color:var(--text)}
+.btn.pay.ok{background:var(--green);border-color:var(--green);color:#06210f}
+.card.gone{opacity:0;transform:translateX(24px);max-height:0;padding-top:0;padding-bottom:0;margin:0;border-width:0;overflow:hidden;transition:opacity .35s,transform .35s,max-height .45s .2s,padding .45s .2s,margin .45s .2s}.btn.hv{background:var(--hivis);color:#111}
 .role{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px;margin-left:auto}
 .role button{border:none;background:none;color:var(--muted);border-radius:999px;padding:7px 14px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
 .role button.on{background:var(--hivis);color:#111}
@@ -81,7 +84,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a class="home" href="index.html">← Hub</a>
+  <div class="top"><div class="who" style="margin:0;text-align:left"><b style="font-size:15px">Lingel</b>Dispatch planning</div>
     <div class="role" id="role"><button data-r="plan">Planning</button><button data-r="disp">Dispatch</button></div></div>
   <div class="hdr"><div class="t" id="ttl">Dispatch Planning</div><div class="s" id="sub">Approve payment · plan the next day's dispatch</div></div>
 
@@ -202,7 +205,7 @@ function card(o){
   if(role==='disp'){
     acts = '<span class="sentx">🚚 Loading confirmed'+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+'</span>';
   } else if(o.stage==='ready'){
-    acts = '<button class="btn go" data-act="approve" data-o="'+esc(o.offer)+'">✓ Payment received</button>'+rsel(o);
+    acts = '<button class="btn pay" data-act="approve" data-o="'+esc(o.offer)+'">Payment received?</button>'+rsel(o);
   } else if(o.stage==='paid'){
     const p = pick[o.offer] || (pick[o.offer] = {day:'tomorrow', date:'', install: o.install==='No' ? 'No' : 'Yes'});
     acts = '<span class="done">✓ Paid'+(o.approvedBy?' · '+esc(o.approvedBy):'')+'</span>'
@@ -217,7 +220,7 @@ function card(o){
                               : '<span class="wait">⏳ Waiting for the installation team to confirm loading (Team Availability → Ready &amp; paid)</span>')
       + '<button class="btn ghost" data-act="unplan" data-o="'+esc(o.offer)+'">Change date</button>';
   }
-  return '<div class="'+cls+'"><div class="ch"><div><div class="off">#'+esc(o.offer)+'<span class="tag">'+esc(o.dept)+'</span>'+(o.code?'<span class="tag">'+esc(o.code)+'</span>':'')+left+'</div>'
+  return '<div class="'+cls+'" data-card="'+esc(o.offer)+'"><div class="ch"><div><div class="off">#'+esc(o.offer)+'<span class="tag">'+esc(o.dept)+'</span>'+(o.code?'<span class="tag">'+esc(o.code)+'</span>':'')+left+'</div>'
     + '<div class="cl">'+esc(o.client||'—')+'</div></div>'+(o.stage!=='ready' && o.stage!=='paid' ? ins : '')+'</div>'
     + '<div class="meta">🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+' · 📍 '+esc(o.address||'no address')
     + (o.stage==='ready' && o.readySince ? '<br>Ready since '+esc(o.readySince) : '')+'</div>'
@@ -238,7 +241,17 @@ async function act(kind, offer, extra){
   if(kind==='plan'){ const p = pick[offer]||{}; const d = p.day==='today' ? TODAY() : p.day==='later' ? (p.date||TOMORROW()) : TOMORROW();
     params.date = d; params.install = p.install||'Yes'; }
   const before = Object.assign({}, o);
-  if(kind==='approve') Object.assign(o,{stage:'paid',paid:true,approvedBy:by});
+  if(kind==='approve'){
+    const btn=document.querySelector('button[data-act="approve"][data-o="'+CSS.escape(offer)+'"]');
+    if(btn){ btn.classList.add('ok'); btn.textContent='✓ Payment received'; btn.disabled=true; }
+    setDot('busy','Saving #'+offer+'…');
+    try{ await savePay(params, o); }catch(e){ if(btn){ btn.classList.remove('ok'); btn.textContent='Payment received?'; btn.disabled=false; } setDot('err','Not saved: '+(e.message||e)); alert('Couldn’t save:\n\n'+(e.message||e)); return; }
+    const cardEl=document.querySelector('[data-card="'+CSS.escape(offer)+'"]');
+    await new Promise(r=>setTimeout(r,700));                    // let the green show
+    if(cardEl) cardEl.classList.add('gone');
+    await new Promise(r=>setTimeout(r,650));
+    setDot('ok','#'+offer+' · payment received — now in Plan dispatch'); render(); return;
+  }
   if(kind==='undo') Object.assign(o,{stage:'ready',paid:false,approvedBy:'',dispatchDate:''});
   if(kind==='region') Object.assign(o,{region:extra});
   if(kind==='plan') Object.assign(o,{stage:o.confirmed?'dispatch':'planned',dispatchDate:params.date,install:params.install,plannedBy:by});
@@ -257,6 +270,14 @@ async function act(kind, offer, extra){
   }
 }
 
+/* payment save with one password retry; keeps the card on screen until it is confirmed */
+async function savePay(params, o){
+  for(let attempt=0; attempt<2; attempt++){
+    try{ const d=await post(params); if(d.row) Object.assign(o,d.row); else Object.assign(o,{stage:'paid',paid:true});
+      ls.set(LS.cache, JSON.stringify({rows,at:Date.now()})); return; }
+    catch(e){ if(e.auth && attempt===0){ ls.del(LS.key); const k=askKey(true); if(k){ params.key=k; continue; } } throw e; }
+  }
+}
 /* ---------- wiring ---------- */
 $('role').onclick = e=>{ const b=e.target.closest('button[data-r]'); if(!b) return; role=b.dataset.r; ls.set(LS.role, role); tab = role==='disp' ? 'disp' : (ls.get(LS.tab)||'ready'); render(); };
 $('tabs').onclick = e=>{ const b=e.target.closest('.vtab'); if(!b) return; tab=b.dataset.t; if(role==='plan') ls.set(LS.tab, tab); render(); };
