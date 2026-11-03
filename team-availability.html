@@ -66,6 +66,14 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .unchip small{font-weight:600;color:var(--muted);margin-left:4px}
 .unchip.on{background:var(--hivis);border-color:var(--hivis);color:#111}.unchip.on small{color:#333}
 .unfrow{display:flex;gap:8px;align-items:center}.unfrow .msel{padding:9px 11px;font-size:14px}
+.rpcard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:12px 13px;margin-bottom:9px}
+.rpcard.sent{border-left-color:var(--blue)}
+.rpq{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.rpq .seg{flex:1;min-width:200px;margin:0}
+.rpgo{border:none;border-radius:9px;padding:11px 14px;background:var(--hivis);color:#111;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.rpgo:disabled{opacity:.5}
+.rpsent{font-size:12.5px;color:var(--blue);font-weight:600}
+.rpundo{border:1px solid var(--line);background:none;color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
 .unclr{flex:0 0 auto;border:none;background:none;color:var(--hivis);font-weight:700;font-size:13px;cursor:pointer;padding:6px}
 .pdep.code{background:var(--hivis);border-color:var(--hivis);color:#111}
 .uncard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;padding:12px 13px;margin-bottom:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -505,7 +513,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 
   <div id="unView" hidden>
     <div class="unbar">
-      <div class="seg" id="unSeg"><button type="button" data-val="un" class="on">Unassigned</button><button type="button" data-val="pend">⚠ Pending / Site req</button><button type="button" data-val="all">All dispatched</button></div>
+      <div class="seg" id="unSeg"><button type="button" data-val="un" class="on">Unassigned</button><button type="button" data-val="pend">⚠ Pending / Site req</button><button type="button" data-val="all">All dispatched</button><button type="button" data-val="paidr">💰 Ready &amp; paid<span class="vbadge" id="rpBadge" hidden>0</span></button></div>
       <div class="unfil" id="unFil"></div>
       <div class="unrow"><div class="search"><span class="mag">🔍</span><input id="unQ" placeholder="Offer, client, city, salesperson…" autocomplete="off"></div>
       <button class="rf" id="refreshU" title="Re-check the production plan now">⟳</button></div>
@@ -1608,7 +1616,7 @@ function switchView(v){
   document.getElementById('unView').hidden = v!=='un';
   document.getElementById('convView').hidden = v!=='conv';
   if(v==='conv' && typeof convOpen==='function') convOpen();
-  if(v==='un'){ renderUn(); loadDispatch(false); }
+  if(v==='un'){ renderUn(); loadDispatch(false); loadPaidReady(); }
   if(v==='board'){ if(!document.getElementById('supBoard').hidden) renderSupBoard(); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); }
   if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
   startPoll();
@@ -1671,6 +1679,7 @@ function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+'
 function renderUn(){
   const all=unView(), un=all.filter(o=>!o.assigned && !o.closed && unFilterOk(o));
   const b=document.getElementById('unBadge'); if(b){ b.textContent=un.length; b.hidden=!un.length; }
+  if(unMode==='paidr'){ const f=document.getElementById('unFil'); if(f) f.innerHTML=''; renderPaidReady(); return; }
   drawUnFilter(all);
   const box=document.getElementById('unList'); if(!box) return;
   if(!DISPATCH_API){ box.innerHTML='<div class="msg">Dispatch list is not connected yet.<br><span style="font-size:12px">Paste the dispatch-tracker /exec URL into <b>DISPATCH_API</b> in this file.</span></div>'; return; }
@@ -1685,6 +1694,60 @@ function renderUn(){
   list.forEach(o=>{ const b=unBase(o.offer); if(!gmap[b]){ gmap[b]={base:b,items:[]}; groups.push(gmap[b]); } gmap[b].items.push(o); });
   box.innerHTML=groups.map(g=> g.items.length===1 ? unCard(g.items[0]) : unGroupCard(g)).join('');
 }
+/* ===================== 💰 READY & PAID =====================
+   Orders the Dispatch Planning team marked "Payment received". Here: confirm loading + whether installation
+   is needed → the order shows in the Dispatch Team app. Backend: invoice Apps Script (readyList / readyConfirm). */
+const RP_CACHE='lingel_ready_paid_v1'; let rpRows=[], rpLoading=false, rpErr='';
+try{ const c=JSON.parse(localStorage.getItem(RP_CACHE)||'null'); if(c&&Array.isArray(c.rows)) rpRows=c.rows; }catch(e){}
+async function rpPost(params){
+  const r=await fetch(DISPATCH_API,{method:'POST',body:new URLSearchParams(params)}); const t=(await r.text()).trim();
+  if(t.charAt(0)==='<') throw new Error('Script returned a sign-in page');
+  const d=JSON.parse(t); if(!d||d.ok===false) throw new Error((d&&d.error)||'Server error');
+  return d; }
+async function loadPaidReady(){
+  if(rpLoading) return; rpLoading=true; rpErr=''; if(unMode==='paidr') renderPaidReady();
+  try{ const d=await rpPost({action:'readyList'}); rpRows=(d.rows||[]).filter(o=>o.paid); try{ localStorage.setItem(RP_CACHE,JSON.stringify({rows:rpRows})); }catch(e){} }
+  catch(e){ rpErr=/unknown/i.test(e.message)?'Invoice script not updated yet — paste the new version and deploy.':(e.message||String(e)); }
+  finally{ rpLoading=false; if(unMode==='paidr') renderPaidReady(); rpBadge(); }
+}
+function rpBadge(){ const b=document.getElementById('rpBadge'), n=rpRows.filter(o=>o.stage==='paid').length; if(b){ b.textContent=n; b.hidden=!n; } }
+function renderPaidReady(){
+  const box=document.getElementById('unList'); if(!box) return; rpBadge();
+  if(!rpRows.length && rpLoading){ box.innerHTML=Array.from({length:3}).map(()=>'<div class="skel" style="height:96px;margin-bottom:9px"></div>').join(''); return; }
+  const q=unQ.trim().toLowerCase();
+  const list=rpRows.filter(o=>!q||[o.offer,o.client,o.sales,o.address,o.region].join(' ').toLowerCase().includes(q))
+    .sort((a,b)=>(a.stage==='dispatch')-(b.stage==='dispatch') || String(a.region).localeCompare(String(b.region)) || String(a.offer).localeCompare(String(b.offer),undefined,{numeric:true}));
+  const head=rpErr?'<div class="msg" style="color:var(--red)">'+esc(rpErr)+(rpRows.length?' · showing the last list':'')+'</div>':'';
+  if(!list.length){ box.innerHTML=head+'<div class="msg">No Ready order with payment received yet.<br><span style="font-size:12px">The Dispatch Planning team marks payment; orders then appear here.</span></div>'; return; }
+  box.innerHTML=head+list.map(o=>{
+    const sent=o.stage==='dispatch';
+    return '<div class="rpcard'+(sent?' sent':'')+'"><div class="unh"><div><div class="unoff">#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span>'+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+'</div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
+      +'<span class="undays ok">💰 Paid</span></div>'
+      +'<div class="unmeta">📍 '+esc(o.region||'—')+(o.address?' · '+esc(o.address):'')+'<br>🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+(o.approvedBy?' · payment by '+esc(o.approvedBy):'')+'</div>'
+      +(sent
+        ? '<div class="rpq"><span class="rpsent">🚚 Sent to dispatch · installation '+esc(o.install||'—')+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+(o.confirmedOn?' · '+esc(o.confirmedOn):'')+'</span><button class="rpundo" data-rpundo="'+esc(o.offer)+'">Undo</button></div>'
+        : '<div class="rpq"><div class="seg" data-rpinst="'+esc(o.offer)+'"><button type="button" data-val="Yes" class="on">Installation needed</button><button type="button" data-val="No">Supply only</button></div>'
+          +'<button class="rpgo" data-rpgo="'+esc(o.offer)+'">✓ Confirm loading → dispatch</button></div>')
+      +'</div>'; }).join('');
+}
+async function rpConfirm(offer, install, undo){
+  const o=rpRows.find(x=>x.offer===offer); if(!o) return;
+  if(undo && !confirm('Take #'+offer+' back from the dispatch team?')) return;
+  const before=Object.assign({},o);
+  if(undo){ o.stage='paid'; o.confirmed=false; o.install=''; } else { o.stage='dispatch'; o.confirmed=true; o.install=install; o.confirmedBy=SUP; o.confirmedOn='now'; }
+  renderPaidReady(); setDot('dotU','syncU','busy','Saving #'+offer+'…');
+  try{ const d=await rpPost({action:undo?'readyUnconfirm':'readyConfirm', offer, install, by:SUP}); if(d.row) Object.assign(o,d.row);
+    try{ localStorage.setItem(RP_CACHE,JSON.stringify({rows:rpRows})); }catch(e){}
+    setDot('dotU','syncU','ok', undo?('#'+offer+' taken back from dispatch'):('#'+offer+' sent to dispatch · installation '+install)); }
+  catch(e){ Object.assign(o,before); setDot('dotU','syncU','err','Not saved: '+(e.message||e)); alert('Couldn’t save:\n\n'+(e.message||e)); }
+  renderPaidReady();
+}
+document.getElementById('unList').addEventListener('click',e=>{
+  if(unMode!=='paidr') return;
+  const sb=e.target.closest('.seg[data-rpinst] button'); if(sb){ const sg=sb.parentElement; sg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); sb.classList.add('on'); return; }
+  const go=e.target.closest('[data-rpgo]'); if(go){ const off=go.getAttribute('data-rpgo'), sg=document.querySelector('.seg[data-rpinst="'+CSS.escape(off)+'"] button.on'); rpConfirm(off, sg?sg.getAttribute('data-val'):'Yes', false); return; }
+  const un=e.target.closest('[data-rpundo]'); if(un){ rpConfirm(un.getAttribute('data-rpundo'), '', true); return; }
+}, true);
 function unVisible(o){ if(!unFilterOk(o)) return false; if(unMode==='un'&&(o.assigned||o.closed)) return false; if(unMode==='pend'&&!(o.pending&&o.pending.length)) return false;
   const q=unQ.trim().toLowerCase(); return !q || [o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q); }
 function unBase(offer){ const k=offerKeys(offer)[0]; return k?k.split('/')[0]:String(offer||'').split('/')[0].trim(); }
@@ -1789,7 +1852,7 @@ async function setSiteClosed(o,close,reason){
 }
 (function(){
   const seg=document.getElementById('unSeg');
-  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); unMode=b.getAttribute('data-val'); renderUn(); }));
+  seg.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ seg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); unMode=b.getAttribute('data-val'); renderUn(); if(unMode==='paidr') loadPaidReady(); }));
   document.getElementById('unQ').addEventListener('input',e=>{ unQ=e.target.value; renderUn(); });
   const fil=document.getElementById('unFil');
   fil.addEventListener('click',e=>{
@@ -1798,7 +1861,7 @@ async function setSiteClosed(o,close,reason){
     if(!v) unCodes=[]; else unCodes = unCodes.includes(v) ? unCodes.filter(x=>x!==v) : unCodes.concat([v]);   // tap several codes to combine
     saveUnFil(); renderUn(); });
   fil.addEventListener('change',e=>{ if(e.target.id==='unSalesSel'){ unSales=e.target.value; saveUnFil(); renderUn(); } });
-  document.getElementById('refreshU').addEventListener('click',()=>loadDispatch(true));
+  document.getElementById('refreshU').addEventListener('click',()=>{ if(unMode==='paidr') loadPaidReady(); else loadDispatch(true); });
   document.getElementById('unList').addEventListener('click',e=>{
     const all=e.target.closest('.unall'); if(all){ const base=all.getAttribute('data-grp'); const items=unView().filter(o=>unBase(o.offer)===base && unVisible(o)); openAssign(unGroupOrder({base:base,items:items})); return; }
     const c=e.target.closest('.ungrow')||e.target.closest('.uncard:not(.ungrp)'); if(!c||c.classList.contains('done')) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;
