@@ -1706,7 +1706,7 @@ async function rpPost(params){
   return d; }
 async function loadPaidReady(){
   if(rpLoading) return; rpLoading=true; rpErr=''; if(unMode==='paidr') renderPaidReady();
-  try{ const d=await rpPost({action:'readyList'}); rpRows=(d.rows||[]).filter(o=>o.paid); try{ localStorage.setItem(RP_CACHE,JSON.stringify({rows:rpRows})); }catch(e){} }
+  try{ const d=await rpPost({action:'readyList', key:KYC_KEY}); rpRows=(d.rows||[]).filter(o=>o.paid); try{ localStorage.setItem(RP_CACHE,JSON.stringify({rows:rpRows})); }catch(e){} }
   catch(e){ rpErr=/unknown/i.test(e.message)?'Invoice script not updated yet — paste the new version and deploy.':(e.message||String(e)); }
   finally{ rpLoading=false; if(unMode==='paidr') renderPaidReady(); rpBadge(); }
 }
@@ -1737,7 +1737,7 @@ async function rpConfirm(offer, install, undo){
   const before=Object.assign({},o);
   if(undo){ o.stage=o.dispatchDate?'planned':'paid'; o.confirmed=false; } else { o.stage=o.dispatchDate?'dispatch':'paid'; o.confirmed=true; o.install=install; o.confirmedBy=SUP; o.confirmedOn='now'; }
   renderPaidReady(); setDot('dotU','syncU','busy','Saving #'+offer+'…');
-  try{ const d=await rpPost({action:undo?'readyUnconfirm':'readyConfirm', offer, install, by:SUP}); if(d.row) Object.assign(o,d.row);
+  try{ const d=await rpPost({action:undo?'readyUnconfirm':'readyConfirm', offer, install, by:SUP, key:KYC_KEY}); if(d.row) Object.assign(o,d.row);
     try{ localStorage.setItem(RP_CACHE,JSON.stringify({rows:rpRows})); }catch(e){}
     setDot('dotU','syncU','ok', undo?('#'+offer+' taken back from dispatch'):('#'+offer+' sent to dispatch · installation '+install)); }
   catch(e){ Object.assign(o,before); setDot('dotU','syncU','err','Not saved: '+(e.message||e)); alert('Couldn’t save:\n\n'+(e.message||e)); }
