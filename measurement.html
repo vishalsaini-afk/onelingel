@@ -234,6 +234,8 @@
   <button class="btn btn-ghost" id="translateAll" title="Speak Hindi, get English text live">🌐 →EN</button>
   <button class="btn btn-ghost" id="importBtn">📄 Import quotation(s)</button>
   <input type="file" id="importFile" accept="application/pdf,.pdf" multiple hidden>
+  <button class="btn btn-ghost" id="oldMeasBtn" title="Save a measurement already taken (scanned PDF or photo) to Drive in this order's folder">📎 Upload old measurement</button>
+  <input type="file" id="oldMeasFile" accept="application/pdf,.pdf,image/*" multiple hidden>
   <button class="btn btn-ghost" id="backupBtn">⬇ Backup</button>
   <label class="btn btn-ghost" for="restoreFile" style="cursor:pointer">⬆ Restore<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
   <button class="btn btn-ghost" id="clearAll">↺ Reset</button>
@@ -761,6 +763,7 @@ async function driveCreateFolder(name,parent){const body={name:name,mimeType:"ap
 async function driveFolder(name,parent){return (await driveFindFolder(name,parent))||(await driveCreateFolder(name,parent));}
 async function driveUpload(blob,name,parent){const meta={name:name,parents:[parent]};const fd=new FormData();fd.append("metadata",new Blob([JSON.stringify(meta)],{type:"application/json"}));fd.append("file",blob);const r=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",{method:"POST",headers:{Authorization:"Bearer "+_driveToken},body:fd});return r.json();}
 async function saveToDrive(){
+  _luRetry=function(){ saveToDrive(); };
   const offer=($("#m_no").value||"").trim();
   const api=luApi(); if(!api) return;
   const hasVideos = openings.some(o=>o.videoId);
@@ -1477,6 +1480,37 @@ async function importQuotation(file){
   toast("✓ Imported "+newOps.length+" position"+(newOps.length>1?"s":""));
 }
 $("#importBtn").onclick=()=>$("#importFile").click();
+/* OLD MEASUREMENT: a measurement already taken on paper / as a scanned PDF. Not read — just saved to Drive
+   in the Offer No folder (same route + offline outbox as the Sheet PDF). */
+function oldMeasOffer(){
+  let o=($("#m_no").value||"").trim();
+  if(!o){ o=(prompt("Offer No. for this measurement (e.g. 75057/14)")||"").trim(); if(o){ $("#m_no").value=o; try{saveMeta();}catch(e){} } }
+  return o;
+}
+$("#oldMeasBtn").onclick=()=>{ if(!oldMeasOffer()){ toast("Enter the Offer No. first"); return; } $("#oldMeasFile").click(); };
+$("#oldMeasFile").addEventListener("change",async ev=>{
+  const files=[...ev.target.files]; ev.target.value=""; if(!files.length) return;
+  const offer=oldMeasOffer(); if(!offer){ toast("Enter the Offer No. first"); return; }
+  const api=luApi(); if(!api) return;
+  const big=files.filter(f=>f.size>40*1024*1024); if(big.length){ toast("⚠ "+big[0].name+" is over 40 MB — too large to upload"); return; }
+  const safe=offer.replace(/[^\w-]+/g,"-"); let ok=0, queued=0;
+  _luRetry=function(){ flushOutbox(); };   // a queued file is already on the phone: retry just sends it
+  luShow("Saving old measurement", "0 / "+files.length);
+  for(let i=0;i<files.length;i++){
+    const f=files[i], ext=(f.name.match(/\.([a-z0-9]+)$/i)||[,"pdf"])[1].toLowerCase();
+    const name="Old_Measurement_"+safe+"_"+luStamp()+(files.length>1?"_"+(i+1):"")+"."+ext;
+    try{
+      const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ const t=String(r.result); res(t.slice(t.indexOf(",")+1)); }; r.onerror=rej; r.readAsDataURL(f); });
+      const job={ id:"oldmeas_"+safe+"_"+Date.now()+"_"+i, kind:"pdf", folder:offer, name, mime:f.type||(ext==="pdf"?"application/pdf":"image/jpeg"), base64:b64 };
+      try{ await queuedUpload(api, job, b64); ok++; }catch(e){ queued++; console.error("old measurement upload deferred",e); }
+    }catch(e){ console.error(e); }
+    luShow("Saving old measurement", (i+1)+" / "+files.length);
+  }
+  if(ok && !queued) luDone(ok+" file"+(ok>1?"s":"")+" saved to Drive · folder "+offer);
+  else if(ok) luDone(ok+" saved · "+queued+" will upload when back online");
+  else if(queued) luFail("kept on phone · uploads when back online");
+  else luFail("couldn't read the file");
+});
 $("#importFile").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f){return;}try{await importQuotation(f);}catch(e){console.error(e);toast("⚠ "+((e&&e.message)||"Couldn't read this PDF"));}ev.target.value="";});
 
 /* install + init */
