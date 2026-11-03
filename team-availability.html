@@ -208,6 +208,9 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .fd label{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
 .fd input{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
 .fd input:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+.offrow{display:flex;gap:6px;align-items:center;margin-top:6px}.offrow input{flex:1}
+.offrow .rmo{flex:0 0 auto;width:40px;height:44px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--muted);font-size:16px;cursor:pointer}
+.addoff{align-self:flex-start;margin-top:6px;border:1px dashed var(--line);background:none;color:var(--hivis);border-radius:8px;padding:8px 12px;font-weight:700;font-size:13px;cursor:pointer;font-family:'Spline Sans',sans-serif}
 .qup{flex:1;width:100%;border:1px dashed var(--hivis);background:rgba(255,206,31,.08);color:var(--hivis);border-radius:8px;padding:11px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
 .qinfo{font-size:12px;color:var(--muted);min-height:0}.pk-list{display:flex;flex-direction:column;gap:6px;margin:8px 0 6px}.pk-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--green);border-radius:8px;background:rgba(46,204,113,.08);font-size:12.5px}.pk-row .tk{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}.pk-row .tx{flex:1;min-width:0;line-height:1.35}.pk-row .tx b{color:var(--text,#fff)}.pk-row .tx span{color:var(--muted);display:block;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pk-row .rm{border:0;background:none;color:var(--muted);font-size:18px;padding:2px 6px;cursor:pointer}.pk-row.busy{border-color:var(--muted);background:none}.pk-row.busy .tk{background:var(--muted)}.pk-add{display:flex;gap:8px}.pk-add .qup.plus{font-size:20px;flex:0 0 56px;padding:6px}.pk-row.none{border-color:var(--hivis);background:rgba(255,206,31,.06)}.pk-row.none .tk{background:none;border:1.5px solid var(--hivis);color:var(--hivis)}.qup.fine{border-color:var(--red);color:var(--red);background:rgba(239,68,68,.07)}.fn-list{display:flex;flex-direction:column;gap:6px;margin:6px 0 10px}.fn-row{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid rgba(239,68,68,.5);border-radius:8px;background:rgba(239,68,68,.06);font-size:12.5px}.fn-row .tx{flex:1;min-width:0;line-height:1.35}.fn-row .tx span{display:block;color:var(--muted);font-size:11.5px}.fn-row .am{font-weight:800;color:var(--red);white-space:nowrap}.fn-row button{border:0;background:none;color:var(--muted);font-size:17px;cursor:pointer}.fd textarea{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif;min-height:70px;resize:vertical}.fn-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fn-sum{padding:12px 14px;border-radius:9px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.45);font-size:13px;line-height:1.5;margin:4px 0 12px}.fn-sum b.big{font-size:22px;color:var(--red);display:block}.wa{background:#25D366;color:#062b14}.wa-row{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}.wa-fab{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#25D366;text-decoration:none}.wa-fab svg{width:18px;height:18px}.wa-fab:active{transform:scale(.92)}.pk-tot{font-size:12px;color:var(--green);font-weight:700;margin-top:2px}.qinfo.ok{color:var(--green);font-weight:600}.qinfo.err{color:var(--red)}
 .msel{border:1px solid var(--line);border-radius:8px;padding:11px 13px;font-size:15px;background:var(--panel-2);color:var(--text);width:100%;font-family:'Spline Sans',sans-serif}
@@ -900,6 +903,27 @@ function wireJobSeg(){   // the quotation label follows the job type
   const set=()=>{ const rw=segVal('segJob')==='rework', l=document.querySelector('#mQPick')?.closest('.fd')?.querySelector('label');
     if(l) l.innerHTML = rw ? 'Quotation or production sheet <span style="font-weight:400;opacity:.7">(optional for rework)</span>' : 'Quotation or production sheet (fills offer &amp; site · makes invoice)'; };
   document.querySelectorAll('#segJob button').forEach(b=>b.addEventListener('click',()=>{ showMErr(''); setTimeout(set,0); })); set(); }
+/* OFFER NO BOX with "＋ Add another offer": one customer, several offers → one box each.
+   offerVal() joins them as "75057/14 + 75060/3" (same format the rest of the app already understands). */
+function offerFieldHTML(label){
+  return '<div class="fd"><label>'+label+'</label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14">'
+    +'<div id="mOffExtra"></div><button type="button" class="addoff" id="mOffAdd">＋ Add another offer</button></div>'; }
+function addOfferRow(val){
+  const box=document.getElementById('mOffExtra'); if(!box) return null;
+  const row=document.createElement('div'); row.className='offrow';
+  row.innerHTML='<input class="mOffX" autocomplete="off" placeholder="e.g. 75060/3"><button type="button" class="rmo" title="Remove this offer" aria-label="Remove this offer">✕</button>';
+  const inp=row.querySelector('input'); inp.value=val||'';
+  row.querySelector('.rmo').onclick=()=>{ row.remove(); showMErr(''); };
+  box.appendChild(row); return inp; }
+function wireOfferField(){ const b=document.getElementById('mOffAdd'); if(b) b.onclick=()=>{ const i=addOfferRow(''); if(i) i.focus(); }; }
+function setOffers(str){
+  const list=splitOffers(cleanOffer(str||'')), main=document.getElementById('mOffer'), box=document.getElementById('mOffExtra');
+  if(!main) return; if(box) box.innerHTML='';
+  main.value=list[0]||''; list.slice(1).forEach(o=>addOfferRow(o)); }
+function offerVal(){
+  const vals=[document.getElementById('mOffer')].concat([...document.querySelectorAll('#mOffExtra .mOffX')]).map(el=>el?(el.value||'').trim():'').filter(Boolean);
+  const out=[]; vals.forEach(v=>splitOffers(v).forEach(o=>{ if(!out.some(x=>x.toUpperCase()===o.toUpperCase())) out.push(o); }));
+  return joinOffers(out); }
 function openBook(name,team,pre){
   pre=pre||null;
   setBox('');
@@ -910,20 +934,21 @@ function openBook(name,team,pre){
     +quoteFieldHTML()
     +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi"></div>'
-    +'<div class="fd"><label>Offer No. <span style="font-weight:400;opacity:.7">(two offers? 75057/14 + 75060/3)</span></label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14"></div>'
+    +offerFieldHTML('Offer No.')
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg"></div>'
     +'<div class="fd"><label>Hold by (optional)</label>'+seg('segHold',[{v:'',l:'None'},{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
     +planDateField(pre&&pre.day||'today');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Book →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wireDutySwitch(name,team); wirePlanDate(); wireQuoteField(); wireJobSeg();
-  if(pre){ [['mSales',canonSales(pre.sales)],['mCity',pre.city],['mOffer',pre.offer],['mProject',pre.project]].forEach(function(f){ const el=document.getElementById(f[0]); if(el&&f[1]) el.value=f[1]; });
+  wireOfferField(); if(pre && pre.offer) setOffers(pre.offer);
+  if(pre){ [['mSales',canonSales(pre.sales)],['mCity',pre.city],['mProject',pre.project]].forEach(function(f){ const el=document.getElementById(f[0]); if(el&&f[1]) el.value=f[1]; });
     if(pre.pending&&pre.pending.length){ const b=document.getElementById('mBody'); b.insertAdjacentHTML('afterbegin', pendingBox(pre.pending)); } }
   setTimeout(()=>{ const o=document.getElementById('mOffer'); if(o) o.focus(); },50);
   goHandler=async()=>{
    const goB=document.getElementById('mGo'); if(goB.disabled) return;
    try{
     const holdBy=segVal('segHold');
-    const offer=(document.getElementById('mOffer').value||'').trim();
+    const offer=offerVal();
     const rework=segVal('segJob')==='rework';
     const project=withRework((document.getElementById('mProject').value||'').trim(), rework);
     const city=(document.getElementById('mCity').value||'').trim();
@@ -974,13 +999,14 @@ function openSupPlan(preset){
     +'<div class="fd"><label>Supervisor</label><input id="mSupName" list="dlSup" autocomplete="off" placeholder="Start typing a name…" value="'+esc(supName)+'"></div>'
     +'<div class="fd"><label>Task</label>'+seg('segTask',[{v:'Measurement',l:'Measurement'},{v:'Site Visit',l:'Site Visit'}],task)+'</div>'
     +'<div class="fd"><label id="mSQLbl">Quotation or production sheet</label><div id="mSQPick"></div></div>'
-    +'<div class="fd"><label>Offer No. <span style="font-weight:400;opacity:.7">(two offers? 75057/14 + 75060/3)</span></label><input id="mOffer" autocomplete="off" placeholder="e.g. 75057/14" value="'+esc(ed?ed.offer:'')+'"></div>'
+    +offerFieldHTML('Offer No.')
     +'<div class="fd"><label>Project / Site (optional)</label><input id="mProject" autocomplete="off" placeholder="e.g. Kautilya Marg" value="'+esc(ed?ed.project:'')+'"></div>'
     +'<div class="fd"><label>City</label><input id="mCity" autocomplete="off" placeholder="e.g. Delhi" value="'+esc(ed?ed.city:'')+'"></div>'
     +'<div class="fd"><label>Salesperson (optional)</label><input id="mSales" list="dlSales" autocomplete="off" placeholder="e.g. Rajesh" value="'+esc(ed?ed.salesperson:'')+'"></div>'
     +(ed?'<button type="button" id="mDelSup" class="mbtn ghost" style="width:100%;margin-top:2px;border-color:var(--red);color:#fda4a4">Remove this plan</button>':'');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent= ed?'Save':'Add to plan →'; go.className='mbtn go'; modal.hidden=false;
   wireSegs(); wirePlanDate();
+  wireOfferField(); if(ed && ed.offer) setOffers(ed.offer);
   const supPk=wireSupQuote();
   const supLbl=()=>{ const l=document.getElementById('mSQLbl'); if(l) l.innerHTML='Quotation or production sheet '+(segVal('segTask')==='Measurement'?'<span style="font-weight:400;opacity:.7">(optional for measurement)</span>':'(required for site visit)'); };
   document.querySelectorAll('#segTask button').forEach(b=>b.addEventListener('click',()=>{ showMErr(''); setTimeout(supLbl,0); })); supLbl();
@@ -992,7 +1018,7 @@ function openSupPlan(preset){
     const sup=(document.getElementById('mSupName').value||'').trim();
     if(!sup){ showMErr('Supervisor name is required.'); return; }
     // RULE: Site Visit needs the quotation; Measurement does not (unchanged Offer No on an existing plan is left alone)
-    const offNow=(document.getElementById('mOffer').value||'').trim();
+    const offNow=offerVal();
     const keepOld = ed && ed.offer && cleanOffer(ed.offer).toUpperCase()===cleanOffer(offNow).toUpperCase();
     if(task2!=='Measurement' && !keepOld){
       const L=supPk?supPk.list:[];
@@ -1005,7 +1031,7 @@ function openSupPlan(preset){
     if(others.length>=4){ showMErr(sup+' already has 4 plans that day.'); return; }
     const base = ed ? ed.id.split('|')[1] : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
     const id='s|'+base+'|'+date;
-    const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:(document.getElementById('mOffer').value||'').trim(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
+    const entry={ id:id, kind:'supervisor', date:date, contractor:'', team:'', offer:offerVal(), project:(document.getElementById('mProject').value||'').trim(), city:(document.getElementById('mCity').value||'').trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:'', supervisor:sup, task:task2, by:SUP, at:new Date().toISOString() };
     if(ed && ed.id!==id){ plans=plans.filter(p=>p.id!==ed.id); pushPlanDelete(ed.id); }
     upsertPlan(entry); rememberSalesperson(entry.salesperson); closeModal();
     if(view==='board') renderSupBoard(); if(view==='plan') renderPlan(); if(view==='conv' && typeof cvLoad==='function') setTimeout(cvLoad,600);
@@ -1071,7 +1097,7 @@ function openTeamEdit(src){
     +planDateField(daySel, src.date>TOMORROW()?src.date:null)
     +'<div class="fn-row2"><div class="fd"><label>Contractor</label><select id="eCon" class="msel">'+names.map(n=>'<option'+(n===src.contractor?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select></div>'
     +'<div class="fd"><label>Team</label><select id="eTeam" class="msel">'+teamOpts(src.contractor)+'</select></div></div>'
-    +'<div class="fd"><label>Offer No.</label><input id="mOffer" autocomplete="off" value="'+esc(src.offer)+'"></div>'
+    +offerFieldHTML('Offer No.')
     +'<div class="fd"><label>Project / Site</label><input id="mProject" autocomplete="off" value="'+esc(stripRework(src.project))+'"></div>'
     +'<div class="fn-row2"><div class="fd"><label>City</label><input id="mCity" autocomplete="off" value="'+esc(src.city)+'"></div>'
     +'<div class="fd"><label>Salesperson</label><input id="mSales" list="dlSales" autocomplete="off" value="'+esc(src.salesperson)+'"></div></div>'
@@ -1079,11 +1105,12 @@ function openTeamEdit(src){
     +(live?'<div class="qinfo" style="margin:-4px 0 10px">This team is working today — saving updates its live booking in the sheet too.</div>':'');
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Save changes'; go.className='mbtn go'; go.disabled=false; modal.hidden=false;
   wireSegs(); wirePlanDate();
+  wireOfferField(); setOffers(src.offer);
   const eCon=document.getElementById('eCon'), eTeam=document.getElementById('eTeam');
   eCon.onchange=()=>{ eTeam.innerHTML=teamOpts(eCon.value); };
   goHandler=async()=>{
     const n={ contractor:eCon.value, team:String(eTeam.value), date:chosenPlanDate(),
-      offer:cleanOffer(document.getElementById('mOffer').value), project:withRework(document.getElementById('mProject').value.trim(), segVal('segJob')==='rework'),
+      offer:cleanOffer(offerVal()), project:withRework(document.getElementById('mProject').value.trim(), segVal('segJob')==='rework'),
       city:document.getElementById('mCity').value.trim(), salesperson:canonSales(document.getElementById('mSales').value), holdBy:segVal('segHold')||'' };
     if(isRework(n.project)){ if(!n.offer && !stripRework(n.project)){ showMErr('Rework: enter the Offer No. or the site name.'); return; } }
     else {
@@ -2268,7 +2295,7 @@ function wireSupQuote(){
   const root=document.getElementById('mSQPick'); if(!root) return null;
   return pdfPicker(root,{offerEl:document.getElementById('mOffer'),
     onChange:q=>{ if(!q) return; const o=document.getElementById('mOffer'), p=document.getElementById('mProject'), c=document.getElementById('mCity'), sl=document.getElementById('mSales'), meta=q.meta||null;
-      if(q.offer) o.value=q.offer;
+      if(q.offer) setOffers(q.offer);
       if(q.client && !p.value) p.value=q.client;
       const city=q.city||(meta&&taCity(meta.site))||cityFromTracker(q.offer)||'', sales=q.sales||(meta&&taSales(meta.salesperson))||'';
       if(c && city && !c.value) c.value=city;
@@ -2796,7 +2823,7 @@ function wireQuoteField(){
     if(!q.parts) q.parts=null;
     const meta=q.meta||null;
     const o=document.getElementById('mOffer'), p=document.getElementById('mProject');
-    if(q.offer) o.value=q.offer;
+    if(q.offer) setOffers(q.offer);
     if(q.client && !p.value) p.value=q.client;
     const sEl=document.getElementById('mSales'), cEl=document.getElementById('mCity');
     const sales=q.sales||(meta&&taSales(meta.salesperson))||'', city=q.city||(meta&&taCity(meta.site))||cityFromTracker(q.offer)||'';
