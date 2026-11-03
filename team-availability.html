@@ -1710,23 +1710,24 @@ async function loadPaidReady(){
   catch(e){ rpErr=/unknown/i.test(e.message)?'Invoice script not updated yet — paste the new version and deploy.':(e.message||String(e)); }
   finally{ rpLoading=false; if(unMode==='paidr') renderPaidReady(); rpBadge(); }
 }
-function rpBadge(){ const b=document.getElementById('rpBadge'), n=rpRows.filter(o=>o.stage==='paid').length; if(b){ b.textContent=n; b.hidden=!n; } }
+function rpBadge(){ const b=document.getElementById('rpBadge'), n=rpRows.filter(o=>!o.confirmed).length; if(b){ b.textContent=n; b.hidden=!n; } }
 function renderPaidReady(){
   const box=document.getElementById('unList'); if(!box) return; rpBadge();
   if(!rpRows.length && rpLoading){ box.innerHTML=Array.from({length:3}).map(()=>'<div class="skel" style="height:96px;margin-bottom:9px"></div>').join(''); return; }
   const q=unQ.trim().toLowerCase();
   const list=rpRows.filter(o=>!q||[o.offer,o.client,o.sales,o.address,o.region].join(' ').toLowerCase().includes(q))
-    .sort((a,b)=>(a.stage==='dispatch')-(b.stage==='dispatch') || String(a.region).localeCompare(String(b.region)) || String(a.offer).localeCompare(String(b.offer),undefined,{numeric:true}));
+    .sort((a,b)=>(!!a.confirmed)-(!!b.confirmed) || String(a.dispatchDate||'9').localeCompare(String(b.dispatchDate||'9')) || String(a.region).localeCompare(String(b.region)) || String(a.offer).localeCompare(String(b.offer),undefined,{numeric:true}));
   const head=rpErr?'<div class="msg" style="color:var(--red)">'+esc(rpErr)+(rpRows.length?' · showing the last list':'')+'</div>':'';
   if(!list.length){ box.innerHTML=head+'<div class="msg">No Ready order with payment received yet.<br><span style="font-size:12px">The Dispatch Planning team marks payment; orders then appear here.</span></div>'; return; }
   box.innerHTML=head+list.map(o=>{
-    const sent=o.stage==='dispatch';
+    const sent=!!o.confirmed;
     return '<div class="rpcard'+(sent?' sent':'')+'"><div class="unh"><div><div class="unoff">#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span>'+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+'</div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
       +'<span class="undays ok">💰 Paid</span></div>'
-      +'<div class="unmeta">📍 '+esc(o.region||'—')+(o.address?' · '+esc(o.address):'')+'<br>🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+(o.approvedBy?' · payment by '+esc(o.approvedBy):'')+'</div>'
+      +'<div class="unmeta">📍 '+esc(o.region||'—')+(o.address?' · '+esc(o.address):'')+'<br>🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+(o.approvedBy?' · payment by '+esc(o.approvedBy):'')
+      +'<br>'+(o.dispatchDate?'📅 Dispatch planned <b>'+esc(prettyDate(o.dispatchDate))+'</b>'+(o.plannedBy?' · '+esc(o.plannedBy):''):'<span style="color:var(--amber)">📅 Dispatch date not planned yet</span>')+'</div>'
       +(sent
-        ? '<div class="rpq"><span class="rpsent">🚚 Sent to dispatch · installation '+esc(o.install||'—')+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+(o.confirmedOn?' · '+esc(o.confirmedOn):'')+'</span><button class="rpundo" data-rpundo="'+esc(o.offer)+'">Undo</button></div>'
-        : '<div class="rpq"><div class="seg" data-rpinst="'+esc(o.offer)+'"><button type="button" data-val="Yes" class="on">Installation needed</button><button type="button" data-val="No">Supply only</button></div>'
+        ? '<div class="rpq"><span class="rpsent">🚚 Loading confirmed · installation '+esc(o.install||'—')+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+(o.confirmedOn?' · '+esc(o.confirmedOn):'')+'</span><button class="rpundo" data-rpundo="'+esc(o.offer)+'">Undo</button></div>'
+        : '<div class="rpq"><div class="seg" data-rpinst="'+esc(o.offer)+'"><button type="button" data-val="Yes"'+(o.install!=='No'?' class="on"':'')+'>Installation needed</button><button type="button" data-val="No"'+(o.install==='No'?' class="on"':'')+'>Supply only</button></div>'
           +'<button class="rpgo" data-rpgo="'+esc(o.offer)+'">✓ Confirm loading → dispatch</button></div>')
       +'</div>'; }).join('');
 }
@@ -1734,7 +1735,7 @@ async function rpConfirm(offer, install, undo){
   const o=rpRows.find(x=>x.offer===offer); if(!o) return;
   if(undo && !confirm('Take #'+offer+' back from the dispatch team?')) return;
   const before=Object.assign({},o);
-  if(undo){ o.stage='paid'; o.confirmed=false; o.install=''; } else { o.stage='dispatch'; o.confirmed=true; o.install=install; o.confirmedBy=SUP; o.confirmedOn='now'; }
+  if(undo){ o.stage=o.dispatchDate?'planned':'paid'; o.confirmed=false; } else { o.stage=o.dispatchDate?'dispatch':'paid'; o.confirmed=true; o.install=install; o.confirmedBy=SUP; o.confirmedOn='now'; }
   renderPaidReady(); setDot('dotU','syncU','busy','Saving #'+offer+'…');
   try{ const d=await rpPost({action:undo?'readyUnconfirm':'readyConfirm', offer, install, by:SUP}); if(d.row) Object.assign(o,d.row);
     try{ localStorage.setItem(RP_CACHE,JSON.stringify({rows:rpRows})); }catch(e){}

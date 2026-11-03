@@ -54,7 +54,21 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .meta{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
 .acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
 .btn{border:none;border-radius:9px;padding:10px 14px;font-family:'Archivo Narrow';font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
-.btn.go{background:var(--green);color:#06210f}.btn.ghost{background:none;border:1px solid var(--line);color:var(--muted)}
+.btn.go{background:var(--green);color:#06210f}.btn.hv{background:var(--hivis);color:#111}
+.role{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px;margin-left:auto}
+.role button{border:none;background:none;color:var(--muted);border-radius:999px;padding:7px 14px;font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.role button.on{background:var(--hivis);color:#111}
+.seg{display:flex;gap:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:3px}
+.seg button{border:none;background:none;color:var(--muted);border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Spline Sans',sans-serif}
+.seg button.on{background:var(--hivis);color:#111}
+.dpick{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--panel-2);color:var(--text);font-size:13px;font-family:'Spline Sans',sans-serif}
+.dhead{display:flex;align-items:baseline;gap:8px;font-family:Archivo;font-weight:900;font-size:18px;text-transform:uppercase;letter-spacing:.03em;margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.dhead .c{font-family:'JetBrains Mono';font-size:11px;color:var(--muted);font-weight:400}
+.dhead.late{color:var(--red)}
+.card.plan{border-left-color:var(--hivis)}
+.wait{font-size:12.5px;color:var(--amber);font-weight:600}
+.insT{font-size:12px;padding:4px 8px;border-radius:5px;font-weight:800;border:1px solid}
+.insT.y{border-color:var(--green);color:var(--green)}.insT.n{border-color:var(--amber);color:var(--amber)}.btn.ghost{background:none;border:1px solid var(--line);color:var(--muted)}
 .btn:disabled{opacity:.5}
 .done{font-size:12.5px;color:var(--green);font-weight:600}
 .sentx{font-size:12.5px;color:var(--blue);font-weight:600}
@@ -67,19 +81,12 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><a class="home" href="index.html">← Hub</a><div class="who" id="who"></div></div>
-  <div class="hdr"><div class="t">Dispatch Planning</div><div class="s">Ready orders by region · approve payment</div></div>
+  <div class="top"><a class="home" href="index.html">← Hub</a>
+    <div class="role" id="role"><button data-r="plan">Planning</button><button data-r="disp">Dispatch</button></div></div>
+  <div class="hdr"><div class="t" id="ttl">Dispatch Planning</div><div class="s" id="sub">Approve payment · plan the next day's dispatch</div></div>
 
-  <div class="stats">
-    <div class="stat a"><div class="n" id="sWait">—</div><div class="l">Waiting payment</div></div>
-    <div class="stat g"><div class="n" id="sPaid">—</div><div class="l">Payment received</div></div>
-    <div class="stat b"><div class="n" id="sSent">—</div><div class="l">Sent to dispatch</div></div>
-  </div>
-
-  <div class="vtabs">
-    <button class="vtab on" data-v="ready">Waiting payment<span class="vb" id="bWait">0</span></button>
-    <button class="vtab" data-v="paid">Payment received<span class="vb" id="bPaid">0</span></button>
-  </div>
+  <div class="stats" id="stats"></div>
+  <div class="vtabs" id="tabs"></div>
 
   <div class="chips" id="chips"></div>
   <div class="row"><div class="search"><span class="mag">🔍</span><input id="q" placeholder="Offer, customer, salesperson, city…" autocomplete="off"></div>
@@ -89,124 +96,185 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 </div>
 
 <script>
-/* Dispatch Planning — Ready orders (ORDER PLANNING, same filter as To Assign) by region.
-   "Payment received" (office password) sends the order to Team Availability → To Assign → "Ready & paid".
-   Backend: the invoice Apps Script (readyList / readyApprove / readyUnapprove / readyRegion). */
+/* Dispatch Planning — one app, two people.
+   PLANNING (office password): Ready orders by region → "Payment received" → pick a dispatch date
+   (tomorrow by default) + installation needed / supply only → the order is in the dispatch plan.
+   The installation side confirms loading in Team Availability → To Assign → "Ready & paid".
+   DISPATCH: sees the dispatch plan by date — only orders with loading confirmed.
+   Backend: invoice Apps Script (readyList / readyApprove / readyUnapprove / readyRegion / readyPlan / readyUnplan). */
 const API = "https://script.google.com/macros/s/AKfycbyU_cHRuQH8aiS8SIKynGIeXoTukfp16SgA9OfKnf83Me7bW2hT8kULPUFw-JB1gEhnTw/exec";
 const REGIONS = ['Delhi NCR','Haryana','Chandigarh & Punjab','Uttar Pradesh','Uttarakhand','Rajasthan','Himachal','Jammu & Kashmir','Other states','Address missing'];
-const LS = { key:'lingel_dp_key', name:'lingel_dp_name', cache:'lingel_dp_cache_v1', region:'lingel_dp_region' };
+const LS = { key:'lingel_dp_key', name:'lingel_dp_name', cache:'lingel_dp_cache_v2', region:'lingel_dp_region', role:'lingel_dp_role', tab:'lingel_dp_tab' };
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ls = { get:k=>{ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch(e){} }, del:k=>{ try{ localStorage.removeItem(k); }catch(e){} } };
+const ymd = d => { const z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); };
+const TODAY = () => ymd(new Date()), TOMORROW = () => { const d=new Date(); d.setDate(d.getDate()+1); return ymd(d); };
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const pretty = s => { if(!s) return ''; const d=new Date(s+'T00:00:00'); return DAY[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()]; };
+const whenLabel = s => s===TODAY() ? 'Today · '+pretty(s) : s===TOMORROW() ? 'Tomorrow · '+pretty(s) : (s<TODAY() ? 'Overdue · '+pretty(s) : pretty(s));
 
-let rows = [], view = 'ready', region = ls.get(LS.region)||'', q = '', loading = false;
+const urlRole = new URLSearchParams(location.search).get('role');
+let role = urlRole==='dispatch' ? 'disp' : (ls.get(LS.role)||'plan');
+let tab = ls.get(LS.tab)||'ready', rows = [], region = ls.get(LS.region)||'', q = '', loading = false;
 try{ const c = JSON.parse(ls.get(LS.cache)||'null'); if(c && Array.isArray(c.rows)) rows = c.rows; }catch(e){}
+const pick = {};   // per-offer choice in "Plan dispatch": {day:'tomorrow'|'today'|'later', date, install}
 
-function me(){
-  try{ const s = JSON.parse(ls.get('lingel_supervisor')||'null'); if(s && s.name) return s.name; }catch(e){}
-  return ls.get(LS.name)||'';
-}
-function askName(){ let n = me(); if(!n){ n = (prompt('Your name (shown on each approval)')||'').trim(); if(n) ls.set(LS.name, n); } return n; }
-function askKey(force){ let k = force ? '' : (ls.get(LS.key)||''); if(!k){ k = (prompt('Office password for payment approval')||'').trim(); if(k) ls.set(LS.key, k); } return k; }
-function setDot(cls, txt){ $('dot').className = 'dot '+(cls||''); $('syncTxt').textContent = txt||''; }
+function me(){ try{ const s=JSON.parse(ls.get('lingel_supervisor')||'null'); if(s&&s.name) return s.name; }catch(e){} return ls.get(LS.name)||''; }
+function askName(){ let n=me(); if(!n){ n=(prompt('Your name (shown on approvals and plans)')||'').trim(); if(n) ls.set(LS.name,n); } return n; }
+function askKey(force){ let k=force?'':(ls.get(LS.key)||''); if(!k){ k=(prompt('Office password')||'').trim(); if(k) ls.set(LS.key,k); } return k; }
+function setDot(cls,txt){ $('dot').className='dot '+(cls||''); $('syncTxt').textContent=txt||''; }
 
 async function post(params){
-  const r = await fetch(API, {method:'POST', body:new URLSearchParams(params)});
-  const t = (await r.text()).trim();
+  const r = await fetch(API,{method:'POST',body:new URLSearchParams(params)}); const t=(await r.text()).trim();
   if(t.charAt(0)==='<') throw new Error('Script returned a sign-in page — set the deployment to “Anyone”.');
-  let d; try{ d = JSON.parse(t); }catch(e){ throw new Error('Unexpected reply from the script'); }
-  if(d && d.ok===false){ const e = new Error(d.error||'Request failed'); if(/password/i.test(d.error||'')) e.auth = true; throw e; }
-  if(d && /unknown action/i.test(d.error||'')) throw new Error('Invoice script not updated yet — paste the new version and deploy.');
+  let d; try{ d=JSON.parse(t); }catch(e){ throw new Error('Unexpected reply from the script'); }
+  if(d && d.ok===false){ const e=new Error(/unknown/i.test(d.error||'')?'Invoice script not updated yet — paste the new version and deploy.':(d.error||'Request failed')); if(/password/i.test(d.error||'')) e.auth=true; throw e; }
   return d;
 }
-
 async function load(refresh){
-  if(loading) return; loading = true;
-  setDot('busy', refresh ? 'Re-reading the production plan… (can take ~20 s)' : 'Loading…'); render();
-  try{
-    const d = await post({action:'readyList', refresh: refresh ? '1' : ''});
-    rows = d.rows||[]; ls.set(LS.cache, JSON.stringify({rows, at:Date.now()}));
-    setDot('ok', rows.length+' orders · plan read '+(d.lastSync ? new Date(d.lastSync).toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'));
-  }catch(e){ setDot('err', (rows.length ? 'Offline · last list · ' : '')+(e.message||e)); }
-  finally{ loading = false; render(); }
+  if(loading) return; loading=true; setDot('busy', refresh?'Re-reading the production plan… (can take ~20 s)':'Loading…'); render();
+  try{ const d=await post({action:'readyList', refresh:refresh?'1':''}); rows=d.rows||[]; ls.set(LS.cache, JSON.stringify({rows,at:Date.now()}));
+    setDot('ok', rows.length+' orders · plan read '+(d.lastSync?new Date(d.lastSync).toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—')); }
+  catch(e){ setDot('err',(rows.length?'Offline · last list · ':'')+(e.message||e)); }
+  finally{ loading=false; render(); }
 }
 
-function inView(o){ return view==='ready' ? o.stage==='ready' : (o.stage==='paid' || o.stage==='dispatch'); }
-function match(o){ if(!q) return true; return [o.offer,o.client,o.sales,o.address,o.region,o.code].join(' ').toLowerCase().includes(q); }
-const base = o => (String(o.offer).match(/\d{3,7}/)||[''])[0];
+/* ---------- what each tab shows ---------- */
+function tabsFor(){ return role==='disp' ? [['disp','Dispatch plan']] : [['ready','Waiting payment'],['paid','Plan dispatch'],['plan','Dispatch plan']]; }
+function inTab(o){
+  if(role==='disp') return o.stage==='dispatch';
+  if(tab==='ready') return o.stage==='ready';
+  if(tab==='paid') return o.stage==='paid';
+  return o.stage==='planned' || o.stage==='dispatch';
+}
+const match = o => !q || [o.offer,o.client,o.sales,o.address,o.region,o.code].join(' ').toLowerCase().includes(q);
+const byOffer = (a,b) => String(a.offer).localeCompare(String(b.offer),undefined,{numeric:true});
+const regSort = (g) => (a,b) => (a==='Address missing')-(b==='Address missing') || g[b].length-g[a].length || a.localeCompare(b);
 
 function render(){
-  const w = rows.filter(o=>o.stage==='ready').length, p = rows.filter(o=>o.stage==='paid').length, s = rows.filter(o=>o.stage==='dispatch').length;
-  $('sWait').textContent = w; $('sPaid').textContent = p; $('sSent').textContent = s; $('bWait').textContent = w; $('bPaid').textContent = p+s;
-  const pool = rows.filter(inView).filter(match);
-  const cnt = {}; pool.forEach(o=>{ cnt[o.region] = (cnt[o.region]||0)+1; });
-  if(region && !cnt[region]) cnt[region] = 0;
-  const regs = Object.keys(cnt).sort((a,b)=> (a==='Address missing') - (b==='Address missing') || cnt[b]-cnt[a] || a.localeCompare(b));
+  document.querySelectorAll('#role button').forEach(b=>b.classList.toggle('on', b.dataset.r===role));
+  const T = tabsFor(); if(!T.some(t=>t[0]===tab)) tab = T[0][0];
+  $('ttl').textContent = role==='disp' ? 'Dispatch' : 'Dispatch Planning';
+  $('sub').textContent = role==='disp' ? 'What to load · by date and region' : 'Approve payment · plan the next day’s dispatch';
+  const n = k => rows.filter(o=>o.stage===k).length;
+  const tm = rows.filter(o=>o.stage==='dispatch' && o.dispatchDate===TOMORROW()).length, td = rows.filter(o=>o.stage==='dispatch' && o.dispatchDate===TODAY()).length;
+  $('stats').innerHTML = role==='disp'
+    ? st('b',td,'Today')+st('g',tm,'Tomorrow')+st('a',rows.filter(o=>o.stage==='dispatch' && o.dispatchDate<TODAY()).length,'Overdue')
+    : st('a',n('ready'),'Waiting payment')+st('g',n('paid'),'Needs a date')+st('b',n('planned')+n('dispatch'),'In dispatch plan');
+  const cnt = { ready:n('ready'), paid:n('paid'), plan:n('planned')+n('dispatch'), disp:n('dispatch') };
+  $('tabs').innerHTML = T.map(t=>'<button class="vtab'+(t[0]===tab?' on':'')+'" data-t="'+t[0]+'">'+t[1]+'<span class="vb">'+cnt[t[0]]+'</span></button>').join('');
+  $('tabs').style.display = T.length>1 ? '' : 'none';
+
+  const pool = rows.filter(inTab).filter(match), c = {}; pool.forEach(o=>{ c[o.region]=(c[o.region]||0)+1; });
+  if(region && !c[region]) c[region]=0;
+  const regs = Object.keys(c).sort((a,b)=>(a==='Address missing')-(b==='Address missing') || c[b]-c[a] || a.localeCompare(b));
   $('chips').innerHTML = '<button class="chip'+(region?'':' on')+'" data-r="">All regions<small>'+pool.length+'</small></button>'
-    + regs.map(r=>'<button class="chip'+(r===region?' on':'')+'" data-r="'+esc(r)+'">'+esc(r)+'<small>'+cnt[r]+'</small></button>').join('');
-  const list = pool.filter(o=>!region || o.region===region);
-  const box = $('list');
-  if(!rows.length && loading){ box.innerHTML = '<div class="skel"></div><div class="skel"></div><div class="skel"></div>'; return; }
-  if(!list.length){ box.innerHTML = '<div class="msg">'+(view==='ready' ? (q||region ? 'No orders waiting for payment in this filter.' : '✅ No Ready order is waiting for payment approval.') : 'No order has payment received yet.')+'</div>'; return; }
-  const groups = {}; list.forEach(o=>{ (groups[o.region] = groups[o.region]||[]).push(o); });
-  const order = Object.keys(groups).sort((a,b)=> (a==='Address missing') - (b==='Address missing') || groups[b].length-groups[a].length || a.localeCompare(b));
-  box.innerHTML = order.map(r=>{
-    const items = groups[r].sort((a,b)=> base(a).localeCompare(base(b)) || String(a.offer).localeCompare(String(b.offer), undefined, {numeric:true}));
-    return '<div class="rsec"><div class="rhead">'+esc(r)+'<span class="c">'+items.length+' order'+(items.length>1?'s':'')+'</span></div>'+items.map(card).join('')+'</div>';
-  }).join('');
+    + regs.map(r=>'<button class="chip'+(r===region?' on':'')+'" data-r="'+esc(r)+'">'+esc(r)+'<small>'+c[r]+'</small></button>').join('');
+  const list = pool.filter(o=>!region || o.region===region), box = $('list');
+  if(!rows.length && loading){ box.innerHTML='<div class="skel"></div><div class="skel"></div><div class="skel"></div>'; return; }
+  if(!list.length){ box.innerHTML='<div class="msg">'+emptyText()+'</div>'; return; }
+
+  if(role==='disp' || tab==='plan'){   // grouped by DATE, then region
+    const byDate = {}; list.forEach(o=>{ (byDate[o.dispatchDate]=byDate[o.dispatchDate]||[]).push(o); });
+    box.innerHTML = Object.keys(byDate).sort().map(d=>{
+      const g={}; byDate[d].forEach(o=>{ (g[o.region]=g[o.region]||[]).push(o); });
+      return '<div class="dhead'+(d<TODAY()?' late':'')+'">'+esc(whenLabel(d))+'<span class="c">'+byDate[d].length+' order'+(byDate[d].length>1?'s':'')+'</span></div>'
+        + Object.keys(g).sort(regSort(g)).map(r=>'<div class="rsec"><div class="rhead">'+esc(r)+'<span class="c">'+g[r].length+'</span></div>'+g[r].sort(byOffer).map(card).join('')+'</div>').join('');
+    }).join('');
+  } else {                              // grouped by region
+    const g={}; list.forEach(o=>{ (g[o.region]=g[o.region]||[]).push(o); });
+    box.innerHTML = Object.keys(g).sort(regSort(g)).map(r=>'<div class="rsec"><div class="rhead">'+esc(r)+'<span class="c">'+g[r].length+' order'+(g[r].length>1?'s':'')+'</span></div>'+g[r].sort(byOffer).map(card).join('')+'</div>').join('');
+  }
+}
+const st = (c,n,l) => '<div class="stat '+c+'"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';
+function emptyText(){
+  if(role==='disp') return 'Nothing to load yet.<br><span style="font-size:12px">Orders show here once they are planned for a date and the installation team has confirmed loading.</span>';
+  if(tab==='ready') return q||region ? 'No order waiting for payment in this filter.' : '✅ No Ready order is waiting for payment approval.';
+  if(tab==='paid') return 'No paid order is waiting for a dispatch date.';
+  return 'Nothing in the dispatch plan yet.';
 }
 function card(o){
-  const cls = o.stage==='dispatch' ? 'card sent' : (o.stage==='paid' ? 'card paid' : 'card');
   const left = /^left ready/i.test(o.status) ? ' <span class="tag" style="border-color:var(--amber);color:var(--amber)">no longer Ready</span>' : '';
+  const ins = o.install ? '<span class="insT '+(o.install==='No'?'n':'y')+'">'+(o.install==='No'?'📦 Supply only':'🔧 Installation needed')+'</span>' : '';
+  const cls = o.stage==='ready' ? 'card' : (o.stage==='paid' ? 'card paid' : (o.stage==='planned' ? 'card plan' : 'card sent'));
   let acts = '';
-  if(o.stage==='ready') acts = '<button class="btn go" data-act="approve" data-o="'+esc(o.offer)+'">✓ Payment received</button>';
-  else {
-    acts = '<span class="done">✓ Paid'+(o.approvedBy?' · '+esc(o.approvedBy):'')+(o.approvedOn?' · '+esc(o.approvedOn):'')+'</span>';
-    if(o.stage==='dispatch') acts += '<span class="sentx">🚚 Sent to dispatch'+(o.install?' · install '+esc(o.install):'')+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+'</span>';
-    else acts += '<span class="meta" style="margin:0">Waiting in Team Availability → To Assign → Ready &amp; paid</span><button class="btn ghost" data-act="undo" data-o="'+esc(o.offer)+'">Undo</button>';
+  if(role==='disp'){
+    acts = '<span class="sentx">🚚 Loading confirmed'+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+'</span>';
+  } else if(o.stage==='ready'){
+    acts = '<button class="btn go" data-act="approve" data-o="'+esc(o.offer)+'">✓ Payment received</button>'+rsel(o);
+  } else if(o.stage==='paid'){
+    const p = pick[o.offer] || (pick[o.offer] = {day:'tomorrow', date:'', install: o.install==='No' ? 'No' : 'Yes'});
+    acts = '<span class="done">✓ Paid'+(o.approvedBy?' · '+esc(o.approvedBy):'')+'</span>'
+      + '<div class="seg" data-pday="'+esc(o.offer)+'"><button data-v="today"'+(p.day==='today'?' class="on"':'')+'>Today</button><button data-v="tomorrow"'+(p.day==='tomorrow'?' class="on"':'')+'>Tomorrow</button><button data-v="later"'+(p.day==='later'?' class="on"':'')+'>Later…</button></div>'
+      + (p.day==='later' ? '<input type="date" class="dpick" data-pdate="'+esc(o.offer)+'" min="'+TODAY()+'" value="'+esc(p.date||TOMORROW())+'">' : '')
+      + '<div class="seg" data-pins="'+esc(o.offer)+'"><button data-v="Yes"'+(p.install!=='No'?' class="on"':'')+'>Installation needed</button><button data-v="No"'+(p.install==='No'?' class="on"':'')+'>Supply only</button></div>'
+      + '<button class="btn hv" data-act="plan" data-o="'+esc(o.offer)+'">📅 Add to plan</button>'
+      + '<button class="btn ghost" data-act="undo" data-o="'+esc(o.offer)+'">Undo payment</button>';
+  } else {
+    acts = '<span class="done">📅 '+esc(whenLabel(o.dispatchDate))+(o.plannedBy?' · '+esc(o.plannedBy):'')+'</span>'
+      + (o.stage==='dispatch' ? '<span class="sentx">🚚 Loading confirmed'+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+'</span>'
+                              : '<span class="wait">⏳ Waiting for the installation team to confirm loading (Team Availability → Ready &amp; paid)</span>')
+      + '<button class="btn ghost" data-act="unplan" data-o="'+esc(o.offer)+'">Change date</button>';
   }
-  const rsel = '<select class="rsel" data-act="region" data-o="'+esc(o.offer)+'" title="Change region">'
-    + REGIONS.map(r=>'<option'+(r===o.region?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select>';
   return '<div class="'+cls+'"><div class="ch"><div><div class="off">#'+esc(o.offer)+'<span class="tag">'+esc(o.dept)+'</span>'+(o.code?'<span class="tag">'+esc(o.code)+'</span>':'')+left+'</div>'
-    + '<div class="cl">'+esc(o.client||'—')+'</div></div></div>'
-    + '<div class="meta">🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+' · 📍 '+esc(o.address||'no address')+(o.readySince?'<br>Ready since '+esc(o.readySince):'')+'</div>'
-    + '<div class="acts">'+acts+(o.stage!=='dispatch' ? rsel : '')+'</div></div>';
+    + '<div class="cl">'+esc(o.client||'—')+'</div></div>'+(o.stage!=='ready' && o.stage!=='paid' ? ins : '')+'</div>'
+    + '<div class="meta">🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+' · 📍 '+esc(o.address||'no address')
+    + (o.stage==='ready' && o.readySince ? '<br>Ready since '+esc(o.readySince) : '')+'</div>'
+    + '<div class="acts">'+acts+'</div></div>';
 }
+const rsel = o => '<select class="rsel" data-act="region" data-o="'+esc(o.offer)+'" title="Change region">'+REGIONS.map(r=>'<option'+(r===o.region?' selected':'')+'>'+esc(r)+'</option>').join('')+'</select>';
 
+/* ---------- saving ---------- */
 async function act(kind, offer, extra){
   const o = rows.find(x=>x.offer===offer); if(!o) return;
   const by = askName(); if(!by){ alert('Enter your name first.'); return; }
   let key = askKey(false); if(!key) return;
-  const action = kind==='approve' ? 'readyApprove' : kind==='undo' ? 'readyUnapprove' : 'readyRegion';
-  if(kind==='undo' && !confirm('Undo payment approval for #'+offer+'?\n\nIt goes back to “Waiting payment” and leaves the Ready & paid list.')) return;
+  const action = {approve:'readyApprove', undo:'readyUnapprove', region:'readyRegion', plan:'readyPlan', unplan:'readyUnplan'}[kind];
+  const params = {action, offer, by, key};
+  if(kind==='undo' && !confirm('Undo payment approval for #'+offer+'?\n\nIt goes back to “Waiting payment”.')) return;
+  if(kind==='unplan' && !confirm('Take #'+offer+' out of the dispatch plan to pick a new date?')) return;
+  if(kind==='region') params.region = extra;
+  if(kind==='plan'){ const p = pick[offer]||{}; const d = p.day==='today' ? TODAY() : p.day==='later' ? (p.date||TOMORROW()) : TOMORROW();
+    params.date = d; params.install = p.install||'Yes'; }
   const before = Object.assign({}, o);
-  if(kind==='approve'){ o.stage='paid'; o.paid=true; o.approvedBy=by; o.approvedOn='now'; }
-  if(kind==='undo'){ o.stage='ready'; o.paid=false; o.approvedBy=''; o.approvedOn=''; }
-  if(kind==='region'){ o.region=extra; o.regionManual=extra; }
+  if(kind==='approve') Object.assign(o,{stage:'paid',paid:true,approvedBy:by});
+  if(kind==='undo') Object.assign(o,{stage:'ready',paid:false,approvedBy:'',dispatchDate:''});
+  if(kind==='region') Object.assign(o,{region:extra});
+  if(kind==='plan') Object.assign(o,{stage:o.confirmed?'dispatch':'planned',dispatchDate:params.date,install:params.install,plannedBy:by});
+  if(kind==='unplan') Object.assign(o,{stage:'paid',dispatchDate:''});
   render(); setDot('busy','Saving #'+offer+'…');
   for(let attempt=0; attempt<2; attempt++){
     try{
-      const d = await post(Object.assign({action, offer, by, key}, kind==='region' ? {region:extra} : {}));
-      if(d.row) Object.assign(o, d.row);
-      ls.set(LS.cache, JSON.stringify({rows, at:Date.now()}));
-      setDot('ok', kind==='approve' ? ('#'+offer+' · payment received · now in To Assign → Ready & paid') : kind==='undo' ? ('#'+offer+' back to Waiting payment') : ('#'+offer+' region → '+extra));
+      const d = await post(params); if(d.row) Object.assign(o, d.row); ls.set(LS.cache, JSON.stringify({rows,at:Date.now()}));
+      setDot('ok', {approve:'#'+offer+' · payment received — now in Plan dispatch', undo:'#'+offer+' back to Waiting payment', region:'#'+offer+' region → '+extra,
+        plan:'#'+offer+' planned for '+whenLabel(params.date), unplan:'#'+offer+' out of the plan — pick a new date'}[kind]);
       render(); return;
     }catch(e){
-      if(e.auth && attempt===0){ ls.del(LS.key); key = askKey(true); if(key) continue; }
+      if(e.auth && attempt===0){ ls.del(LS.key); key = askKey(true); if(key){ params.key=key; continue; } }
       Object.assign(o, before); render(); setDot('err','Not saved: '+(e.message||e)); alert('Couldn’t save:\n\n'+(e.message||e)); return;
     }
   }
 }
 
-document.querySelectorAll('.vtab').forEach(b=>b.onclick=()=>{ document.querySelectorAll('.vtab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); view=b.dataset.v; render(); });
-$('chips').onclick = e=>{ const c = e.target.closest('.chip'); if(!c) return; region = c.dataset.r; ls.set(LS.region, region); render(); };
-$('q').oninput = e=>{ q = e.target.value.trim().toLowerCase(); render(); };
+/* ---------- wiring ---------- */
+$('role').onclick = e=>{ const b=e.target.closest('button[data-r]'); if(!b) return; role=b.dataset.r; ls.set(LS.role, role); tab = role==='disp' ? 'disp' : (ls.get(LS.tab)||'ready'); render(); };
+$('tabs').onclick = e=>{ const b=e.target.closest('.vtab'); if(!b) return; tab=b.dataset.t; if(role==='plan') ls.set(LS.tab, tab); render(); };
+$('chips').onclick = e=>{ const c=e.target.closest('.chip'); if(!c) return; region=c.dataset.r; ls.set(LS.region, region); render(); };
+$('q').oninput = e=>{ q=e.target.value.trim().toLowerCase(); render(); };
 $('rf').onclick = ()=>load(true);
-$('list').addEventListener('click', e=>{ const b = e.target.closest('button[data-act]'); if(b) act(b.dataset.act, b.dataset.o); });
-$('list').addEventListener('change', e=>{ const s = e.target.closest('select[data-act="region"]'); if(s) act('region', s.dataset.o, s.value); });
-$('who').innerHTML = me() ? 'Signed in as<b>'+esc(me())+'</b>' : '';
+$('list').addEventListener('click', e=>{
+  const d=e.target.closest('.seg[data-pday] button'); if(d){ const off=d.parentElement.dataset.pday; pick[off]=Object.assign(pick[off]||{}, {day:d.dataset.v}); render(); return; }
+  const i=e.target.closest('.seg[data-pins] button'); if(i){ const off=i.parentElement.dataset.pins; pick[off]=Object.assign(pick[off]||{}, {install:i.dataset.v}); render(); return; }
+  const b=e.target.closest('button[data-act]'); if(b) act(b.dataset.act, b.dataset.o);
+});
+$('list').addEventListener('change', e=>{
+  const s=e.target.closest('select[data-act="region"]'); if(s){ act('region', s.dataset.o, s.value); return; }
+  const dp=e.target.closest('input[data-pdate]'); if(dp){ const off=dp.dataset.pdate; pick[off]=Object.assign(pick[off]||{}, {date:dp.value}); }
+});
 render(); load(false);
-setInterval(()=>{ if(!document.hidden) load(false); }, 120000);
+setInterval(()=>{ if(!document.hidden) load(false); }, 90000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) load(false); });
 </script>
 </body>
 </html>
