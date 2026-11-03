@@ -420,12 +420,34 @@ async function finalInvoice(no){
       c.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h); if(pg) pdf.addPage();
       pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',0,0,pw,h*pw/cv.width,undefined,'FAST'); }
     const name='Invoice_'+no.replace(/[^\w-]+/g,'-')+'_FINAL.pdf';
-    pdf.save(name);
+    /* handover done → ONE download: invoice pages + handover pages (signed copy first; found in Drive by the script) */
+    let merged=false, hoNote='';
+    if (/done/i.test(i.handover)){
+      try{
+        setDot('busy','Adding the handover PDF…');
+        const h=await api({action:'ledgerHandoverPdf', offer:i.offer});
+        const files=(h&&h.files)||[];
+        if(files.length){
+          await loadJs('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js');
+          const {PDFDocument}=window.PDFLib, out=await PDFDocument.load(pdf.output('arraybuffer'));
+          const bytes=b64=>{ const s2=atob(b64), u=new Uint8Array(s2.length); for(let k=0;k<s2.length;k++) u[k]=s2.charCodeAt(k); return u; };
+          for(const f of files){
+            const b=bytes(f.data);
+            if(/pdf/i.test(f.mime)){ const src=await PDFDocument.load(b,{ignoreEncryption:true}); (await out.copyPages(src,src.getPageIndices())).forEach(pg=>out.addPage(pg)); }
+            else { const img=/png/i.test(f.mime)?await out.embedPng(b):await out.embedJpg(b); const W=595.28,H=841.89, sc=Math.min(W/img.width,H/img.height); const pg=out.addPage([W,H]); pg.drawImage(img,{x:(W-img.width*sc)/2,y:(H-img.height*sc)/2,width:img.width*sc,height:img.height*sc}); }
+          }
+          const blob=new Blob([await out.save()],{type:'application/pdf'}), a=document.createElement('a');
+          a.href=URL.createObjectURL(blob); a.download=name.replace('_FINAL.pdf','_FINAL_with_Handover.pdf'); document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+          merged=true; hoNote=' + handover ('+files.map(f=>f.name).join(', ')+')';
+        } else hoNote=' · handover PDF not found in Drive';
+      }catch(e){ console.warn('handover merge failed',e); hoNote=' · couldn’t add handover ('+(e.message||e)+')'; }
+    }
+    if(!merged) pdf.save(name);
     const uri=pdf.output('datauristring');
     let saved=false;
     try{ const r=await fetch(LEDGER_API,{method:'POST',body:new URLSearchParams({action:'upload',folder:i.offer,name,mime:'application/pdf',data:uri.slice(uri.indexOf(',')+1)})});
          const d=JSON.parse(await r.text()); saved=!!(d&&d.ok); }catch(e){}
-    setDot(saved?'ok':'err', saved?('Final invoice saved to Drive · '+i.offer):'Final invoice downloaded — Drive save failed, tap again when online');
+    setDot(saved?'ok':'err', (saved?('Final invoice saved to Drive · '+i.offer):'Final invoice downloaded — Drive save failed, tap again when online')+hoNote);
   }catch(e){ setDot('err', e.message); alert(e.message); }
 }
 function dedForm(i){
