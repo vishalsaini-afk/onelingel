@@ -234,7 +234,7 @@
   <button class="btn btn-ghost" id="translateAll" title="Speak Hindi, get English text live">🌐 →EN</button>
   <button class="btn btn-ghost" id="importBtn">📄 Import quotation(s)</button>
   <input type="file" id="importFile" accept="application/pdf,.pdf" multiple hidden>
-  <button class="btn btn-ghost" id="oldMeasBtn" title="Save a measurement already taken (scanned PDF or photo) to Drive in this order's folder">📎 Upload old measurement</button>
+  <button class="btn btn-ghost" id="oldMeasBtn" title="Save a measurement already taken (scanned PDF or photo) to Drive in this order's folder">📎 Upload measurement</button>
   <input type="file" id="oldMeasFile" accept="application/pdf,.pdf,image/*" multiple hidden>
   <button class="btn btn-ghost" id="backupBtn">⬇ Backup</button>
   <label class="btn btn-ghost" for="restoreFile" style="cursor:pointer">⬆ Restore<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
@@ -1480,7 +1480,7 @@ async function importQuotation(file){
   toast("✓ Imported "+newOps.length+" position"+(newOps.length>1?"s":""));
 }
 $("#importBtn").onclick=()=>$("#importFile").click();
-/* OLD MEASUREMENT: a measurement already taken on paper / as a scanned PDF. Not read — just saved to Drive
+/* UPLOAD MEASUREMENT: a measurement already taken on paper / as a scanned PDF. Not read — just saved to Drive
    in the Offer No folder (same route + offline outbox as the Sheet PDF). */
 function oldMeasOffer(){
   let o=($("#m_no").value||"").trim();
@@ -1495,16 +1495,16 @@ $("#oldMeasFile").addEventListener("change",async ev=>{
   const big=files.filter(f=>f.size>40*1024*1024); if(big.length){ toast("⚠ "+big[0].name+" is over 40 MB — too large to upload"); return; }
   const safe=offer.replace(/[^\w-]+/g,"-"); let ok=0, queued=0;
   _luRetry=function(){ flushOutbox(); };   // a queued file is already on the phone: retry just sends it
-  luShow("Saving old measurement", "0 / "+files.length);
+  luShow("Saving measurement", "0 / "+files.length);
   for(let i=0;i<files.length;i++){
     const f=files[i], ext=(f.name.match(/\.([a-z0-9]+)$/i)||[,"pdf"])[1].toLowerCase();
-    const name="Old_Measurement_"+safe+"_"+luStamp()+(files.length>1?"_"+(i+1):"")+"."+ext;
+    const name="Uploaded_Measurement_"+safe+"_"+luStamp()+(files.length>1?"_"+(i+1):"")+"."+ext;
     try{
       const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ const t=String(r.result); res(t.slice(t.indexOf(",")+1)); }; r.onerror=rej; r.readAsDataURL(f); });
       const job={ id:"oldmeas_"+safe+"_"+Date.now()+"_"+i, kind:"pdf", folder:offer, name, mime:f.type||(ext==="pdf"?"application/pdf":"image/jpeg"), base64:b64 };
-      try{ await queuedUpload(api, job, b64); ok++; }catch(e){ queued++; console.error("old measurement upload deferred",e); }
+      try{ await queuedUpload(api, job, b64); ok++; }catch(e){ queued++; console.error("measurement upload deferred",e); }
     }catch(e){ console.error(e); }
-    luShow("Saving old measurement", (i+1)+" / "+files.length);
+    luShow("Saving measurement", (i+1)+" / "+files.length);
   }
   if(ok && !queued) luDone(ok+" file"+(ok>1?"s":"")+" saved to Drive · folder "+offer);
   else if(ok) luDone(ok+" saved · "+queued+" will upload when back online");
