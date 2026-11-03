@@ -1831,7 +1831,13 @@ if('serviceWorker' in navigator){ addEventListener('load',()=>navigator.serviceW
   /* ---------- library ---------- */
   /* already in the library? → {exists, app, by, on, kinds} */
   LD.has = async function(offer, kind){
-    try{ var r=await post({action:'docHas', offer:offer, kind:kind||'quotation'}); return (r&&r.ok)?r:{exists:false}; }catch(e){ return {exists:false, offline:true}; }
+    try{ var r=await post({action:'docHas', offer:offer, kind:kind||'quotation'}); if(r&&r.ok) return r; }catch(e){}
+    /* hub without docHas → answer from the library list instead, so "upload once" still holds */
+    var l=await LD.listX(); if(!l) return {exists:false, offline:true};
+    var k=key(offer), hit=l.filter(function(x){ return key(x.offer)===k; });
+    var kinds=[]; hit.forEach(function(x){ (x.kinds||[x.kind]).forEach(function(t){ if(t && kinds.indexOf(t)<0) kinds.push(t); }); });
+    var want=kind||'quotation';
+    return {exists: kinds.indexOf(want)>=0 || (!kinds.length && hit.length>0), kinds:kinds, app:(hit[0]||{}).app||'', on:(hit[0]||{}).on||''};
   };
   /* UPLOAD ONCE: if the order already has this document, nothing is uploaded again —
      only missing details (customer, salesperson, city, sq.ft) are filled in.
@@ -2219,27 +2225,41 @@ let bookQ=null;   // parsed quotation in the open Book popup
 /* ===== RULE: no quotation → no booking (teams AND supervisors) =====
    Passes when a quotation / production sheet is picked in the popup, or the
    library already holds one for this Offer No (all parts of a split order). */
+/* Is the quotation saved for this Offer No? Uses the library LIST (docList, which every hub version answers);
+   the old docHas question is not known to the hub and came back as "no internet". */
+let _qList=null, _qListAt=0;
+async function quoteList(){
+  if(_qList && Date.now()-_qListAt<60000) return _qList;
+  let l=await LD.listX(); if(!l) l=await LD.listX();          // one retry: Apps Script is sometimes slow
+  if(l){ _qList=l; _qListAt=Date.now(); }
+  return l;
+}
 async function quoteOnFile(offer){
   const all=splitOffers(cleanOffer(offer)); if(!all.length) return {ok:false};
-  if(all.length>1){ for(const one of all){ const r=await quoteOnFile1(one); if(!r.ok) return Object.assign({missing:one},r); } return {ok:true}; }
-  return quoteOnFile1(all[0]);
+  const list=await quoteList();
+  if(!list){ for(const one of all){ if(!(await quoteFetchable(one))) return {ok:false,offline:!navigator.onLine,noList:true,missing:one}; } return {ok:true}; }
+  const K=o=>String(o||'').trim().toUpperCase().replace(/\s+/g,'');
+  const have=new Set(list.map(x=>K(x.offer)));
+  const partsHave=o=>{ const p=LD.parts(o); return list.some(x=>{ const q=LD.parts(x.offer); return q.base===p.base && (!p.parts.length || p.parts.every(n=>q.parts.includes(n))); }); };
+  for(const one of all){
+    if(have.has(K(one))) continue;
+    const pp=LD.parts(one);
+    if(pp.parts.length>1){ for(const n of pp.parts){ const o=pp.base+'/'+n; if(!have.has(K(o)) && !partsHave(o)) return {ok:false,missing:o}; } continue; }
+    if(partsHave(one)) continue;
+    if(await quoteFetchable(one)) continue;               // not in the list, but Load by Offer No can still find it (Drive)
+    return {ok:false,missing:one};
+  }
+  return {ok:true};
 }
-async function quoteOnFile1(offer){
-  const o=cleanOffer(offer); if(!o) return {ok:false};
-  const chk=async x=>{ const r=await LD.has(x,'quotation'); return {hit:!!(r&&(r.exists||(r.kinds&&r.kinds.length))), offline:!!(r&&r.offline)}; };
-  const r=await chk(o); if(r.hit) return {ok:true};
-  if(r.offline) return {ok:false,offline:true};
-  const pp=LD.parts(o);
-  if(pp.parts.length>1){ for(const p of pp.parts){ const x=await chk(pp.base+'/'+p); if(!x.hit) return {ok:false,missing:pp.base+'/'+p,offline:x.offline}; } return {ok:true}; }
-  return {ok:false};
-}
+/* same request as "Load by Offer No" (docGet): if it returns a PDF, the quotation exists */
+async function quoteFetchable(offer){ try{ const r=await LD.load(offer,'quotation'); return !!(r && r.file && !r.offline); }catch(e){ return false; } }
 async function needQuote(offer,who,btn){
   const what = who==='supervisor' ? 'A supervisor' : 'A team';
   if(!cleanOffer(offer)){ showMErr('📄 Upload the quotation (or 🔎 load it By Offer No). '+what+' can’t be booked without it.'); return false; }
   const t0=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='Checking quotation…'; } showMErr('');
   let r; try{ r=await quoteOnFile(offer); } finally { if(btn){ btn.disabled=false; btn.textContent=t0; } }
   if(r.ok) return true;
-  if(r.offline) showMErr('Can’t check the quotation library (no internet). Upload the quotation PDF to book.');
+  if(r.noList) showMErr(r.offline ? 'No internet — can’t check the quotation library. Upload the quotation PDF to book.' : 'The quotation library didn’t answer — tap Book again, or upload the PDF.');
   else showMErr('No quotation saved for #'+(r.missing||cleanOffer(offer))+'. 📄 Upload it first — '+what.toLowerCase()+' can’t be booked without it.');
   return false;
 }
