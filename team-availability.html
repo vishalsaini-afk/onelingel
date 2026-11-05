@@ -89,7 +89,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncard.ungrp{cursor:default}
 .uncard.closed{border-left-color:var(--muted);opacity:.6}
 .undays.cl{background:var(--panel-2);color:var(--muted)}
-.closebtn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:1px dashed var(--muted);background:transparent;color:var(--text);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}.closebtn.cancelbk{color:#fca5a5;border-color:rgba(239,68,68,.45)}
+.closebtn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:1px dashed var(--muted);background:transparent;color:var(--text);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}.closebtn.cancelbk{color:#fca5a5;border-color:rgba(239,68,68,.45)}.closebtn.reasg{color:#fde68a;border-color:rgba(250,204,21,.5);border-style:solid}
 .closebtn:active{background:var(--panel-2)}
 .uncard.done{border-left-color:var(--green);cursor:default;opacity:.85}
 .unh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
@@ -1465,10 +1465,12 @@ function openRelease(name,team,tm){
     +'<button type="button" class="mbtn" id="mUpGo" style="width:100%;margin-top:8px" hidden>Save &amp; make invoice</button>'
     +'<div class="qinfo" id="mUpInfo"></div></div>'
     +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
+    +(tm.offer?'<button type="button" class="closebtn reasg" id="mReasg">⇄ Reassign to another team</button>':'')
     +'<button type="button" class="closebtn cancelbk" id="mCancelBk">✕ Cancel booking — booked by mistake</button>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>openHold(name,team,tm,b.getAttribute('data-val')));
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
+  const rb=document.getElementById('mReasg'); if(rb) rb.onclick=()=>openReassign({ offer:tm.offer, from:name, fromTeam:String(team), project:tm.project||'', city:tm.city||'', sales:tm.salesperson||'' }, null);
   document.getElementById('mCancelBk').onclick=()=>{ if(!confirm('Cancel this booking?\n\n'+name+' Team '+team+(tm.offer?' · #'+tm.offer:'')+'\n\nUse this only if the team was booked by mistake — it will not count as a job, and the order goes back to To Assign.')) return; closeModal(); release(name,team,true); };
   const eb=document.getElementById('mEditBtn'); if(eb) eb.onclick=()=>{ const pl=planById('c|'+name+'|'+team+'|'+TODAY())||{};
     openTeamEdit({id:pl.id||'',date:TODAY(),contractor:name,team:String(team),offer:tm.offer||pl.offer||'',project:tm.project||pl.project||'',city:tm.city||pl.city||'',salesperson:tm.salesperson||pl.salesperson||'',holdBy:pl.holdBy||''}); };
@@ -1811,16 +1813,18 @@ async function loadDispatch(refresh, silent){
 }
 function openAssign(o){
   setBox('');
+  const reMode = o.assigned && !o.closed && o.contractor && !/· planned/i.test(o.contractor);
   document.getElementById('mTtl').textContent=(o.assigned&&!o.closed?'#'+o.offer+' · '+String(o.contractor||'').replace(/\s*·.*$/,''):'Assign #'+o.offer);
   document.getElementById('mSub').textContent=(o.client||'')+(o.location?' · '+o.location:'');
   const teamsHTML=rows.map(r=>{ let b=''; for(let t=1;t<=r.teams.length;t++){ const tm=dispTeam(r,String(t));
       if(tm.status==='na') b+='<button type="button" class="na" disabled>Team '+t+'<small>On leave</small></button>';
-      else if(tm.status==='booked') b+='<button type="button" class="bk" data-n="'+esc(r.name)+'" data-t="'+t+'" data-d="tomorrow">Team '+t+'<small>#'+esc(tm.offer||'busy')+' · book later</small></button>';
+      else if(tm.status==='booked') b+= reMode ? '<button type="button" class="na" disabled>Team '+t+'<small>#'+esc(tm.offer||'busy')+'</small></button>'
+                                              : '<button type="button" class="bk" data-n="'+esc(r.name)+'" data-t="'+t+'" data-d="tomorrow">Team '+t+'<small>#'+esc(tm.offer||'busy')+' · book later</small></button>';
       else b+='<button type="button" data-n="'+esc(r.name)+'" data-t="'+t+'" data-d="today">Team '+t+'<small>Free today</small></button>'; }
     return '<div class="asgc"><div class="nm">'+esc(r.name)+'</div><div class="asgt">'+b+'</div></div>'; }).join('');
   document.getElementById('mBody').innerHTML=pendingBox(o.pending)
     +'<div class="unmeta" style="margin:6px 0 4px">🧑‍💼 '+esc(o.sales||'—')+' · 🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+' · '+esc(o.dept||'')+'</div>'
-    +'<div class="mdt" style="margin-top:10px">Pick a contractor team</div><div class="asgl">'+(teamsHTML||'<div class="msg">No contractors loaded — open the Board once.</div>')+'</div>'
+    +'<div class="mdt" style="margin-top:10px">'+(reMode?'⇄ Reassign to another team':'Pick a contractor team')+'</div><div class="asgl">'+(teamsHTML||'<div class="msg">No contractors loaded — open the Board once.</div>')+'</div>'
     +(o.assigned&&o.contractor?'<button type="button" class="closebtn cancelbk" id="unCancelBk">✕ Cancel '+esc(String(o.contractor).replace(/\s*·.*$/,''))+(/· planned/i.test(o.contractor)?' plan':' booking')+' — wrong team</button>':'')
     +'<button type="button" class="closebtn" id="unCloseBtn">✓ Close site — no contractor needed</button>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Close'; go.className='mbtn'; modal.hidden=false; goHandler=closeModal;
@@ -1828,10 +1832,43 @@ function openAssign(o){
   document.getElementById('unCloseBtn').onclick=()=>openCloseSite(o);
   document.querySelectorAll('#mBody .asgt button[data-n]').forEach(btn=>btn.onclick=()=>{
     const name=btn.getAttribute('data-n'), team=btn.getAttribute('data-t');
+    if(reMode){ const m=String(o.contractor).match(/^(.*?)\s*\(T(\d+)\)/);
+      return openReassign({ offer:o.offer, members:o.members, from:m?m[1].trim():String(o.contractor).trim(), fromTeam:m?m[2]:'', project:o.client||'', city:o.location||'', sales:o.sales||'' }, {name:name, team:team}); }
     openBook(name,team,{ offer:o.offer, project:o.client, city:o.location, sales:o.sales, pending:o.pending, day:btn.getAttribute('data-d'),
       onBooked:function(off){ offerKeys(off||o.offer).concat((o.members||[]).map(m=>offerKeys(m)).flat()).forEach(k=>unJust[k]=name+' (T'+team+')'); try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
         renderUn(); setTimeout(()=>loadDispatch(true,true), 4000); } });
   });
+}
+/* REASSIGN — same order, another team, one step. src={offer,members?,from,fromTeam,project,city,sales}; to={name,team} or null (pick here) */
+function openReassign(src,to){
+  setBox('');
+  document.getElementById('mTtl').textContent='Reassign #'+src.offer;
+  document.getElementById('mSub').textContent=(src.project||'')+(src.city?' · '+src.city:'');
+  const free=[]; rows.forEach(r=>{ for(let t=1;t<=r.teams.length;t++){ const tm=teamOf(r,String(t)); if(tm && tm.status!=='booked' && tm.status!=='na' && !(r.name===src.from && String(t)===String(src.fromTeam))) free.push({name:r.name,team:String(t)}); } });
+  const opts=free.map(f=>'<option value="'+esc(f.name+'|'+f.team)+'"'+(to&&to.name===f.name&&String(to.team)===f.team?' selected':'')+'>'+esc(f.name)+' · Team '+f.team+'</option>').join('');
+  document.getElementById('mBody').innerHTML=
+     '<div class="relinfo"><span class="k">From</span><br><b>'+esc(src.from)+(src.fromTeam?' · Team '+esc(src.fromTeam):'')+'</b></div>'
+    +'<div class="fd"><label>To (free today)</label><select id="rTo" class="msel">'+(opts||'<option value="">No free team today</option>')+'</select></div>'
+    +'<div class="fd"><label>Did '+esc(src.from)+' already work on this site?</label>'+seg('segWorked',[{v:'no',l:'No — booked by mistake'},{v:'yes',l:'Yes — keep his work'}],'no')+'</div>'
+    +'<div class="qinfo">No → his booking is cancelled and does not count. Yes → it is closed as a finished job (counts for his invoice).</div>';
+  showMErr(''); const go=document.getElementById('mGo'); go.textContent='⇄ Reassign'; go.className='mbtn go'; modal.hidden=false; wireSegs();
+  goHandler=async()=>{
+    const v=(document.getElementById('rTo').value||'').split('|'); if(!v[0]){ showMErr('No free team today — release one first, or plan it for later from To Assign.'); return; }
+    const worked=segVal('segWorked')==='yes', offs=(src.members&&src.members.length?src.members:[src.offer]);
+    closeModal(); setDot('dot','syncTxt','busy','Reassigning #'+src.offer+'…'); setDot('dotU','syncU','busy','Reassigning #'+src.offer+'…');
+    try{
+      let msgs=[];
+      for(const off of offs){
+        const r=await apiPost({action:'reassign',offer:off,fromContractor:src.from,fromTeam:src.fromTeam||'',worked:worked?'1':'',toName:v[0],toTeam:v[1],project:src.project||'',city:src.city||'',salesperson:src.sales||'',by:SUP});
+        if(r.old && r.old.ok===false) msgs.push('#'+off+': new team booked, but the old booking was not found ('+r.old.error+')');
+      }
+      offs.forEach(x=>offerKeys(x).forEach(k=>{ unJust[k]=v[0]+' (T'+v[1]+')'; })); try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
+      bookingsLoaded=false; await loadBoard(true);
+      setDot('dot','syncTxt','ok','Reassigned #'+esc(src.offer)+' → '+esc(v[0])+' Team '+v[1]);
+      if(msgs.length) alert(msgs.join('\n'));
+      if(view==='un'){ renderUn(); setTimeout(()=>loadDispatch(true,true),1500); }
+    }catch(e){ setDot('dot','syncTxt','err','Reassign failed — '+(e.message||e)); setDot('dotU','syncU','err','Reassign failed'); alert('Could not reassign:\n\n'+(e.message||e)); }
+  };
 }
 /* To Assign: the order shows a team that is not really on it → cancel that booking (or the advance plan) */
 async function cancelWrongBooking(o){
