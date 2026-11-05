@@ -1693,7 +1693,8 @@ function pSent(list){ return (list||[]).filter(p=>p.sent); }
 function shortDate(d){ try{ const x=new Date(String(d).slice(0,10)+'T00:00:00'); return isNaN(x)?String(d):x.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }catch(e){ return String(d); } }
 function pendingBox(list){ if(!list||!list.length) return '';
   const sDates=[...new Set(pSent(list).map(p=>p.sentOn||''))], oneDate=sDates.length===1;
-  const li=p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')
+  const mixDept=new Set(list.map(p=>p.dept||'')).size>1;   // department shown only when items come from different factories
+  const li=p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(mixDept&&p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')
       +(p.sent?(!oneDate&&p.sentOn?' <span class="psent">· sent '+esc(shortDate(p.sentOn))+'</span>':''):(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':''))+'</li>';
   const op=pOpen(list), se=pSent(list); let h='';
   if(op.length){ const sr=op.filter(p=>p.src==='Site Req').length, pd=op.length-sr;

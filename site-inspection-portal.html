@@ -829,7 +829,7 @@ function renderPendBox(state){
   const _sr=_open.filter(it=>it.src==="Site Req").length, _pd=_open.length-_sr;
   b.innerHTML='<b style="color:'+(_open.length?'#f0a63a':'#facc15')+'">'+[_open.length?'⚠ '+[_pd?_pd+' pending from factory':'', _sr?_sr+' site requirement'+(_sr>1?'s':''):''].filter(Boolean).join(' + '):'', _sent?'📦 '+_sent+' sent by factory — to be installed':''].filter(Boolean).join(' · ')+'</b> · printed in the report'
     +'<ul style="margin:6px 0 0 18px;padding:0">'+pendItems.map(it=>'<li style="margin:3px 0">'+(it.src==="Site Req"?'<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:#f0a63a;color:#111">Site req</span> ':'')+esc(it.item)+(it.qty?' · '+esc(it.qty):'')
-      +' <span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;border:1px solid #f0a63a;color:#f0a63a">'+esc(it.dept?it.dept+' factory':'Factory')+'</span>'
+      +(new Set(pendItems.map(x=>x.dept||'')).size>1&&it.dept?' <span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;border:1px solid #f0a63a;color:#f0a63a">'+esc(it.dept+' factory')+'</span>':'')
       +(it.sent?' <span style="font-size:11.5px;color:#9aa3af">· sent'+(it.sentOn?' '+esc(fmtPendDate(it.sentOn)):'')+'</span>':(it.status&&!/^open$/i.test(it.status)?' <i>('+esc(it.status)+')</i>':''))+'</li>').join("")+'</ul>';
 }
 function schedulePending(){ clearTimeout(_pendT); _pendT=setTimeout(fetchPending,700); }
