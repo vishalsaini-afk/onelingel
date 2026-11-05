@@ -89,7 +89,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncard.ungrp{cursor:default}
 .uncard.closed{border-left-color:var(--muted);opacity:.6}
 .undays.cl{background:var(--panel-2);color:var(--muted)}
-.closebtn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:1px dashed var(--muted);background:transparent;color:var(--text);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+.closebtn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:1px dashed var(--muted);background:transparent;color:var(--text);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}.closebtn.cancelbk{color:#fca5a5;border-color:rgba(239,68,68,.45)}
 .closebtn:active{background:var(--panel-2)}
 .uncard.done{border-left-color:var(--green);cursor:default;opacity:.85}
 .unh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
@@ -851,12 +851,12 @@ async function book(name,team,offer,project,holdBy,city,salesperson){
     pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Booked '+esc(name)+' Team '+team+' → #'+esc(offer));
   }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Booking failed')+' — try again'); alert('Couldn’t book this team:\n\n'+(e.message||e)); }
 }
-async function release(name,team){
-  const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy','Releasing…');
-  try{ await apiPost({action:'release',name,team,by:SUP});
+async function release(name,team,mistake){
+  const key=name+'|'+team; pending.set(key,{status:'available',offer:'',project:'',by:SUP}); renderBoard(); setDot('dot','syncTxt','busy',mistake?'Cancelling booking…':'Releasing…');
+  try{ await apiPost({action:'release',name,team,by:SUP,mistake:mistake?'1':''});
     const r=rows.find(x=>x.name===name); if(r){ const tm=teamOf(r,team); tm.status='available'; tm.offer=''; tm.project=''; tm.by=SUP; }
     const pid='c|'+name+'|'+team+'|'+TODAY(); if(planById(pid)){ plans=plans.filter(p=>p.id!==pid); savePlansLocal(); pushPlanDelete(pid); }
-    pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok','Released '+esc(name)+' Team '+team);
+    pending.delete(key); renderBoard(); saveCache(); bookingsLoaded=false; setDot('dot','syncTxt','ok',(mistake?'Cancelled booking of ':'Released ')+esc(name)+' Team '+team);
   }catch(e){ pending.delete(key); renderBoard(); setDot('dot','syncTxt','err',(e.message||'Release failed')+' — try again'); }
 }
 async function setNA(name,team,na){
@@ -1464,10 +1464,12 @@ function openRelease(name,team,tm){
     +'<div class="fd"><label>Quotation / production sheet</label><div id="mUpSaved" class="pk-list"></div><div id="mUpPick"></div>'
     +'<button type="button" class="mbtn" id="mUpGo" style="width:100%;margin-top:8px" hidden>Save &amp; make invoice</button>'
     +'<div class="qinfo" id="mUpInfo"></div></div>'
-    +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>';
+    +'<div class="fd"><label>Put on hold — frees the crew, keeps the site as pending work</label>'+seg('segHold',[{v:'Customer',l:'Customer'},{v:'Factory',l:'Factory'},{v:'Installation Team',l:'Install'}],'')+'</div>'
+    +'<button type="button" class="closebtn cancelbk" id="mCancelBk">✕ Cancel booking — booked by mistake</button>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Release (job done)'; go.className='mbtn danger'; modal.hidden=false;
   document.querySelectorAll('#mBody #segHold button').forEach(b=>b.onclick=()=>openHold(name,team,tm,b.getAttribute('data-val')));
   const wb=document.getElementById('mWoBtn'); if(wb) wb.onclick=()=>{ closeModal(); reprintWorkOrder(name,team,tm.offer); };
+  document.getElementById('mCancelBk').onclick=()=>{ if(!confirm('Cancel this booking?\n\n'+name+' Team '+team+(tm.offer?' · #'+tm.offer:'')+'\n\nUse this only if the team was booked by mistake — it will not count as a job, and the order goes back to To Assign.')) return; closeModal(); release(name,team,true); };
   const eb=document.getElementById('mEditBtn'); if(eb) eb.onclick=()=>{ const pl=planById('c|'+name+'|'+team+'|'+TODAY())||{};
     openTeamEdit({id:pl.id||'',date:TODAY(),contractor:name,team:String(team),offer:tm.offer||pl.offer||'',project:tm.project||pl.project||'',city:tm.city||pl.city||'',salesperson:tm.salesperson||pl.salesperson||'',holdBy:pl.holdBy||''}); };
   const fb=document.getElementById('mFineBtn'); if(fb){ fb.onclick=()=>openFine(name,team,tm); showFines(name,team,tm,document.getElementById('mFines')); }
@@ -1809,7 +1811,7 @@ async function loadDispatch(refresh, silent){
 }
 function openAssign(o){
   setBox('');
-  document.getElementById('mTtl').textContent='Assign #'+o.offer;
+  document.getElementById('mTtl').textContent=(o.assigned&&!o.closed?'#'+o.offer+' · '+String(o.contractor||'').replace(/\s*·.*$/,''):'Assign #'+o.offer);
   document.getElementById('mSub').textContent=(o.client||'')+(o.location?' · '+o.location:'');
   const teamsHTML=rows.map(r=>{ let b=''; for(let t=1;t<=r.teams.length;t++){ const tm=dispTeam(r,String(t));
       if(tm.status==='na') b+='<button type="button" class="na" disabled>Team '+t+'<small>On leave</small></button>';
@@ -1819,8 +1821,10 @@ function openAssign(o){
   document.getElementById('mBody').innerHTML=pendingBox(o.pending)
     +'<div class="unmeta" style="margin:6px 0 4px">🧑‍💼 '+esc(o.sales||'—')+' · 🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+' · '+esc(o.dept||'')+'</div>'
     +'<div class="mdt" style="margin-top:10px">Pick a contractor team</div><div class="asgl">'+(teamsHTML||'<div class="msg">No contractors loaded — open the Board once.</div>')+'</div>'
+    +(o.assigned&&o.contractor?'<button type="button" class="closebtn cancelbk" id="unCancelBk">✕ Cancel '+esc(String(o.contractor).replace(/\s*·.*$/,''))+(/· planned/i.test(o.contractor)?' plan':' booking')+' — wrong team</button>':'')
     +'<button type="button" class="closebtn" id="unCloseBtn">✓ Close site — no contractor needed</button>';
   showMErr(''); const go=document.getElementById('mGo'); go.textContent='Close'; go.className='mbtn'; modal.hidden=false; goHandler=closeModal;
+  const cb=document.getElementById('unCancelBk'); if(cb) cb.onclick=()=>cancelWrongBooking(o);
   document.getElementById('unCloseBtn').onclick=()=>openCloseSite(o);
   document.querySelectorAll('#mBody .asgt button[data-n]').forEach(btn=>btn.onclick=()=>{
     const name=btn.getAttribute('data-n'), team=btn.getAttribute('data-t');
@@ -1828,6 +1832,29 @@ function openAssign(o){
       onBooked:function(off){ offerKeys(off||o.offer).concat((o.members||[]).map(m=>offerKeys(m)).flat()).forEach(k=>unJust[k]=name+' (T'+team+')'); try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
         renderUn(); setTimeout(()=>loadDispatch(true,true), 4000); } });
   });
+}
+/* To Assign: the order shows a team that is not really on it → cancel that booking (or the advance plan) */
+async function cancelWrongBooking(o){
+  const m=String(o.contractor||'').match(/^(.*?)\s*\(T(\d+)\)/), name=m?m[1].trim():String(o.contractor||'').replace(/\s*·.*$/,'').trim(), team=m?m[2]:'';
+  const planned=/· planned/i.test(o.contractor||'');
+  if(!confirm('Cancel '+name+(team?' Team '+team:'')+' for #'+o.offer+'?\n\n'+(planned?'The advance booking (plan) is deleted.':'The booking is marked “booked by mistake” — it no longer counts, and the team is freed if it is still on this site.')+'\n\nThe order goes back to To Assign so you can book the right team.')) return;
+  closeModal(); setDot('dotU','syncU','busy','Cancelling '+name+' for #'+o.offer+'…');
+  try{
+    const offs=(o.members&&o.members.length?o.members:[o.offer]);
+    if(planned){
+      const keys=new Set(offs.map(x=>offerKeys(x)).flat());
+      const hits=plans.filter(p=>p.kind==='team' && p.date>=TODAY() && p.contractor.toLowerCase()===name.toLowerCase() && (!team||String(p.team)===team) && offerKeys(p.offer).some(k=>keys.has(k)));
+      if(!hits.length) throw new Error('plan not found on this device — open Day Plan and delete it there');
+      hits.forEach(p=>{ plans=plans.filter(x=>x.id!==p.id); pushPlanDelete(p.id); }); savePlansLocal();
+    } else {
+      let done=0, lastErr='';
+      for(const off of offs){ try{ await apiPost({action:'cancelBooking',offer:off,contractor:name,team:team,by:SUP}); done++; }catch(e){ lastErr=e.message||String(e); } }
+      if(!done) throw new Error(lastErr||'not found');
+    }
+    offs.forEach(x=>offerKeys(x).forEach(k=>{ delete unJust[k]; })); try{ localStorage.setItem(UN_JUST,JSON.stringify(unJust)); }catch(e){}
+    bookingsLoaded=false; loadBoard(true);
+    await new Promise(r=>setTimeout(r,1500)); await loadDispatch(true);
+  }catch(e){ setDot('dotU','syncU','err','Could not cancel: '+(e.message||e)); alert('Could not cancel:\n\n'+(e.message||e)); }
 }
 function openCloseSite(o){
   setBox('');
@@ -1868,7 +1895,7 @@ async function setSiteClosed(o,close,reason){
   document.getElementById('refreshU').addEventListener('click',()=>{ if(unMode==='paidr') loadPaidReady(); else loadDispatch(true); });
   document.getElementById('unList').addEventListener('click',e=>{
     const all=e.target.closest('.unall'); if(all){ const base=all.getAttribute('data-grp'); const items=unView().filter(o=>unBase(o.offer)===base && unVisible(o)); openAssign(unGroupOrder({base:base,items:items})); return; }
-    const c=e.target.closest('.ungrow')||e.target.closest('.uncard:not(.ungrp)'); if(!c||c.classList.contains('done')) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;
+    const c=e.target.closest('.ungrow')||e.target.closest('.uncard:not(.ungrp)'); if(!c) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;   // assigned cards open too — to cancel a wrong team
     if(o.closed){ if(confirm('Reopen #'+o.offer+' ('+(o.client||'')+')?\n\nIt will come back to the To Assign list.')) setSiteClosed(o,false,''); return; }
     openAssign(o); });
   renderUn(); if(DISPATCH_API) setTimeout(()=>loadDispatch(false,true), 1500);
