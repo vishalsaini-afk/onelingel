@@ -97,7 +97,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncl{font-size:14px;margin-top:2px}
 .unmeta{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
 .undays{font-size:11px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(239,68,68,.15);color:#fda4a4;white-space:nowrap}
-.undays.ok{background:rgba(34,197,94,.15);color:#86efac}
+.undays.ok{background:rgba(34,197,94,.15);color:#86efac}.undays.pl{background:rgba(96,165,250,.14);color:#93c5fd;border-color:rgba(96,165,250,.4)}.undays.nb{background:rgba(245,158,11,.14);color:#fbbf24;border-color:rgba(245,158,11,.45)}
 .pwarn{margin-top:8px;border:1px dashed var(--amber);border-radius:9px;padding:7px 9px;font-size:12.5px;color:#fcd9a0;background:rgba(240,166,58,.07)}
 .pwarn b{color:var(--amber)}
 .pwarn ul{margin:4px 0 0 16px;padding:0}.pwarn li{margin:2px 0}
@@ -989,7 +989,7 @@ function openBook(name,team,pre){
       if(!inRegion(sales)){ planSalesList=[]; saveSalesSel(); }
       const when = date===TOMORROW() ? 'Tomorrow' : prettyDate(date);
       switchView('plan');   // jump to the Day Plan so they can see it
-      setTimeout(()=>setDot('dotP','syncP','ok','Planned '+esc(name)+' Team '+team+' for '+when+(offer?(' · #'+esc(offer)):'')), 60);
+      setTimeout(()=>setDot('dotP','syncP','ok','Planned '+esc(name)+' Team '+team+' for '+when+(offer?(' · #'+esc(offer)):'')+' — goes live on the Board that day'), 60);
     }
    }catch(err){ showMErr('Script error: '+(err.message||err)); alert('Couldn’t save the booking:\n\n'+(err.message||err)); }
   };
@@ -1753,7 +1753,10 @@ function unVisible(o){ if(!unFilterOk(o)) return false; if(unMode==='un'&&(o.ass
   const q=unQ.trim().toLowerCase(); return !q || [o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q); }
 function unBase(offer){ const k=offerKeys(offer)[0]; return k?k.split('/')[0]:String(offer||'').split('/')[0].trim(); }
 function unSub(offer){ const b=unBase(offer); return String(offer||'').trim().replace(new RegExp('^'+b),'') || offer; }
-function unState(o){ return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(o.contractor||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
+function unState(o){ const c=String(o.contractor||'');
+  if(!o.closed && o.assigned && /never booked/i.test(c)) return '<span class="undays nb" title="Planned in advance but the team was never booked on the Board">⚠ '+esc(c)+'</span>';
+  if(!o.closed && o.assigned && /· planned/i.test(c)) return '<span class="undays pl" title="Advance booking — becomes a live booking on that day">🗓 '+esc(c)+'</span>';
+  return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(c||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
 function unCard(o){ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
   return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':'')+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
     +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
