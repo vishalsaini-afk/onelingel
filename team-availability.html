@@ -79,6 +79,10 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);border-radius:12px;padding:12px 13px;margin-bottom:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .uncard:active{background:var(--panel-2)}
 .uncard.has-p{border-left-color:var(--amber);background:linear-gradient(180deg,rgba(240,166,58,.10),rgba(240,166,58,.02))}
+.uncard.has-s,.uncard.done.has-s{border-left-color:#facc15;background:linear-gradient(180deg,rgba(250,204,21,.12),rgba(250,204,21,.03))}
+.uncard.done.has-p{border-left-color:var(--amber)}
+.pwarn.psentbox{border-color:rgba(250,204,21,.55);background:rgba(250,204,21,.08);color:#fde68a}
+.psent{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:#facc15;color:#1a1a1a;margin-left:4px}
 .ungrows{margin-top:8px;border-top:1px solid var(--line)}
 .ungrow{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line);cursor:pointer}
 .ungrow:active{background:var(--panel-2)}
@@ -91,7 +95,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .undays.cl{background:var(--panel-2);color:var(--muted)}
 .closebtn{width:100%;margin-top:12px;padding:12px;border-radius:10px;border:1px dashed var(--muted);background:transparent;color:var(--text);font-family:'Archivo Narrow';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer}.closebtn.cancelbk{color:#fca5a5;border-color:rgba(239,68,68,.45)}.closebtn.reasg{color:#fde68a;border-color:rgba(250,204,21,.5);border-style:solid}
 .closebtn:active{background:var(--panel-2)}
-.uncard.done{border-left-color:var(--green);cursor:default;opacity:.85}
+.uncard.done{border-left-color:var(--green);opacity:.85}
 .unh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
 .unoff{font-weight:800;color:var(--hivis);font-size:15px}
 .uncl{font-size:14px;margin-top:2px}
@@ -1676,9 +1680,16 @@ function localAssign(o){
   return '';
 }
 function unView(){ return unRows.map(o=>{ const la=(o.assigned||o.closed)?'':localAssign(o); return Object.assign({},o,{assigned:o.assigned||!!la, contractor:o.contractor||la}); }); }
+function pOpen(list){ return (list||[]).filter(p=>!p.sent); }
+function pSent(list){ return (list||[]).filter(p=>p.sent); }
 function pendingBox(list){ if(!list||!list.length) return '';
-  const sr=list.filter(p=>p.src==='Site Req').length, pd=list.length-sr;
-  return '<div class="pwarn">⚠ <b>'+[pd?pd+' pending':'', sr?sr+' site requirement'+(sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b><ul>'+list.map(p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')+(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':'')+'</li>').join('')+'</ul></div>'; }
+  const li=p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')
+      +(p.sent?' <span class="psent">✓ Sent'+(p.sentOn?' '+esc(prettyDate(p.sentOn)):'')+' · to install</span>':(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':''))+'</li>';
+  const op=pOpen(list), se=pSent(list); let h='';
+  if(op.length){ const sr=op.filter(p=>p.src==='Site Req').length, pd=op.length-sr;
+    h+='<div class="pwarn">⚠ <b>'+[pd?pd+' pending':'', sr?sr+' site requirement'+(sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b><ul>'+op.map(li).join('')+'</ul></div>'; }
+  if(se.length) h+='<div class="pwarn psentbox">📦 <b>'+se.length+' item'+(se.length>1?'s':'')+' sent by factory — still to be installed</b><ul>'+se.map(li).join('')+'</ul></div>';
+  return h; }
 function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+' days')); }
 function renderUn(){
   const all=unView(), un=all.filter(o=>!o.assigned && !o.closed && unFilterOk(o));
@@ -1761,9 +1772,9 @@ function unState(o){ const c=String(o.contractor||'');
   if(!o.closed && o.assigned && /never booked/i.test(c)) return '<span class="undays nb" title="Planned in advance but the team was never booked on the Board">⚠ '+esc(c)+'</span>';
   if(!o.closed && o.assigned && /· planned/i.test(c)) return '<span class="undays pl" title="Advance booking — becomes a live booking on that day">🗓 '+esc(c)+'</span>';
   return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(c||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
-function unCard(o){ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=o.pending&&o.pending.length;
-  return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':'')+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
-    +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
+function unCard(o){ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=pOpen(o.pending).length, hs=!hp&&pSent(o.pending).length;
+  return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':(hs?' has-s':''))+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
+    +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':(hs?'📦 ':''))+'#'+esc(o.offer)+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
     +'<div class="unmeta">🧑‍💼 '+esc(o.sales||'—')+(o.location?' · 📍 '+esc(o.location):'')+'<br>🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+(o.supervisor?' · 👔 '+esc(o.supervisor):'')+(o.startDate?' · ▶ '+esc(prettyDate(o.startDate)):'')+'</div>'
     +(o.closed&&o.closedNote?'<div class="unmeta">🔒 '+esc(o.closedNote)+' · tap to reopen</div>':'')
     +pendingBox(o.pending)+'</div>'; }
@@ -1787,7 +1798,7 @@ function unGroupCard(g){
   const rowsH=g.items.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer), hp=o.pending&&o.pending.length;
     return '<div class="ungrow'+(o.closed?' closed':(o.assigned?' done':''))+'" data-ui="'+i+'"><span class="unsub">'+(hp?'⚠ ':'')+'#'+esc(o.offer)+'</span>'
       +'<span class="unrmeta">'+esc(o.dept||'')+(o.location&&o.location!==f.location?' · '+esc(o.location):'')+(hp?' · '+o.pending.length+' item'+(o.pending.length>1?'s':''):'')+'</span>'+unState(o)+'</div>'; }).join('');
-  return '<div class="uncard ungrp'+(allPend.length?' has-p':'')+(open.length?'':' done')+'">'
+  return '<div class="uncard ungrp'+(pOpen(allPend).length?' has-p':(allPend.length?' has-s':''))+(open.length?'':' done')+'">'
     +'<div class="unh"><div><div class="unoff">'+(allPend.length?'⚠ ':'')+'#'+esc(g.base)+' <span class="pdep">'+g.items.length+' orders</span>'+(gcodes?' <span class="pdep code">'+esc(gcodes)+'</span>':'')+' <span class="pdep">'+esc(depts)+'</span></div><div class="uncl">'+esc(f.client||'—')+'</div></div>'
     +(open.length&&days>=0?'<span class="undays">'+esc(daysTxt(days))+'</span>':(open.length?'':'<span class="undays ok">✓ all done</span>'))+'</div>'
     +'<div class="unmeta">🧑‍💼 '+esc(f.sales||'—')+(f.location?' · 📍 '+esc(f.location):'')+'</div>'
