@@ -82,7 +82,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncard.has-s,.uncard.done.has-s{border-left-color:#facc15;background:linear-gradient(180deg,rgba(250,204,21,.12),rgba(250,204,21,.03))}
 .uncard.done.has-p{border-left-color:var(--amber)}
 .pwarn.psentbox{border-color:rgba(250,204,21,.55);background:rgba(250,204,21,.08);color:#fde68a}
-.psent{display:inline-block;font-size:11px;font-weight:700;padding:1px 6px;border-radius:5px;background:#facc15;color:#1a1a1a;margin-left:4px}
+.psent{font-size:11.5px;font-weight:400;color:var(--muted)}
 .ungrows{margin-top:8px;border-top:1px solid var(--line)}
 .ungrow{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line);cursor:pointer}
 .ungrow:active{background:var(--panel-2)}
@@ -1690,13 +1690,15 @@ function localAssign(o){
 function unView(){ return unRows.map(o=>{ const la=(o.assigned||o.closed)?'':localAssign(o); return Object.assign({},o,{assigned:o.assigned||!!la, contractor:o.contractor||la}); }); }
 function pOpen(list){ return (list||[]).filter(p=>!p.sent); }
 function pSent(list){ return (list||[]).filter(p=>p.sent); }
+function shortDate(d){ try{ const x=new Date(String(d).slice(0,10)+'T00:00:00'); return isNaN(x)?String(d):x.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }catch(e){ return String(d); } }
 function pendingBox(list){ if(!list||!list.length) return '';
+  const sDates=[...new Set(pSent(list).map(p=>p.sentOn||''))], oneDate=sDates.length===1;
   const li=p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')
-      +(p.sent?' <span class="psent">✓ Sent'+(p.sentOn?' '+esc(prettyDate(p.sentOn)):'')+' · to install</span>':(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':''))+'</li>';
+      +(p.sent?(!oneDate&&p.sentOn?' <span class="psent">· sent '+esc(shortDate(p.sentOn))+'</span>':''):(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':''))+'</li>';
   const op=pOpen(list), se=pSent(list); let h='';
   if(op.length){ const sr=op.filter(p=>p.src==='Site Req').length, pd=op.length-sr;
     h+='<div class="pwarn">⚠ <b>'+[pd?pd+' pending':'', sr?sr+' site requirement'+(sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b><ul>'+op.map(li).join('')+'</ul></div>'; }
-  if(se.length) h+='<div class="pwarn psentbox">📦 <b>'+se.length+' item'+(se.length>1?'s':'')+' sent by factory — still to be installed</b><ul>'+se.map(li).join('')+'</ul></div>';
+  if(se.length) h+='<div class="pwarn psentbox">📦 <b>'+se.length+' item'+(se.length>1?'s':'')+' sent by factory — still to be installed</b>'+(oneDate&&sDates[0]?'<span class="psent"> · sent '+esc(shortDate(sDates[0]))+'</span>':'')+'<ul>'+se.map(li).join('')+'</ul></div>';
   return h; }
 function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+' days')); }
 function renderUn(){
