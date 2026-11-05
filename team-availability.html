@@ -83,6 +83,10 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .uncard.done.has-p{border-left-color:var(--amber)}
 .pwarn.psentbox{border-color:rgba(250,204,21,.55);background:rgba(250,204,21,.08);color:#fde68a}
 .psent{font-size:11.5px;font-weight:400;color:var(--muted)}
+.ppart{font-size:11px;font-weight:700;color:#fca5a5}
+.pmore summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);margin:3px 0 0 4px;list-style:none}
+.pmore summary::-webkit-details-marker{display:none}
+.pmore[open] summary{display:none}
 .ungrows{margin-top:8px;border-top:1px solid var(--line)}
 .ungrow{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line);cursor:pointer}
 .ungrow:active{background:var(--panel-2)}
@@ -1695,11 +1699,13 @@ function pendingBox(list){ if(!list||!list.length) return '';
   const sDates=[...new Set(pSent(list).map(p=>p.sentOn||''))], oneDate=sDates.length===1;
   const mixDept=new Set(list.map(p=>p.dept||'')).size>1;   // department shown only when items come from different factories
   const li=p=>'<li>'+(p.src==='Site Req'?'<span class="pdep" style="border-color:var(--amber);color:var(--amber)">Site req</span> ':'')+esc(p.item)+(p.qty?' · '+esc(p.qty):'')+(mixDept&&p.dept?'<span class="pdep">'+esc(p.dept)+'</span>':'')
-      +(p.sent?(!oneDate&&p.sentOn?' <span class="psent">· sent '+esc(shortDate(p.sentOn))+'</span>':''):(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':''))+'</li>';
+      +(p.sent?(!oneDate&&p.sentOn?' <span class="psent">· sent '+esc(shortDate(p.sentOn))+'</span>':''):(p.partial?' <span class="ppart">partly sent — rest not sent</span>':(p.status&&!/^open$/i.test(p.status)?' <i>('+esc(p.status)+')</i>':'')))+'</li>';
+  const ul=arr=>{ const N=3; if(arr.length<=N+1) return '<ul>'+arr.map(li).join('')+'</ul>';
+    return '<ul>'+arr.slice(0,N).map(li).join('')+'</ul><details class="pmore"><summary>+ '+(arr.length-N)+' more</summary><ul>'+arr.slice(N).map(li).join('')+'</ul></details>'; };
   const op=pOpen(list), se=pSent(list); let h='';
   if(op.length){ const sr=op.filter(p=>p.src==='Site Req').length, pd=op.length-sr;
-    h+='<div class="pwarn">⚠ <b>'+[pd?pd+' pending':'', sr?sr+' site requirement'+(sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b><ul>'+op.map(li).join('')+'</ul></div>'; }
-  if(se.length) h+='<div class="pwarn psentbox">📦 <b>'+se.length+' item'+(se.length>1?'s':'')+' sent by factory — still to be installed</b>'+(oneDate&&sDates[0]?'<span class="psent"> · sent '+esc(shortDate(sDates[0]))+'</span>':'')+'<ul>'+se.map(li).join('')+'</ul></div>';
+    h+='<div class="pwarn">⚠ <b>'+[pd?pd+' pending':'', sr?sr+' site requirement'+(sr>1?'s':''):''].filter(Boolean).join(' + ')+'</b>'+ul(op)+'</div>'; }
+  if(se.length) h+='<div class="pwarn psentbox">📦 <b>'+se.length+' item'+(se.length>1?'s':'')+' sent by factory — still to be installed</b>'+(oneDate&&sDates[0]?'<span class="psent"> · sent '+esc(shortDate(sDates[0]))+'</span>':'')+ul(se)+'</div>';
   return h; }
 function daysTxt(n){ return n==null||n===''?'':(n===0?'today':(n===1?'1 day':n+' days')); }
 function renderUn(){
@@ -1964,6 +1970,7 @@ async function setSiteClosed(o,close,reason){
   fil.addEventListener('change',e=>{ if(e.target.id==='unSalesSel'){ unSales=e.target.value; saveUnFil(); renderUn(); } });
   document.getElementById('refreshU').addEventListener('click',()=>{ if(unMode==='paidr') loadPaidReady(); else loadDispatch(true); });
   document.getElementById('unList').addEventListener('click',e=>{
+    if(e.target.closest('.pmore summary')) return;
     const tg=e.target.closest('[data-tog]'); if(tg){ const b=tg.getAttribute('data-tog'); if(unExpanded.has(b)) unExpanded.delete(b); else unExpanded.add(b); renderUn(); return; }
     const all=e.target.closest('.unall'); if(all){ const base=all.getAttribute('data-grp'); const items=unView().filter(o=>unBase(o.offer)===base && unVisible(o)); openAssign(unGroupOrder({base:base,items:items})); return; }
     const c=e.target.closest('.ungrow')||e.target.closest('.uncard:not(.ungrp)'); if(!c) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;   // assigned cards open too — to cancel a wrong team
