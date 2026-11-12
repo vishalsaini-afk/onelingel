@@ -1793,7 +1793,35 @@ function unState(o){ const c=String(o.contractor||'');
   return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(c||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
 /* small arrow on every dispatched order → opens that order's Drive folder (installation manual + videos) */
 function unManBtn(o){ return ' <button type="button" class="unman" data-man="'+esc(o.offer)+'" title="Open installation manual" aria-label="Open installation manual">📘 ↗</button>'; }
-function openManual(offer){ const b=unBase(offer); if(!b) return; window.open('drive-viewer.html?q='+encodeURIComponent(b)+'&doc=manual','_blank'); }
+/* MANUAL_API = /exec URL of backend/manual-link.gs. Set → the arrow opens the manual PDF itself (and it can be saved).
+   Blank → the arrow opens the order's Drive folder instead. */
+const MANUAL_API = "";
+function manToast(msg,ms){ let t=document.getElementById('manToast'); if(!t){ t=document.createElement('div'); t.id='manToast';
+    t.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99999;background:#1c1c22;color:#fff;border:1px solid #3a3a44;border-radius:10px;padding:10px 14px;font-size:13px;max-width:88vw;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.45)'; document.body.appendChild(t); }
+  t.textContent=msg; t.style.display='block'; clearTimeout(manToast._t); if(ms!==0) manToast._t=setTimeout(()=>{ t.style.display='none'; }, ms||3200); }
+async function openManual(offer){ const b=unBase(offer); if(!b) return;
+  const folderUrl='drive-viewer.html?q='+encodeURIComponent(b)+'&doc=manual';
+  if(!MANUAL_API){ window.open(folderUrl,'_blank'); return; }
+  const android=/Android/i.test(navigator.userAgent);
+  /* open the tab now (inside the tap) so the browser does not block it; Android downloads instead, so no tab there */
+  let w=null; if(!android){ try{ w=window.open('about:blank','_blank'); if(w) w.document.write('<title>Installation manual</title><p style="font:16px system-ui,sans-serif;padding:28px;color:#333">Opening installation manual…</p>'); }catch(e){ w=null; } }
+  manToast('Opening installation manual…',0);
+  try{
+    const key=offerKeys(offer)[0]||String(offer||'').trim();
+    const r=await fetch(MANUAL_API+'?action=manual&offer='+encodeURIComponent(key)+'&t='+Date.now(),{cache:'no-store'});
+    const d=JSON.parse((await r.text()).trim()||'{}');
+    if(!d.ok||!d.data) throw new Error(d.error||'Manual not found');
+    const bin=atob(d.data), u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([u],{type:'application/pdf'})), name=d.name||('Installation_Manual_'+b+'.pdf');
+    const save=()=>{ const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); };
+    if(w && !w.closed){ w.location.href=url; manToast('Manual opened · use the download button in the viewer to save it'); }
+    else { save(); manToast(android?'Manual downloaded · tap the download to open it':'Manual downloaded: '+name, 4500); }
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 5*60*1000);
+  }catch(e){
+    manToast((e&&e.message?e.message:'Could not open the manual')+' · opening the order folder instead', 4500);
+    if(w && !w.closed) w.location.href=folderUrl; else window.open(folderUrl,'_blank');
+  }
+}
 function unCard(o){ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=pOpen(o.pending).length, hs=!hp&&pSent(o.pending).length;
   return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':(hs?' has-s':''))+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
     +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':(hs?'📦 ':''))+'#'+esc(o.offer)+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+' <span class="pdep">'+esc(o.dept||'')+'</span>'+unManBtn(o)+'</div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
