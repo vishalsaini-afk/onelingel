@@ -795,8 +795,9 @@ function checklistJob(offer){
     CHECK.forEach(grp=>grp.items.forEach(it=>{const a=checklist[it.id]||{};const v=it.only==="input"?"":(a.v||"");const note=a.note||"";
       if(v||note)answered++;
       items.push({id:it.id,section:grp.s,team:TEAM[grp.s]||"",q:it.q,v:v,note:note});}));
-    if(!answered) return null;
-    const data={app:"lingel-measure",type:"site-checklist",version:1,offer:offer||"",customer:gv("m_client"),site:gv("m_site"),
+    const gps=(typeof geo!=="undefined"&&geo&&geo.lat&&geo.lng)?{lat:geo.lat,lng:geo.lng}:null;   /* "Site GPS pinned" → manual gets a navigate link */
+    if(!answered && !gps) return null;
+    const data={app:"lingel-measure",type:"site-checklist",version:1,offer:offer||"",gps:gps,customer:gv("m_client"),site:gv("m_site"),
       salesperson:gv("m_sales"),measuredBy:gv("m_by"),date:gv("m_date"),saved:new Date().toISOString(),items:items};
     const slug=(offer||"form").replace(/[^\w-]+/g,"-");
     const b64=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,1))));
