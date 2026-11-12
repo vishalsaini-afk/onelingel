@@ -139,10 +139,13 @@ async function doSearch(){
       return;
     }
     renderChips(d.matches);
-    if(d.matches.length === 1){
-      chips.firstChild.classList.add('on');
-      loadFolder(d.matches[0].id);
-      msg.textContent = '';
+    /* one match, or one folder named exactly like the order no. → open it straight away */
+    var pick = d.matches.length === 1 ? 0 : -1;
+    if(pick < 0){ for(var i=0;i<d.matches.length;i++){ if(String(d.matches[i].name).trim() === q){ pick = i; break; } } }
+    if(pick >= 0){
+      chips.children[pick].classList.add('on');
+      loadFolder(d.matches[pick].id);
+      msg.textContent = wantDoc === 'manual' ? 'Tap the file "Installation_Manual_…" to open the manual. Videos are in the same folder.' : '';
     }else{
       msg.textContent = d.matches.length + ' orders match — tap one.';
     }
@@ -152,7 +155,15 @@ async function doSearch(){
 }
 qEl.addEventListener('keydown', function(e){ if(e.key==='Enter') doSearch(); });
 
-loadFolder(FOLDER_ID);
+/* opened from another app as drive-viewer.html?q=85194&doc=manual → go straight to that order's folder */
+var wantDoc = '';
+(function(){
+  var qs; try{ qs = new URLSearchParams(location.search); }catch(e){ qs = null; }
+  var q0 = qs ? (qs.get('q')||'').trim() : '';
+  wantDoc = qs ? (qs.get('doc')||'') : '';
+  if(q0){ qEl.value = q0; loading.style.display = 'none'; doSearch(); }
+  else loadFolder(FOLDER_ID);
+})();
 
 /* installable app + offline: register the service worker (shared with the suite) */
 if('serviceWorker' in navigator){

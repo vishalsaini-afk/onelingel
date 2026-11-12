@@ -112,6 +112,8 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .unoff{font-weight:800;color:var(--hivis);font-size:15px}
 .uncl{font-size:14px;margin-top:2px}
 .unmeta{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.unman{display:inline-flex;align-items:center;gap:3px;margin-left:6px;padding:2px 7px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--hivis);font-size:12px;font-weight:800;line-height:1.3;cursor:pointer;vertical-align:middle;-webkit-tap-highlight-color:transparent}
+.unman:active{background:var(--hivis);color:#111}
 .undays{font-size:11px;font-weight:800;padding:3px 7px;border-radius:7px;background:rgba(239,68,68,.15);color:#fda4a4;white-space:nowrap}
 .undays.ok{background:rgba(34,197,94,.15);color:#86efac}.undays.pl{background:rgba(96,165,250,.14);color:#93c5fd;border-color:rgba(96,165,250,.4)}.undays.nb{background:rgba(245,158,11,.14);color:#fbbf24;border-color:rgba(245,158,11,.45)}
 .pwarn{margin-top:8px;border:1px dashed var(--amber);border-radius:9px;padding:7px 9px;font-size:12.5px;color:#fcd9a0;background:rgba(240,166,58,.07)}
@@ -1789,9 +1791,12 @@ function unState(o){ const c=String(o.contractor||'');
   if(!o.closed && o.assigned && /never booked/i.test(c)) return '<span class="undays nb" title="Planned in advance but the team was never booked on the Board">⚠ '+esc(c)+'</span>';
   if(!o.closed && o.assigned && /· planned/i.test(c)) return '<span class="undays pl" title="Advance booking — becomes a live booking on that day">🗓 '+esc(c)+'</span>';
   return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(c||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
+/* small arrow on every dispatched order → opens that order's Drive folder (installation manual + videos) */
+function unManBtn(o){ return ' <button type="button" class="unman" data-man="'+esc(o.offer)+'" title="Open installation manual" aria-label="Open installation manual">📘 ↗</button>'; }
+function openManual(offer){ const b=unBase(offer); if(!b) return; window.open('drive-viewer.html?q='+encodeURIComponent(b)+'&doc=manual','_blank'); }
 function unCard(o){ const i=unRows.findIndex(x=>x.offer===o.offer); const hp=pOpen(o.pending).length, hs=!hp&&pSent(o.pending).length;
   return '<div class="uncard'+(o.closed?' closed':((hp?' has-p':(hs?' has-s':''))+(o.assigned?' done':'')))+'" data-ui="'+i+'">'
-    +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':(hs?'📦 ':''))+'#'+esc(o.offer)+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+' <span class="pdep">'+esc(o.dept||'')+'</span></div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
+    +'<div class="unh"><div><div class="unoff">'+(hp?'⚠ ':(hs?'📦 ':''))+'#'+esc(o.offer)+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+' <span class="pdep">'+esc(o.dept||'')+'</span>'+unManBtn(o)+'</div><div class="uncl">'+esc(o.client||'—')+'</div></div>'+unState(o)+'</div>'
     +'<div class="unmeta">🧑‍💼 '+esc(o.sales||'—')+(o.location?' · 📍 '+esc(o.location):'')+'<br>🚚 Dispatched '+esc(o.dispatchDate?prettyDate(o.dispatchDate):'—')+(o.supervisor?' · 👔 '+esc(o.supervisor):'')+(o.startDate?' · ▶ '+esc(prettyDate(o.startDate)):'')+'</div>'
     +(o.closed&&o.closedNote?'<div class="unmeta">🔒 '+esc(o.closedNote)+' · tap to reopen</div>':'')
     +pendingBox(o.pending)+'</div>'; }
@@ -1814,7 +1819,7 @@ function unGroupCard(g){
   const depts=[...new Set(g.items.map(o=>o.dept).filter(Boolean))].join(' + ');
   const gcodes=[...new Set(g.items.map(o=>o.code).filter(Boolean))].join(' + ');
   const rowsH=g.items.map(o=>{ const i=unRows.findIndex(x=>x.offer===o.offer), hp=o.pending&&o.pending.length, ho=pOpen(o.pending).length;
-    return '<div class="ungrow'+(o.closed?' closed':(o.assigned?' done':''))+'" data-ui="'+i+'"><span class="unsub">'+(ho?'⚠ ':(hp?'📦 ':''))+'#'+esc(o.offer)+'</span>'
+    return '<div class="ungrow'+(o.closed?' closed':(o.assigned?' done':''))+'" data-ui="'+i+'"><span class="unsub">'+(ho?'⚠ ':(hp?'📦 ':''))+'#'+esc(o.offer)+unManBtn(o)+'</span>'
       +'<span class="unrmeta">'+esc(o.dept||'')+(o.location&&o.location!==f.location?' · '+esc(o.location):'')+(hp?' · '+o.pending.length+' item'+(o.pending.length>1?'s':''):'')+'</span>'+unState(o)+'</div>'; }).join('');
   const exp=unExpanded.has(g.base) || !!unQ.trim();   // searching opens it
   const nOpenP=g.items.filter(o=>pOpen(o.pending).length).length, nSentP=g.items.filter(o=>!pOpen(o.pending).length&&pSent(o.pending).length).length;
@@ -1971,6 +1976,7 @@ async function setSiteClosed(o,close,reason){
   document.getElementById('refreshU').addEventListener('click',()=>{ if(unMode==='paidr') loadPaidReady(); else loadDispatch(true); });
   document.getElementById('unList').addEventListener('click',e=>{
     if(e.target.closest('.pmore summary')) return;
+    const mn=e.target.closest('[data-man]'); if(mn){ e.stopPropagation(); openManual(mn.getAttribute('data-man')); return; }
     const tg=e.target.closest('[data-tog]'); if(tg){ const b=tg.getAttribute('data-tog'); if(unExpanded.has(b)) unExpanded.delete(b); else unExpanded.add(b); renderUn(); return; }
     const all=e.target.closest('.unall'); if(all){ const base=all.getAttribute('data-grp'); const items=unView().filter(o=>unBase(o.offer)===base && unVisible(o)); openAssign(unGroupOrder({base:base,items:items})); return; }
     const c=e.target.closest('.ungrow')||e.target.closest('.uncard:not(.ungrp)'); if(!c) return; const o=unView()[+c.getAttribute('data-ui')]; if(!o) return;   // assigned cards open too — to cancel a wrong team

@@ -776,10 +776,32 @@ async function saveToDrive(){
   let pdfOk=false, folderName=offer||"Misc";
   try{ const d=await queuedUpload(api, pdfJob, b64); pdfOk=true; folderName=d.folder||folderName; }
   catch(e){ console.error("pdf upload deferred",e); }   // saved to outbox → auto-retries when back online
+  /* the filled checklist also goes up as data, so the installation manual can show it */
+  try{ const ckJob=checklistJob(offer); if(ckJob) await queuedUpload(api, ckJob, ckJob.base64); }
+  catch(e){ console.error("checklist upload deferred",e); }
   logMeasurementToSheet();
   if(hasVideos){ await uploadVideosAS(api, offer||"Misc"); }
   else if(pdfOk){ luDone("Saved to "+folderName); }
   else { luFail("kept on phone · uploads when back online"); }
+}
+
+/* Site checklist as a small JSON file in the offer folder (Measurement_Checklist_<offer>.json).
+   Read by the installation-manual task; same outbox as the PDF, so it also syncs later when offline. */
+function checklistJob(offer){
+  try{
+    const TEAM={"Site Readiness":"Installation team","Measurement & Technical":"Production & design","Handover":"Both teams"};
+    const gv=id=>{const e=document.getElementById(id);return e?String(e.value||"").trim():"";};
+    const items=[];let answered=0;
+    CHECK.forEach(grp=>grp.items.forEach(it=>{const a=checklist[it.id]||{};const v=it.only==="input"?"":(a.v||"");const note=a.note||"";
+      if(v||note)answered++;
+      items.push({id:it.id,section:grp.s,team:TEAM[grp.s]||"",q:it.q,v:v,note:note});}));
+    if(!answered) return null;
+    const data={app:"lingel-measure",type:"site-checklist",version:1,offer:offer||"",customer:gv("m_client"),site:gv("m_site"),
+      salesperson:gv("m_sales"),measuredBy:gv("m_by"),date:gv("m_date"),saved:new Date().toISOString(),items:items};
+    const slug=(offer||"form").replace(/[^\w-]+/g,"-");
+    const b64=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,1))));
+    return { id:"ck_"+slug.replace(/-/g,"_"), kind:"data", folder: offer||"Misc", name:"Measurement_Checklist_"+slug+".json", mime:"application/json", base64:b64 };
+  }catch(e){ return null; }
 }
 
 /* Upload each opening's video via Apps Script into the SAME offer folder.
