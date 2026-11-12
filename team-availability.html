@@ -1795,7 +1795,7 @@ function unState(o){ const c=String(o.contractor||'');
 function unManBtn(o){ return ' <button type="button" class="unman" data-man="'+esc(o.offer)+'" title="Open installation manual" aria-label="Open installation manual">📘 ↗</button>'; }
 /* MANUAL_API = /exec URL of backend/manual-link.gs. Set → the arrow opens the manual PDF itself (and it can be saved).
    Blank → the arrow opens the order's Drive folder instead. */
-const MANUAL_API = "";
+const MANUAL_API = "https://script.google.com/macros/s/AKfycbxiZQQSBMeTea_eIqOdQ1K0tsfP-D6uVJwHmVdMildX_TPUO4TLQ71cb-zi_QLlte1B/exec";
 function manToast(msg,ms){ let t=document.getElementById('manToast'); if(!t){ t=document.createElement('div'); t.id='manToast';
     t.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99999;background:#1c1c22;color:#fff;border:1px solid #3a3a44;border-radius:10px;padding:10px 14px;font-size:13px;max-width:88vw;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.45)'; document.body.appendChild(t); }
   t.textContent=msg; t.style.display='block'; clearTimeout(manToast._t); if(ms!==0) manToast._t=setTimeout(()=>{ t.style.display='none'; }, ms||3200); }
