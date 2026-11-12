@@ -1532,7 +1532,56 @@ $("#oldMeasFile").addEventListener("change",async ev=>{
   else if(ok) luDone(ok+" saved · "+queued+" will upload when back online");
   else if(queued) luFail("kept on phone · uploads when back online");
   else luFail("couldn't read the file");
+  /* ONE PDF = checklist + the uploaded sheet: downloaded, and saved to Drive like a filled sheet */
+  if(ok||queued){ try{ await uploadedSheetPDF(files, offer, api); }catch(e){ console.error("combined PDF failed",e); toast("\u26A0 Sheet saved, but the checklist PDF could not be built"); } }
 });
+/* Build "checklist + uploaded measurement sheet" as one PDF. Page 1 = order details + site checklist (+ sign-off if signed);
+   then every page of the uploaded PDF / every uploaded photo. */
+async function uploadedSheetPDF(files, offer, api){
+  toast("\uD83D\uDCC4 Building checklist + sheet PDF\u2026");
+  await ensureLibs();
+  const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:"pt",format:"a4",orientation:"portrait",compress:true});
+  const anySig=!!(sigs.supervisor||sigs.sales||sigs.customer);
+  const cover=reportCoverHTML().replace(/<div style="margin-top:10px;font-size:12\.5px">[\s\S]*?<\/div>\s*$/,
+      '<div style="margin-top:10px;font-size:12.5px">Measurement sheet <b>uploaded</b> (taken on paper) \u2014 attached after this page</div>')
+    + reportChecklistHTML() + (anySig?reportSignHTML():"");
+  const r=await renderPageImg(pdf,cover,3);
+  pdf.addImage(r.data,"JPEG",r.x,r.y,r.imgW,r.imgH,undefined,"FAST");
+  const addCanvas=(cv)=>{ const land=cv.width>cv.height; pdf.addPage("a4",land?"landscape":"portrait");
+    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), m=14;
+    const k=Math.min((pw-2*m)/cv.width,(ph-2*m)/cv.height), w=cv.width*k, h=cv.height*k;
+    pdf.addImage(cv.toDataURL("image/jpeg",0.9),"JPEG",(pw-w)/2,(ph-h)/2,w,h,undefined,"FAST"); };
+  let pagesAdded=0;
+  for(const f of files){
+    const isPdf=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
+    try{
+      if(isPdf){
+        const doc=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+        for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const v0=pg.getViewport({scale:1});
+          const vp=pg.getViewport({scale:Math.min(2.2,1900/Math.max(v0.width,v0.height))});
+          const cv=document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
+          const cx=cv.getContext("2d"); cx.fillStyle="#fff"; cx.fillRect(0,0,cv.width,cv.height);
+          await pg.render({canvasContext:cx,viewport:vp}).promise; addCanvas(cv); pagesAdded++; }
+      }else{
+        const img=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=URL.createObjectURL(f); });
+        const k=Math.min(1,1900/Math.max(img.width,img.height));
+        const cv=document.createElement("canvas"); cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
+        const cx=cv.getContext("2d"); cx.fillStyle="#fff"; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(img,0,0,cv.width,cv.height);
+        try{ URL.revokeObjectURL(img.src); }catch(_){}
+        addCanvas(cv); pagesAdded++;
+      }
+    }catch(e){ console.error("could not add "+f.name,e); }
+  }
+  if(!pagesAdded) throw new Error("no page could be read");
+  pdf.save(pdfName());
+  const safe=(offer||"form").replace(/[^\w-]+/g,"-");
+  const b64=pdf.output("datauristring").split(",")[1];
+  const job={ id:"pdf_"+safe.replace(/-/g,"_"), kind:"pdf", folder:offer||"Misc", name:"Measurement_"+safe+"_"+luStamp()+".pdf", mime:"application/pdf", base64:b64 };
+  let sent=false;
+  try{ await queuedUpload(api, job, b64); sent=true; }catch(e){ console.error("combined pdf upload deferred",e); }
+  try{ const ckJob=checklistJob(offer); if(ckJob) await queuedUpload(api, ckJob, ckJob.base64); }catch(e){ console.error("checklist upload deferred",e); }
+  if(sent) luDone("Checklist + sheet PDF saved \u00b7 folder "+offer); else luFail("PDF kept on phone \u00b7 uploads when back online");
+}
 $("#importFile").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f){return;}try{await importQuotation(f);}catch(e){console.error(e);toast("⚠ "+((e&&e.message)||"Couldn't read this PDF"));}ev.target.value="";});
 
 /* install + init */
