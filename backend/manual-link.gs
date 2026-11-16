@@ -20,6 +20,7 @@
  * 3. Send that URL to Claude (it goes into team-availability.html as MANUAL_API)
  *
  * Test in a browser:  <your /exec URL>?action=ping
+ *                     <your /exec URL>?action=list
  *                     <your /exec URL>?action=manual&offer=85194/4&meta=1
  */
 
@@ -65,6 +66,7 @@ function doGet(e) {
   try {
     if (p.action === 'ping') res = { ok: true, app: 'manual-link' };
     else if (p.action === 'manual') res = manual_(p.offer, p.meta);
+    else if (p.action === 'list') res = list_(p.fresh);
     else res = { ok: false, error: 'unknown action' };
   } catch (err) {
     res = { ok: false, error: String(err && err.message || err) };
@@ -104,6 +106,28 @@ function manual_(offer, metaOnly) {
 
   var out = { ok: true, name: pick.getName(), size: pick.getSize(), updated: pick.getLastUpdated().toISOString() };
   if (!metaOnly) out.data = Utilities.base64Encode(pick.getBlob().getBytes());
+  return out;
+}
+
+/* Every order that has an installation manual in the folder, e.g. ["85194/4","83010/6"].
+   Team Availability shows the 📘 arrow only for these orders. Cached 5 minutes. */
+function list_(fresh) {
+  var cache = CacheService.getScriptCache();
+  if (!fresh) { var hit = cache.get('manual_list_v1'); if (hit) return JSON.parse(hit); }
+  var keys = {}, root = FOLDER_ID;
+  var it = DriveApp.searchFiles("title contains '" + PREFIX + "' and mimeType = 'application/pdf' and trashed = false");
+  while (it.hasNext()) {
+    var f = it.next(), m = f.getName().match(/^Installation_Manual_(\d{4,7})(?:[-_ ](\d{1,4}))?\.pdf$/i);
+    if (!m) continue;
+    var inFolder = false, parents = f.getParents();
+    while (parents.hasNext() && !inFolder) {
+      var pf = parents.next(), gp = pf.getParents();
+      while (gp.hasNext()) if (gp.next().getId() === root) { inFolder = true; break; }
+    }
+    if (inFolder) keys[m[1] + (m[2] ? '/' + (+m[2]) : '')] = 1;
+  }
+  var out = { ok: true, manuals: Object.keys(keys).sort(), at: new Date().toISOString() };
+  try { cache.put('manual_list_v1', JSON.stringify(out), 300); } catch (e) {}
   return out;
 }
 

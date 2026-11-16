@@ -1638,7 +1638,7 @@ function switchView(v){
   document.getElementById('unView').hidden = v!=='un';
   document.getElementById('convView').hidden = v!=='conv';
   if(v==='conv' && typeof convOpen==='function') convOpen();
-  if(v==='un'){ renderUn(); loadDispatch(false); loadPaidReady(); }
+  if(v==='un'){ renderUn(); loadDispatch(false); loadPaidReady(); loadManuals(false); }
   if(v==='board'){ if(!document.getElementById('supBoard').hidden) renderSupBoard(); syncPlansFromServer().then(ok=>{ if(ok&&view==='board') renderBoard(); }); }
   if(v==='plan'){ renderPlan(); setDot('dotP','syncP','busy','Syncing…'); Promise.all([syncPlansFromServer(), loadBoard(true)]).then(res=>{ renderPlan(); setDot('dotP','syncP',res[0]?'ok':'err',res[0]?('Synced '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})):'On this device only'); }); }
   startPoll();
@@ -1791,8 +1791,23 @@ function unState(o){ const c=String(o.contractor||'');
   if(!o.closed && o.assigned && /never booked/i.test(c)) return '<span class="undays nb" title="Planned in advance but the team was never booked on the Board">⚠ '+esc(c)+'</span>';
   if(!o.closed && o.assigned && /· planned/i.test(c)) return '<span class="undays pl" title="Advance booking — becomes a live booking on that day">🗓 '+esc(c)+'</span>';
   return o.closed?'<span class="undays cl">Closed</span>':o.assigned?'<span class="undays ok">✓ '+esc(c||'Assigned')+'</span>':(o.days!=null?'<span class="undays">'+esc(daysTxt(o.days))+'</span>':''); }
-/* small arrow on every dispatched order → opens that order's Drive folder (installation manual + videos) */
-function unManBtn(o){ return ' <button type="button" class="unman" data-man="'+esc(o.offer)+'" title="Open installation manual" aria-label="Open installation manual">📘 ↗</button>'; }
+/* 📘 arrow — shown ONLY for orders whose installation manual is already in Drive (list from manual-link.gs, action=list) */
+let manKeys=new Set(), manBases=new Set(), manListAt=0;
+(function(){ try{ const c=JSON.parse(localStorage.getItem('lingel_manuals_v1')||'null'); if(c&&Array.isArray(c.m)) setManuals(c.m); }catch(e){} })();
+function setManuals(list){ manKeys=new Set(list); manBases=new Set(list.map(k=>String(k).split('/')[0])); }
+function manualKey(o){ for(const k of offerKeys(o.offer)){ if(k.indexOf('/')>=0 ? manKeys.has(k) : manBases.has(k)) return k; } return ''; }
+async function loadManuals(force){
+  if(typeof MANUAL_API==='undefined' || !MANUAL_API) return;
+  if(!force && Date.now()-manListAt < 4*60*1000) return; manListAt=Date.now();
+  try{ const r=await fetch(MANUAL_API+'?action=list'+(force?'&fresh=1':'')+'&t='+Date.now(),{cache:'no-store'});
+    const d=JSON.parse((await r.text()).trim()||'{}'); if(!d.ok||!Array.isArray(d.manuals)) throw new Error(d.error||'no list');
+    const before=[...manKeys].sort().join(','); setManuals(d.manuals);
+    try{ localStorage.setItem('lingel_manuals_v1',JSON.stringify({m:d.manuals,at:Date.now()})); }catch(e){}
+    if(before!==[...manKeys].sort().join(',') && typeof renderUn==='function') renderUn();
+  }catch(e){ console.warn('manual list not loaded',e); }
+}
+function unManBtn(o){ const k=manualKey(o); if(!k) return '';
+  return ' <button type="button" class="unman" data-man="'+esc(k)+'" title="Open installation manual" aria-label="Open installation manual">📘 ↗</button>'; }
 /* MANUAL_API = /exec URL of backend/manual-link.gs. Set → the arrow opens the manual PDF itself (and it can be saved).
    Blank → the arrow opens the order's Drive folder instead. */
 const MANUAL_API = "https://script.google.com/macros/s/AKfycbxiZQQSBMeTea_eIqOdQ1K0tsfP-D6uVJwHmVdMildX_TPUO4TLQ71cb-zi_QLlte1B/exec";
@@ -1881,7 +1896,7 @@ async function loadDispatch(refresh, silent){
     const n=unView().filter(o=>!o.assigned && !o.closed).length;
     setDot('dotU','syncU','ok', n+' unassigned · sheet checked '+(unLast?new Date(unLast).toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—'));
   }catch(e){ setDot('dotU','syncU','err',(unRows.length?'Offline · showing last list · ':'')+(e.message||e)); }
-  finally{ unLoading=false; renderUn(); }
+  finally{ unLoading=false; renderUn(); loadManuals(!!refresh); }
 }
 function openAssign(o){
   setBox('');
