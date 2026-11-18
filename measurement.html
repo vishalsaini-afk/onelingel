@@ -234,7 +234,7 @@
   <button class="btn btn-ghost" id="translateAll" title="Speak Hindi, get English text live">🌐 →EN</button>
   <button class="btn btn-ghost" id="importBtn">📄 Import quotation(s)</button>
   <input type="file" id="importFile" accept="application/pdf,.pdf" multiple hidden>
-  <button class="btn btn-ghost" id="oldMeasBtn" title="Save a measurement already taken (scanned PDF or photo) to Drive in this order's folder">📎 Upload measurement</button>
+  <button class="btn btn-ghost" id="oldMeasBtn" title="Scan the paper measurement pages — saved with the checklist and photos as one PDF in Drive">📎 Upload measurement</button>
   <input type="file" id="oldMeasFile" accept="application/pdf,.pdf,image/*" multiple hidden>
   <button class="btn btn-ghost" id="backupBtn">⬇ Backup</button>
   <label class="btn btn-ghost" for="restoreFile" style="cursor:pointer">⬆ Restore<input type="file" id="restoreFile" accept="application/json,.json" hidden></label>
@@ -1522,78 +1522,258 @@ function oldMeasOffer(){
   if(!o){ o=(prompt("Offer No. for this measurement (e.g. 75057/14)")||"").trim(); if(o){ $("#m_no").value=o; try{saveMeta();}catch(e){} } }
   return o;
 }
-$("#oldMeasBtn").onclick=()=>{ if(!oldMeasOffer()){ toast("Enter the Offer No. first"); return; } $("#oldMeasFile").click(); };
+/* ===================== UPLOAD MEASUREMENT = SCAN → ONE PDF =====================
+   Supervisor scans the paper measurement pages with the camera (or adds a PDF / photos). Each scan gets
+   corner-crop (straightened) + "document" clean-up. Save builds ONE PDF:
+   page 1 = order + site checklist (+ sign-off), then the measurement pages, then the site photos — saved to Drive. */
+let scanPages=[];            // [{id, data(jpeg dataURL), w, h}]
+let scanIncPhotos=true;
+async function scanLoad(){ try{ const ids=await idbGet("kv","scanPages"); if(Array.isArray(ids)){ scanPages=[]; for(const id of ids){ const d=await idbGet("photos","scan_"+id); if(d) scanPages.push({id,data:d}); } } }catch(e){} }
+async function scanSave(){ try{ await idbPut("kv",scanPages.map(p=>p.id),"scanPages"); }catch(e){} }
+async function scanAdd(data){ const id=uid(); scanPages.push({id,data}); try{ await idbPut("photos",data,"scan_"+id); }catch(e){} await scanSave(); }
+async function scanDel(id){ scanPages=scanPages.filter(p=>p.id!==id); try{ await idbDel("photos","scan_"+id); }catch(e){} await scanSave(); }
+function scanEnsureUI(){
+  if($("#scanSheet")) return;
+  const st=document.createElement("style"); st.textContent=`
+  #scanSheet{position:fixed;inset:0;z-index:9000;background:#13161b;color:#e8e4d9;display:none;flex-direction:column;font-family:Archivo,system-ui,sans-serif}
+  #scanSheet.on{display:flex}
+  #scanSheet .sh{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #2e3540}
+  #scanSheet .sh h2{margin:0;font-size:17px;flex:1}#scanSheet .sh small{display:block;color:#9aa3af;font-size:12px;font-weight:400}
+  #scanSheet .sb{flex:1;overflow:auto;padding:14px 16px 90px}
+  #scanSheet .sec{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9aa3af;margin:6px 0 8px;font-weight:700}
+  #scanSheet .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+  #scanSheet .pg{position:relative;background:#fff;border-radius:8px;overflow:hidden;aspect-ratio:3/4;border:2px solid #2e3540}
+  #scanSheet .pg img{width:100%;height:100%;object-fit:contain;display:block}
+  #scanSheet .pg .n{position:absolute;left:6px;top:6px;background:#ffce1f;color:#111;font-weight:800;font-size:12px;border-radius:5px;padding:1px 7px}
+  #scanSheet .pg .ac{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;background:rgba(0,0,0,.6)}
+  #scanSheet .pg .ac button{flex:1;background:none;border:none;color:#fff;font-size:15px;padding:6px 0;cursor:pointer}
+  #scanSheet .adds{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 18px}
+  #scanSheet .big{flex:1;min-width:150px;padding:14px;border-radius:10px;border:1px dashed #4b5563;background:#1b1f27;color:#e8e4d9;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+  #scanSheet .big.y{background:#ffce1f;color:#111;border:none}
+  #scanSheet .inc{background:#1b1f27;border:1px solid #2e3540;border-radius:10px;padding:4px 12px}
+  #scanSheet .inc label{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #2e3540;font-size:14px}
+  #scanSheet .inc label:last-child{border-bottom:none}#scanSheet .inc small{color:#9aa3af;margin-left:auto}
+  #scanSheet .ft{position:absolute;left:0;right:0;bottom:0;padding:12px 16px;background:#13161b;border-top:1px solid #2e3540}
+  #scanSheet .ft button{width:100%;padding:15px;border:none;border-radius:10px;background:#ffce1f;color:#111;font:inherit;font-weight:800;font-size:16px;cursor:pointer}
+  #scanSheet .ft button:disabled{opacity:.45}
+  #cropView{position:fixed;inset:0;z-index:9100;background:#000;display:none;flex-direction:column}
+  #cropView.on{display:flex}
+  #cropView .cw{flex:1;position:relative;overflow:hidden;touch-action:none}
+  #cropView canvas{position:absolute;left:0;top:0}
+  #cropView .cb{display:flex;gap:8px;padding:10px;background:#13161b;flex-wrap:wrap}
+  #cropView .cb button{flex:1;min-width:90px;padding:12px 6px;border-radius:9px;border:1px solid #2e3540;background:#1b1f27;color:#e8e4d9;font:inherit;font-weight:700;font-size:13px}
+  #cropView .cb button.y{background:#ffce1f;color:#111;border:none}
+  #cropView .tip{color:#9aa3af;font-size:12px;text-align:center;padding:6px;background:#13161b}`;
+  document.head.appendChild(st);
+  const d=document.createElement("div"); d.id="scanSheet"; d.innerHTML=`
+   <div class="sh"><h2>📎 Upload measurement<small id="scOffer"></small></h2><button class="btn btn-ghost" id="scClose">✕ Close</button></div>
+   <div class="sb">
+     <div class="sec">1 · Measurement sheet pages</div>
+     <div class="grid" id="scGrid"></div>
+     <div class="adds">
+       <button class="big y" id="scCam">📷 Scan a page</button>
+       <button class="big" id="scFile">📁 Add PDF / photos</button>
+     </div>
+     <input type="file" id="scCamIn" accept="image/*" capture="environment" hidden>
+     <div class="sec">2 · Also goes in the same PDF</div>
+     <div class="inc" id="scInc"></div>
+   </div>
+   <div class="ft"><button id="scSave">⤓ Save one PDF to Drive</button></div>`;
+  document.body.appendChild(d);
+  const c=document.createElement("div"); c.id="cropView"; c.innerHTML=`
+   <div class="tip">Drag the 4 yellow corners onto the paper's corners</div>
+   <div class="cw" id="crWrap"><canvas id="crCan"></canvas></div>
+   <div class="cb"><button id="crRetake">↺ Retake</button><button id="crFull">▢ Full photo</button><button id="crMode">🖤 Document</button><button class="y" id="crOk">✓ Use page</button></div>`;
+  document.body.appendChild(c);
+  $("#scClose").onclick=()=>$("#scanSheet").classList.remove("on");
+  $("#scCam").onclick=()=>$("#scCamIn").click();
+  $("#scFile").onclick=()=>$("#oldMeasFile").click();
+  $("#scCamIn").addEventListener("change",async ev=>{ const f=ev.target.files[0]; ev.target.value=""; if(f) cropOpen(f); });
+  $("#scSave").onclick=scanBuildAndSave;
+}
+async function openScanSheet(){
+  if(!oldMeasOffer()){ toast("Enter the Offer No. first"); return; }
+  scanEnsureUI(); if(!scanPages.length) await scanLoad();
+  $("#scOffer").textContent="Offer "+$("#m_no").value+($("#m_client").value?" · "+$("#m_client").value:"");
+  scanRender(); $("#scanSheet").classList.add("on");
+}
+function scanCounts(){
+  let ans=0,tot=0; CHECK.forEach(g=>g.items.forEach(it=>{ tot++; const a=checklist[it.id]||{}; if(a.v||a.note) ans++; }));
+  let ph=0,pos=0; openings.forEach(o=>{ const n=(o.photos||[]).filter(id=>imgCache[id]).length; if(n){ ph+=n; pos++; } });
+  return {ans,tot,ph,pos,sig:!!(sigs.supervisor||sigs.sales||sigs.customer)};
+}
+function scanRender(){
+  $("#scGrid").innerHTML=scanPages.length?scanPages.map((p,i)=>`<div class="pg"><img src="${p.data}"><span class="n">${i+1}</span>
+     <div class="ac"><button data-sc="l" data-i="${i}" title="Move left">◀</button><button data-sc="r" data-i="${i}" title="Rotate">↻</button><button data-sc="x" data-i="${i}" title="Delete">✕</button><button data-sc="n" data-i="${i}" title="Move right">▶</button></div></div>`).join("")
+    :'<div style="grid-column:1/-1;color:#9aa3af;font-size:13px;padding:6px 0">No pages yet — scan each page of the paper measurement sheet.</div>';
+  $("#scGrid").querySelectorAll("[data-sc]").forEach(b=>b.onclick=async()=>{
+    const i=+b.dataset.i, a=b.dataset.sc;
+    if(a==="x"){ if(confirm("Delete page "+(i+1)+"?")){ await scanDel(scanPages[i].id); } }
+    else if(a==="l"&&i>0){ [scanPages[i-1],scanPages[i]]=[scanPages[i],scanPages[i-1]]; await scanSave(); }
+    else if(a==="n"&&i<scanPages.length-1){ [scanPages[i+1],scanPages[i]]=[scanPages[i],scanPages[i+1]]; await scanSave(); }
+    else if(a==="r"){ const p=scanPages[i]; p.data=await rotateData(p.data); try{ await idbPut("photos",p.data,"scan_"+p.id); }catch(e){} }
+    scanRender(); });
+  const c=scanCounts();
+  $("#scInc").innerHTML=`<label><input type="checkbox" checked disabled> 📋 Site checklist <small>${c.ans} of ${c.tot} answered</small></label>
+    <label><input type="checkbox" id="scPh" ${scanIncPhotos&&c.ph?"checked":""} ${c.ph?"":"disabled"}> 📷 Site photos <small>${c.ph?c.ph+" photo"+(c.ph>1?"s":"")+" · "+c.pos+" position"+(c.pos>1?"s":""):"none added yet"}</small></label>
+    ${c.sig?'<label><input type="checkbox" checked disabled> ✍ Sign-off <small>included</small></label>':''}`;
+  const cb=$("#scPh"); if(cb) cb.onchange=()=>{ scanIncPhotos=cb.checked; };
+  $("#scSave").disabled=!scanPages.length;
+  $("#scSave").textContent=scanPages.length?"⤓ Save one PDF to Drive ("+(scanPages.length)+" page"+(scanPages.length>1?"s":"")+" + checklist"+(scanIncPhotos&&c.ph?" + photos":"")+")":"Scan at least one page";
+}
+function rotateData(data){ return new Promise(res=>{ const im=new Image(); im.onload=()=>{ const c=document.createElement("canvas"); c.width=im.height; c.height=im.width;
+  const x=c.getContext("2d"); x.translate(c.width,0); x.rotate(Math.PI/2); x.drawImage(im,0,0); res(c.toDataURL("image/jpeg",0.85)); }; im.src=data; }); }
+/* PDF / photos picked from files → pages */
+$("#oldMeasBtn").onclick=openScanSheet;
 $("#oldMeasFile").addEventListener("change",async ev=>{
   const files=[...ev.target.files]; ev.target.value=""; if(!files.length) return;
-  const offer=oldMeasOffer(); if(!offer){ toast("Enter the Offer No. first"); return; }
-  const api=luApi(); if(!api) return;
-  const big=files.filter(f=>f.size>40*1024*1024); if(big.length){ toast("⚠ "+big[0].name+" is over 40 MB — too large to upload"); return; }
-  const safe=offer.replace(/[^\w-]+/g,"-"); let ok=0, queued=0;
-  _luRetry=function(){ flushOutbox(); };   // a queued file is already on the phone: retry just sends it
-  luShow("Saving measurement", "0 / "+files.length);
-  for(let i=0;i<files.length;i++){
-    const f=files[i], ext=(f.name.match(/\.([a-z0-9]+)$/i)||[,"pdf"])[1].toLowerCase();
-    const name="Uploaded_Measurement_"+safe+"_"+luStamp()+(files.length>1?"_"+(i+1):"")+"."+ext;
-    try{
-      const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>{ const t=String(r.result); res(t.slice(t.indexOf(",")+1)); }; r.onerror=rej; r.readAsDataURL(f); });
-      const job={ id:"oldmeas_"+safe+"_"+Date.now()+"_"+i, kind:"pdf", folder:offer, name, mime:f.type||(ext==="pdf"?"application/pdf":"image/jpeg"), base64:b64 };
-      try{ await queuedUpload(api, job, b64); ok++; }catch(e){ queued++; console.error("measurement upload deferred",e); }
-    }catch(e){ console.error(e); }
-    luShow("Saving measurement", (i+1)+" / "+files.length);
-  }
-  if(ok && !queued) luDone(ok+" file"+(ok>1?"s":"")+" saved to Drive · folder "+offer);
-  else if(ok) luDone(ok+" saved · "+queued+" will upload when back online");
-  else if(queued) luFail("kept on phone · uploads when back online");
-  else luFail("couldn't read the file");
-  /* ONE PDF = checklist + the uploaded sheet: downloaded, and saved to Drive like a filled sheet */
-  if(ok||queued){ try{ await uploadedSheetPDF(files, offer, api); }catch(e){ console.error("combined PDF failed",e); toast("\u26A0 Sheet saved, but the checklist PDF could not be built"); } }
-});
-/* Build "checklist + uploaded measurement sheet" as one PDF. Page 1 = order details + site checklist (+ sign-off if signed);
-   then every page of the uploaded PDF / every uploaded photo. */
-async function uploadedSheetPDF(files, offer, api){
-  toast("\uD83D\uDCC4 Building checklist + sheet PDF\u2026");
-  await ensureLibs();
-  const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:"pt",format:"a4",orientation:"portrait",compress:true});
-  const anySig=!!(sigs.supervisor||sigs.sales||sigs.customer);
-  const cover=reportCoverHTML().replace(/<div style="margin-top:10px;font-size:12\.5px">[\s\S]*?<\/div>\s*$/,
-      '<div style="margin-top:10px;font-size:12.5px">Measurement sheet <b>uploaded</b> (taken on paper) \u2014 attached after this page</div>')
-    + reportChecklistHTML() + (anySig?reportSignHTML():"");
-  const r=await renderPageImg(pdf,cover,3);
-  pdf.addImage(r.data,"JPEG",r.x,r.y,r.imgW,r.imgH,undefined,"FAST");
-  const addCanvas=(cv)=>{ const land=cv.width>cv.height; pdf.addPage("a4",land?"landscape":"portrait");
-    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), m=14;
-    const k=Math.min((pw-2*m)/cv.width,(ph-2*m)/cv.height), w=cv.width*k, h=cv.height*k;
-    pdf.addImage(cv.toDataURL("image/jpeg",0.9),"JPEG",(pw-w)/2,(ph-h)/2,w,h,undefined,"FAST"); };
-  let pagesAdded=0;
+  toast("Adding pages…");
   for(const f of files){
-    const isPdf=/pdf/i.test(f.type)||/\.pdf$/i.test(f.name);
     try{
-      if(isPdf){
+      if(/pdf/i.test(f.type)||/\.pdf$/i.test(f.name)){
         const doc=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
         for(let n=1;n<=doc.numPages;n++){ const pg=await doc.getPage(n); const v0=pg.getViewport({scale:1});
           const vp=pg.getViewport({scale:Math.min(2.2,1900/Math.max(v0.width,v0.height))});
           const cv=document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
           const cx=cv.getContext("2d"); cx.fillStyle="#fff"; cx.fillRect(0,0,cv.width,cv.height);
-          await pg.render({canvasContext:cx,viewport:vp}).promise; addCanvas(cv); pagesAdded++; }
-      }else{
-        const img=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=URL.createObjectURL(f); });
-        const k=Math.min(1,1900/Math.max(img.width,img.height));
-        const cv=document.createElement("canvas"); cv.width=Math.round(img.width*k); cv.height=Math.round(img.height*k);
-        const cx=cv.getContext("2d"); cx.fillStyle="#fff"; cx.fillRect(0,0,cv.width,cv.height); cx.drawImage(img,0,0,cv.width,cv.height);
-        try{ URL.revokeObjectURL(img.src); }catch(_){}
-        addCanvas(cv); pagesAdded++;
-      }
-    }catch(e){ console.error("could not add "+f.name,e); }
+          await pg.render({canvasContext:cx,viewport:vp}).promise; await scanAdd(cv.toDataURL("image/jpeg",0.85)); }
+      } else { cropOpen(f); return; }   // a photo of the sheet → same crop screen as a scan
+    }catch(e){ console.error(e); toast("⚠ Could not read "+f.name); }
   }
-  if(!pagesAdded) throw new Error("no page could be read");
-  pdf.save(pdfName());
-  const safe=(offer||"form").replace(/[^\w-]+/g,"-");
-  const b64=pdf.output("datauristring").split(",")[1];
-  const job={ id:"pdf_"+safe.replace(/-/g,"_"), kind:"pdf", folder:offer||"Misc", name:"Measurement_"+safe+"_"+luStamp()+".pdf", mime:"application/pdf", base64:b64 };
-  let sent=false;
-  try{ await queuedUpload(api, job, b64); sent=true; }catch(e){ console.error("combined pdf upload deferred",e); }
-  try{ const ckJob=checklistJob(offer); if(ckJob) await queuedUpload(api, ckJob, ckJob.base64); }catch(e){ console.error("checklist upload deferred",e); }
-  if(sent) luDone("Checklist + sheet PDF saved \u00b7 folder "+offer); else luFail("PDF kept on phone \u00b7 uploads when back online");
+  scanRender();
+});
+/* ---------- crop + straighten + clean ---------- */
+let _cr=null;   // {img, W,H (full res), pts:[4 in image px], mode:'doc'|'color', scale, ox, oy}
+async function cropOpen(file){
+  const url=URL.createObjectURL(file);
+  const img=await new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=url; });
+  const k=Math.min(1,2200/Math.max(img.width,img.height));
+  const src=document.createElement("canvas"); src.width=Math.round(img.width*k); src.height=Math.round(img.height*k);
+  src.getContext("2d").drawImage(img,0,0,src.width,src.height); URL.revokeObjectURL(url);
+  _cr={src, W:src.width, H:src.height, pts:guessPaper(src), mode:"doc"};
+  $("#crMode").textContent="🖤 Document";
+  $("#cropView").classList.add("on"); cropDraw(); cropWire();
+}
+/* find the bright sheet on a darker background → rough corners (user can adjust) */
+function guessPaper(c){
+  const s=200/Math.max(c.width,c.height), w=Math.round(c.width*s), h=Math.round(c.height*s);
+  const t=document.createElement("canvas"); t.width=w; t.height=h; const x=t.getContext("2d"); x.drawImage(c,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data, g=new Float32Array(w*h); let sum=0;
+  for(let i=0;i<w*h;i++){ g[i]=(d[i*4]+d[i*4+1]+d[i*4+2])/3; sum+=g[i]; }
+  const thr=Math.max(sum/(w*h), 120);
+  const pts=[[Infinity,null],[ -Infinity,null],[-Infinity,null],[Infinity,null]];   // TL min(x+y), TR max(x-y), BR max(x+y), BL min(x-y)
+  for(let y=0;y<h;y++) for(let X=0;X<w;X++){ if(g[y*w+X]<thr) continue;
+    const a=X+y, b=X-y;
+    if(a<pts[0][0]) pts[0]=[a,[X,y]]; if(b>pts[1][0]) pts[1]=[b,[X,y]]; if(a>pts[2][0]) pts[2]=[a,[X,y]]; if(b<pts[3][0]) pts[3]=[b,[X,y]]; }
+  if(!pts[0][1]) return [[0,0],[c.width,0],[c.width,c.height],[0,c.height]];
+  const q=pts.map(p=>[p[1][0]/s,p[1][1]/s]);
+  const area=Math.abs((q[2][0]-q[0][0])*(q[3][1]-q[1][1])-(q[3][0]-q[1][0])*(q[2][1]-q[0][1]))/2;
+  return area<c.width*c.height*0.15 ? [[0,0],[c.width,0],[c.width,c.height],[0,c.height]] : q;
+}
+function cropDraw(){
+  const wrap=$("#crWrap"), cv=$("#crCan"), r=wrap.getBoundingClientRect();
+  const sc=Math.min(r.width/_cr.W, r.height/_cr.H); _cr.scale=sc;
+  cv.width=Math.round(_cr.W*sc); cv.height=Math.round(_cr.H*sc);
+  _cr.ox=(r.width-cv.width)/2; _cr.oy=(r.height-cv.height)/2; cv.style.left=_cr.ox+"px"; cv.style.top=_cr.oy+"px";
+  const x=cv.getContext("2d"); x.drawImage(_cr.src,0,0,cv.width,cv.height);
+  const P=_cr.pts.map(p=>[p[0]*sc,p[1]*sc]);
+  x.fillStyle="rgba(0,0,0,.45)"; x.beginPath(); x.rect(0,0,cv.width,cv.height); x.moveTo(P[0][0],P[0][1]); for(let i=3;i>=0;i--) x.lineTo(P[i][0],P[i][1]); x.closePath(); x.fill("evenodd");
+  x.strokeStyle="#ffce1f"; x.lineWidth=2.5; x.beginPath(); P.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])); x.closePath(); x.stroke();
+  P.forEach(p=>{ x.beginPath(); x.arc(p[0],p[1],13,0,7); x.fillStyle="rgba(255,206,31,.35)"; x.fill(); x.lineWidth=3; x.stroke(); });
+}
+function cropWire(){
+  const cv=$("#crCan"); let drag=-1;
+  const pos=e=>{ const r=cv.getBoundingClientRect(), t=e.touches?e.touches[0]:e; return [(t.clientX-r.left)/_cr.scale,(t.clientY-r.top)/_cr.scale]; };
+  const down=e=>{ const p=pos(e); let best=-1,bd=1e9; _cr.pts.forEach((q,i)=>{ const dd=Math.hypot(q[0]-p[0],q[1]-p[1]); if(dd<bd){bd=dd;best=i;} });
+    if(bd*_cr.scale<60){ drag=best; e.preventDefault(); } };
+  const move=e=>{ if(drag<0) return; e.preventDefault(); const p=pos(e); _cr.pts[drag]=[Math.max(0,Math.min(_cr.W,p[0])),Math.max(0,Math.min(_cr.H,p[1]))]; cropDraw(); };
+  const up=()=>{ drag=-1; };
+  cv.onmousedown=down; cv.ontouchstart=down; window.onmousemove=move; cv.ontouchmove=move; window.onmouseup=up; cv.ontouchend=up;
+  $("#crRetake").onclick=()=>{ $("#cropView").classList.remove("on"); _cr=null; $("#scCamIn").click(); };
+  $("#crFull").onclick=()=>{ _cr.pts=[[0,0],[_cr.W,0],[_cr.W,_cr.H],[0,_cr.H]]; cropDraw(); };
+  $("#crMode").onclick=()=>{ _cr.mode=_cr.mode==="doc"?"color":"doc"; $("#crMode").textContent=_cr.mode==="doc"?"🖤 Document":"🎨 Colour"; };
+  $("#crOk").onclick=async()=>{ $("#crOk").textContent="…"; await new Promise(r=>setTimeout(r,30));
+    try{ const out=warpAndClean(_cr); await scanAdd(out); }catch(e){ console.error(e); toast("⚠ Could not process the photo"); }
+    $("#crOk").textContent="✓ Use page"; $("#cropView").classList.remove("on"); _cr=null; scanRender(); toast("✓ Page added"); };
+  window.addEventListener("resize",()=>{ if(_cr) cropDraw(); });
+}
+/* straighten the 4-corner area into a flat page (perspective warp), then clean it like a scanner */
+function warpAndClean(cr){
+  const [tl,tr,br,bl]=cr.pts, dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  let W=Math.round(Math.max(dist(tl,tr),dist(bl,br))), H=Math.round(Math.max(dist(tl,bl),dist(tr,br)));
+  const k=Math.min(1,1800/Math.max(W,H)); W=Math.max(50,Math.round(W*k)); H=Math.max(50,Math.round(H*k));
+  const sd=cr.src.getContext("2d").getImageData(0,0,cr.W,cr.H).data, SW=cr.W, SH=cr.H;
+  const M=homography([[0,0],[W,0],[W,H],[0,H]],[tl,tr,br,bl]);
+  const out=document.createElement("canvas"); out.width=W; out.height=H; const ox=out.getContext("2d"); const od=ox.createImageData(W,H), o=od.data;
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const z=M[6]*x+M[7]*y+1, sx=(M[0]*x+M[1]*y+M[2])/z, sy=(M[3]*x+M[4]*y+M[5])/z;
+    const xi=Math.min(SW-1,Math.max(0,sx|0)), yi=Math.min(SH-1,Math.max(0,sy|0)), si=(yi*SW+xi)*4, di=(y*W+x)*4;
+    o[di]=sd[si]; o[di+1]=sd[si+1]; o[di+2]=sd[si+2]; o[di+3]=255; }
+  // clean: remove shading (divide by a blurred copy) → white paper, dark ink
+  const bg=document.createElement("canvas"); bg.width=W; bg.height=H; const bx=bg.getContext("2d");
+  ox.putImageData(od,0,0); bx.filter="blur("+Math.round(Math.max(W,H)/40)+"px)"; bx.drawImage(out,0,0);
+  const bd=bx.getImageData(0,0,W,H).data;
+  for(let i=0;i<o.length;i+=4){
+    if(cr.mode==="doc"){ const v=(o[i]*.3+o[i+1]*.59+o[i+2]*.11), b=(bd[i]*.3+bd[i+1]*.59+bd[i+2]*.11)||1;
+      let n=Math.min(255,v/b*255); n=n>215?255:Math.max(0,(n-40)*1.35); o[i]=o[i+1]=o[i+2]=n; }
+    else { for(let c=0;c<3;c++){ const n=Math.min(255,o[i+c]/((bd[i+c]||1))*240); o[i+c]=n; } }
+  }
+  ox.putImageData(od,0,0);
+  return out.toDataURL("image/jpeg",0.85);
+}
+function homography(src,dst){   // maps src[i] → dst[i]; returns [a,b,c,d,e,f,g,h]
+  const A=[],B=[];
+  for(let i=0;i<4;i++){ const [x,y]=src[i],[u,v]=dst[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]); B.push(u); A.push([0,0,0,x,y,1,-v*x,-v*y]); B.push(v); }
+  for(let c=0;c<8;c++){ let p=c; for(let r=c+1;r<8;r++) if(Math.abs(A[r][c])>Math.abs(A[p][c])) p=r;
+    [A[c],A[p]]=[A[p],A[c]]; [B[c],B[p]]=[B[p],B[c]];
+    for(let r=0;r<8;r++){ if(r===c) continue; const f=A[r][c]/A[c][c]; for(let k=c;k<8;k++) A[r][k]-=f*A[c][k]; B[r]-=f*B[c]; } }
+  return B.map((b,i)=>b/A[i][i]);
+}
+/* ---------- build the ONE PDF and save it ---------- */
+async function scanBuildAndSave(){
+  const offer=oldMeasOffer(); if(!offer){ toast("Enter the Offer No. first"); return; }
+  if(!scanPages.length){ toast("Scan at least one page"); return; }
+  const api=luApi(); if(!api) return;
+  const btn=$("#scSave"); btn.disabled=true; btn.textContent="Building PDF…";
+  try{
+    await ensureLibs();
+    const {jsPDF}=window.jspdf; const pdf=new jsPDF({unit:"pt",format:"a4",orientation:"portrait",compress:true});
+    const anySig=!!(sigs.supervisor||sigs.sales||sigs.customer);
+    const cover=reportCoverHTML().replace(/<div style="margin-top:10px;font-size:12\.5px">[\s\S]*?<\/div>\s*$/,
+        '<div style="margin-top:10px;font-size:12.5px">Measurement sheet taken on paper — <b>'+scanPages.length+' scanned page'+(scanPages.length>1?'s':'')+'</b> after this page</div>')
+      + reportChecklistHTML() + (anySig?reportSignHTML():"");
+    const r=await renderPageImg(pdf,cover,3); pdf.addImage(r.data,"JPEG",r.x,r.y,r.imgW,r.imgH,undefined,"FAST");
+    const dims=d=>new Promise(res=>{ const im=new Image(); im.onload=()=>res([im.width,im.height]); im.src=d; });
+    for(const p of scanPages){ const [w,h]=await dims(p.data); const land=w>h; pdf.addPage("a4",land?"landscape":"portrait");
+      const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), m=14, k=Math.min((pw-2*m)/w,(ph-2*m)/h);
+      pdf.addImage(p.data,"JPEG",(pw-w*k)/2,(ph-h*k)/2,w*k,h*k,undefined,"FAST"); }
+    // site photos: 4 per page with the position name under each
+    if(scanIncPhotos){
+      const list=[]; openings.forEach(o=>(o.photos||[]).forEach(id=>{ if(imgCache[id]) list.push({d:imgCache[id],cap:[o.ref,o.loc].filter(Boolean).join(" · ")||"Position"}); }));
+      for(let i=0;i<list.length;i+=4){
+        pdf.addPage("a4","portrait"); const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+        pdf.setFont("helvetica","bold"); pdf.setFontSize(12); pdf.text("Site photos — Offer "+offer+(list.length>4?"  ("+(i/4+1)+"/"+Math.ceil(list.length/4)+")":""),28,30);
+        const cw=(pw-28*2-14)/2, chh=(ph-60-28-14)/2-16;
+        for(let j=0;j<4&&i+j<list.length;j++){ const it=list[i+j], cx=28+(j%2)*(cw+14), cy=46+Math.floor(j/2)*(chh+30);
+          const [w,h]=await dims(it.d); const k=Math.min(cw/w,chh/h);
+          pdf.addImage(it.d,"JPEG",cx+(cw-w*k)/2,cy+(chh-h*k)/2,w*k,h*k,undefined,"FAST");
+          pdf.setFont("helvetica","normal"); pdf.setFontSize(9.5); pdf.text(String(it.cap).slice(0,60),cx,cy+chh+12); }
+      }
+    }
+    pdf.save(pdfName());
+    const safe=offer.replace(/[^\w-]+/g,"-"), b64=pdf.output("datauristring").split(",")[1];
+    const job={ id:"pdf_"+safe.replace(/-/g,"_")+"_"+Date.now(), kind:"pdf", folder:offer, name:"Measurement_"+safe+"_"+luStamp()+".pdf", mime:"application/pdf", base64:b64 };
+    _luRetry=function(){ flushOutbox(); };
+    luShow("Saving measurement PDF","Saving measurement PDF…");
+    let sent=false; try{ await queuedUpload(api, job, b64); sent=true; }catch(e){ console.error("measurement pdf deferred",e); }
+    try{ const ckJob=checklistJob(offer); if(ckJob) await queuedUpload(api, ckJob, ckJob.base64); }catch(e){ console.error("checklist upload deferred",e); }
+    if(sent) luDone("Measurement PDF saved · folder "+offer); else luFail("PDF kept on phone · uploads when back online");
+    // pages are now inside the PDF (on Drive or in the phone's outbox) → clear the scanner for the next order
+    for(const p of [...scanPages]) await scanDel(p.id);
+    scanRender(); $("#scanSheet").classList.remove("on");
+  }catch(e){ console.error(e); toast("⚠ PDF could not be built: "+((e&&e.message)||e)); }
+  btn.disabled=false; scanRender();
 }
 $("#importFile").addEventListener("change",async ev=>{const f=ev.target.files[0];if(!f){return;}try{await importQuotation(f);}catch(e){console.error(e);toast("⚠ "+((e&&e.message)||"Couldn't read this PDF"));}ev.target.value="";});
 
