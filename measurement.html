@@ -750,22 +750,32 @@ async function makePDF(){
   cards.forEach(c=>pages.push(c));
   pages.push(reportSignHTML());
   const scale=3;
+  if(!scanPages.length) await scanLoad();
   for(let p=0;p<pages.length;p++){
     const r=await renderPageImg(pdf,pages[p],scale);
-    if(p>0)pdf.addPage();
+    if(p>0)pdf.addPage("a4","portrait");
     pdf.addImage(r.data,"JPEG",r.x,r.y,r.imgW,r.imgH,undefined,"FAST");
+    if(p===0 && scanPages.length){   // scanned paper pages go right after the checklist
+      const dims=d=>new Promise(res=>{ const im=new Image(); im.onload=()=>res([im.width,im.height]); im.src=d; });
+      for(const sp of scanPages){ const [w,h]=await dims(sp.data); pdf.addPage("a4",w>h?"landscape":"portrait");
+        const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight(), m=14, k=Math.min((pw-2*m)/w,(ph-2*m)/h);
+        pdf.addImage(sp.data,"JPEG",(pw-w*k)/2,(ph-h*k)/2,w*k,h*k,undefined,"FAST"); }
+    }
     // position pages are pages[1..openings.length] in openings order; make the page open the video
     if(p>=1 && p<=openings.length){ const ov=openings[p-1]; if(ov&&ov.videoUrl){ try{ pdf.link(r.x,r.y,r.imgW,r.imgH,{url:ov.videoUrl}); }catch(_){} } }
   }
   return pdf;}
-$("#pdfBtn").onclick=async()=>{if(!openings.length){toast("Add at least one opening first");return;}
+$("#pdfBtn").onclick=async()=>{if(!scanPages.length) await scanLoad();
+  if(!openings.length){ if(scanPages.length){ scanEnsureUI(); return scanBuildAndSave(); } toast("Add at least one opening first");return;}
   // Videos first (when online) so their Drive links can be printed against each position in the PDF below.
   const _api=luApi(); const _hasVid=openings.some(o=>o.videoId);
   if(_api && _hasVid && navigator.onLine){ try{ await uploadVideosAS(_api, ($("#m_no").value||"").trim()||"Misc"); }catch(e){ console.error("pre-upload videos failed",e); } }
   toast("📄 Building sheet…");
   try{await ensureLibs();const pdf=await makePDF();pdf.save(pdfName());toast("✓ Sheet PDF saved");}catch(e){console.error(e);toast("⚠ PDF needs internet to build");return;}
   // one tap = download + log Sheet + upload PDF (videos already uploaded above; saveToDrive skips them)
-  try{ await saveToDrive(); }catch(e){ logMeasurementToSheet(); }};
+  try{ await saveToDrive(); }catch(e){ logMeasurementToSheet(); }
+  // scanned pages are inside this PDF now (Drive, or the phone's outbox) → don't carry them into the next order
+  if(scanPages.length){ for(const sp of [...scanPages]) await scanDel(sp.id); }};
 /* ---- Google Drive (shared folder) ---- */
 function ensureGIS(){if(window.google&&google.accounts&&google.accounts.oauth2)return Promise.resolve();return ensureScript("https://accounts.google.com/gsi/client");}
 let _tokenClient=null,_driveToken=null,_pendingDrive=null;
@@ -933,7 +943,7 @@ $("#restoreFile").addEventListener("change",async ev=>{const f=ev.target.files[0
     await idbPut("kv",b.checklist||{},"checklist");await idbPut("kv",b.signatures||{supervisor:"",sales:"",customer:""},"signatures");
     for(const k in imgCache)delete imgCache[k];toast("✓ Restored");await loadAll();}catch(e){toast("⚠ Couldn't read that backup");}ev.target.value="";});
 
-$("#clearAll").onclick=async()=>{if(!confirm("Clear the whole sheet and all openings? This cannot be undone."))return;
+$("#clearAll").onclick=async()=>{if(!confirm("Clear the whole sheet and all openings? This cannot be undone."))return;try{for(const sp of [...scanPages]) await scanDel(sp.id);}catch(e){}
   try{await idbClear("openings");await idbClear("photos");await idbDel("kv","meta");await idbDel("kv","checklist");await idbDel("kv","signatures");}catch(e){}
   openings=[];checklist={};sigs={supervisor:"",sales:"",customer:""};for(const k in imgCache)delete imgCache[k];["m_no","m_client","m_phone","m_site","m_movein","m_sales","m_color","m_profile","m_by"].forEach(id=>$("#"+id).value="");geo.lat=geo.lng=null;updateNavBtn();
   $("#m_date").value=new Date().toISOString().slice(0,10);render();renderChecklist();refreshSigTiles();toast("Everything cleared");};
@@ -1583,7 +1593,7 @@ function scanEnsureUI(){
   const c=document.createElement("div"); c.id="cropView"; c.innerHTML=`
    <div class="tip">Drag the 4 yellow corners onto the paper's corners</div>
    <div class="cw" id="crWrap"><canvas id="crCan"></canvas></div>
-   <div class="cb"><button id="crRetake">↺ Retake</button><button id="crFull">▢ Full photo</button><button id="crMode">🖤 Document</button><button class="y" id="crOk">✓ Use page</button></div>`;
+   <div class="cb"><button id="crRetake">↺ Retake</button><button id="crFull">▢ Full photo</button><button id="crMode">🖤 Document</button><button class="y" id="crOk">✓ Use page</button><button class="y" id="crNext" style="flex-basis:100%">✓ Use &amp; scan next page 📷</button></div>`;
   document.body.appendChild(c);
   $("#scClose").onclick=()=>$("#scanSheet").classList.remove("on");
   $("#scCam").onclick=()=>$("#scCamIn").click();
@@ -1637,12 +1647,14 @@ $("#oldMeasFile").addEventListener("change",async ev=>{
           const cv=document.createElement("canvas"); cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
           const cx=cv.getContext("2d"); cx.fillStyle="#fff"; cx.fillRect(0,0,cv.width,cv.height);
           await pg.render({canvasContext:cx,viewport:vp}).promise; await scanAdd(cv.toDataURL("image/jpeg",0.85)); }
-      } else { cropOpen(f); return; }   // a photo of the sheet → same crop screen as a scan
+      } else { _crQueue.push(f); }        // photos of the sheet → crop screen, one after another
     }catch(e){ console.error(e); toast("⚠ Could not read "+f.name); }
   }
   scanRender();
+  if(_crQueue.length && !_cr) cropOpen(_crQueue.shift());
 });
 /* ---------- crop + straighten + clean ---------- */
+let _crQueue=[];   // gallery photos waiting for their crop
 let _cr=null;   // {img, W,H (full res), pts:[4 in image px], mode:'doc'|'color', scale, ox, oy}
 async function cropOpen(file){
   const url=URL.createObjectURL(file);
@@ -1692,9 +1704,16 @@ function cropWire(){
   $("#crRetake").onclick=()=>{ $("#cropView").classList.remove("on"); _cr=null; $("#scCamIn").click(); };
   $("#crFull").onclick=()=>{ _cr.pts=[[0,0],[_cr.W,0],[_cr.W,_cr.H],[0,_cr.H]]; cropDraw(); };
   $("#crMode").onclick=()=>{ _cr.mode=_cr.mode==="doc"?"color":"doc"; $("#crMode").textContent=_cr.mode==="doc"?"🖤 Document":"🎨 Colour"; };
-  $("#crOk").onclick=async()=>{ $("#crOk").textContent="…"; await new Promise(r=>setTimeout(r,30));
-    try{ const out=warpAndClean(_cr); await scanAdd(out); }catch(e){ console.error(e); toast("⚠ Could not process the photo"); }
-    $("#crOk").textContent="✓ Use page"; $("#cropView").classList.remove("on"); _cr=null; scanRender(); toast("✓ Page added"); };
+  const usePage=async(next)=>{ const cur=_cr; $("#crOk").textContent="…";
+    if(next && !_crQueue.length) $("#scCamIn").click();          // open the camera right away (must happen inside the tap)
+    await new Promise(r=>setTimeout(r,30));
+    try{ const out=warpAndClean(cur); await scanAdd(out); }catch(e){ console.error(e); toast("⚠ Could not process the photo"); }
+    $("#crOk").textContent="✓ Use page"; if(_cr===cur){ $("#cropView").classList.remove("on"); _cr=null; }
+    scanRender(); toast("✓ Page "+scanPages.length+" added");
+    if(_crQueue.length) cropOpen(_crQueue.shift()); };
+  $("#crOk").onclick=()=>usePage(false);
+  $("#crNext").onclick=()=>usePage(true);
+  $("#crNext").textContent=_crQueue.length?"✓ Use & next photo ("+_crQueue.length+" left)":"✓ Use & scan next page 📷";
   window.addEventListener("resize",()=>{ if(_cr) cropDraw(); });
 }
 /* straighten the 4-corner area into a flat page (perspective warp), then clean it like a scanner */
