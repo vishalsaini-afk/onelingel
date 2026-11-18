@@ -66,7 +66,11 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .unchip small{font-weight:600;color:var(--muted);margin-left:4px}
 .unchip.on{background:var(--hivis);border-color:var(--hivis);color:#111}.unchip.on small{color:#333}
 .unfrow{display:flex;gap:8px;align-items:center}.unfrow .msel{padding:9px 11px;font-size:14px}
-.rpcard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:12px 13px;margin-bottom:9px}
+.rpcard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:12px 13px;margin-bottom:9px}.rpdate{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 2px;font-size:13px}
+.rpdate label{font-weight:700;color:var(--text)}
+.rpdate input{background:var(--panel-2,#222732);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;color-scheme:dark}
+.rpwhen{font-size:12.5px;font-weight:600;color:#86efac}
+.rpclr{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:2px 4px}
 .rpcard.sent{border-left-color:var(--blue)}
 .rpq{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .rpq .seg{flex:1;min-width:200px;margin:0}
@@ -1758,13 +1762,27 @@ function renderPaidReady(){
     return '<div class="rpcard'+(sent?' sent':'')+'"><div class="unh"><div><div class="unoff">#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span>'+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+'</div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
       +'<span class="undays ok">💰 Paid</span></div>'
       +'<div class="unmeta">📍 '+esc(o.region||'—')+(o.address?' · '+esc(o.address):'')+'<br>🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+(o.approvedBy?' · payment by '+esc(o.approvedBy):'')
-      +'<br>'+(o.dispatchDate?'📅 Dispatch planned <b>'+esc(prettyDate(o.dispatchDate))+'</b>'+(o.plannedBy?' · '+esc(o.plannedBy):''):'')+'</div>'
+      +'</div>'
+      +'<div class="rpdate"><label>📅 Can dispatch on</label><input type="date" data-rpdate="'+esc(o.offer)+'" min="'+TODAY()+'" value="'+esc(o.dispatchDate||'')+'">'
+      +(o.dispatchDate?'<span class="rpwhen">'+esc(prettyDate(o.dispatchDate))+(o.plannedBy?' · '+esc(o.plannedBy):'')+'</span><button type="button" class="rpclr" data-rpclr="'+esc(o.offer)+'" title="Remove date">✕</button>':'<span class="rpwhen" style="color:var(--muted)">not set</span>')+'</div>'
       +(sent
         ? '<div class="rpq"><span class="rpsent">🚚 Loading confirmed · installation '+esc(o.install||'—')+(o.confirmedBy?' · '+esc(o.confirmedBy):'')+(o.confirmedOn?' · '+esc(o.confirmedOn):'')+'</span><button class="rpundo" data-rpundo="'+esc(o.offer)+'">Undo</button></div>'
         : '<div class="rpq"><div class="seg" data-rpinst="'+esc(o.offer)+'"><button type="button" data-val="Yes"'+(o.install!=='No'?' class="on"':'')+'>Installation needed</button><button type="button" data-val="No"'+(o.install==='No'?' class="on"':'')+'>Supply only</button></div>'
           +'<button class="rpgo" data-rpgo="'+esc(o.offer)+'">✓ Confirm loading → dispatch</button></div>')
       +'</div>'; }).join('');
 }
+async function rpSetDate(offer, date){
+  const o=rpRows.find(x=>x.offer===offer); if(!o) return; const before=Object.assign({},o);
+  o.dispatchDate=date||''; o.plannedBy=date?SUP:''; renderPaidReady(); setDot('dotU','syncU','busy','Saving date for #'+offer+'…');
+  try{ const d=await rpPost(date?{action:'readyPlan',offer,date,by:SUP,key:KYC_KEY}:{action:'readyUnplan',offer,by:SUP,key:KYC_KEY}); if(d.row) Object.assign(o,d.row);
+    try{ localStorage.setItem(RP_CACHE,JSON.stringify({rows:rpRows})); }catch(e){}
+    setDot('dotU','syncU','ok', date?('#'+offer+' · can dispatch '+prettyDate(date)):('#'+offer+' · date removed')); }
+  catch(e){ Object.assign(o,before); setDot('dotU','syncU','err','Date not saved: '+(e.message||e)); alert('Couldn’t save the date:\n\n'+(e.message||e)); }
+  renderPaidReady();
+}
+document.getElementById('unList').addEventListener('change',e=>{
+  if(unMode!=='paidr') return; const inp=e.target.closest('input[data-rpdate]'); if(inp) rpSetDate(inp.getAttribute('data-rpdate'), inp.value);
+});
 async function rpConfirm(offer, install, undo){
   const o=rpRows.find(x=>x.offer===offer); if(!o) return;
   if(undo && !confirm('Take #'+offer+' back from the dispatch team?')) return;
@@ -1782,6 +1800,7 @@ document.getElementById('unList').addEventListener('click',e=>{
   const sb=e.target.closest('.seg[data-rpinst] button'); if(sb){ const sg=sb.parentElement; sg.querySelectorAll('button').forEach(x=>x.classList.remove('on')); sb.classList.add('on'); return; }
   const go=e.target.closest('[data-rpgo]'); if(go){ const off=go.getAttribute('data-rpgo'), sg=document.querySelector('.seg[data-rpinst="'+CSS.escape(off)+'"] button.on'); rpConfirm(off, sg?sg.getAttribute('data-val'):'Yes', false); return; }
   const un=e.target.closest('[data-rpundo]'); if(un){ rpConfirm(un.getAttribute('data-rpundo'), '', true); return; }
+  const cl=e.target.closest('[data-rpclr]'); if(cl){ rpSetDate(cl.getAttribute('data-rpclr'), ''); return; }
 }, true);
 function unVisible(o){ if(!unFilterOk(o)) return false; if(unMode==='un'&&(o.assigned||o.closed)) return false; if(unMode==='pend'&&!(o.pending&&o.pending.length)) return false;
   const q=unQ.trim().toLowerCase(); return !q || [o.offer,o.client,o.location,o.sales,o.contractor].join(' ').toLowerCase().includes(q); }
