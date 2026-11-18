@@ -66,7 +66,7 @@ body{margin:0;background:var(--bg);font-family:'Spline Sans',sans-serif;color:va
 .unchip small{font-weight:600;color:var(--muted);margin-left:4px}
 .unchip.on{background:var(--hivis);border-color:var(--hivis);color:#111}.unchip.on small{color:#333}
 .unfrow{display:flex;gap:8px;align-items:center}.unfrow .msel{padding:9px 11px;font-size:14px}
-.rpcard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:12px 13px;margin-bottom:9px}.rpdate{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 2px;font-size:13px}
+.rpcard{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:12px;padding:12px 13px;margin-bottom:9px}.rpdate{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 2px;font-size:13px}.pdays{display:inline-block;font-size:12px;font-weight:700;border:1px solid;border-radius:999px;padding:2px 9px}
 .rpdate label{font-weight:700;color:var(--text)}
 .rpdate input{background:var(--panel-2,#222732);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:13px;color-scheme:dark}
 .rpwhen{font-size:12.5px;font-weight:600;color:#86efac}
@@ -1760,7 +1760,7 @@ function renderPaidReady(){
   box.innerHTML=head+list.map(o=>{
     const sent=!!o.confirmed;
     return '<div class="rpcard'+(sent?' sent':'')+'"><div class="unh"><div><div class="unoff">#'+esc(o.offer)+' <span class="pdep">'+esc(o.dept||'')+'</span>'+(o.code?' <span class="pdep code">'+esc(o.code)+'</span>':'')+'</div><div class="uncl">'+esc(o.client||'—')+'</div></div>'
-      +'<span class="undays ok">💰 Paid</span></div>'
+      +'<span class="undays ok">💰 Paid</span></div>'+(o.approvedOn?'<div style="margin:2px 0 4px">'+paidAgo(o.approvedOn)+'</div>':'')
       +'<div class="unmeta">📍 '+esc(o.region||'—')+(o.address?' · '+esc(o.address):'')+'<br>🧑‍💼 '+esc(o.sales||'—')+(o.units?' · '+esc(o.units)+' units':'')+(o.approvedBy?' · payment by '+esc(o.approvedBy):'')
       +'</div>'
       +'<div class="rpdate"><label>📅 Can dispatch on</label><input type="date" data-rpdate="'+esc(o.offer)+'" min="'+TODAY()+'" value="'+esc(o.dispatchDate||'')+'">'
@@ -1771,6 +1771,12 @@ function renderPaidReady(){
           +'<button class="rpgo" data-rpgo="'+esc(o.offer)+'">✓ Confirm loading → dispatch</button></div>')
       +'</div>'; }).join('');
 }
+function paidDays(s){ s=String(s||'').trim(); if(!s) return null;
+  const M={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+  let d=null, m=s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/); if(m&&M[m[2].toLowerCase()]!=null) d=new Date(+m[3],M[m[2].toLowerCase()],+m[1]); else { const t=new Date(s); if(!isNaN(t)) d=new Date(t.getFullYear(),t.getMonth(),t.getDate()); }
+  if(!d) return null; const n=new Date(); n.setHours(0,0,0,0); return Math.max(0,Math.round((n-d)/86400000)); }
+function paidAgo(s){ const n=paidDays(s); if(n==null) return ''; const c=n>=7?'#fca5a5':(n>=3?'#fbbf24':'#86efac');
+  return '<span class="pdays" style="color:'+c+';border-color:'+c+'">⏱ '+(n===0?'paid today':n+' day'+(n>1?'s':'')+' since payment')+'</span>'; }
 async function rpSetDate(offer, date){
   const o=rpRows.find(x=>x.offer===offer); if(!o) return; const before=Object.assign({},o);
   o.dispatchDate=date||''; o.plannedBy=date?SUP:''; renderPaidReady(); setDot('dotU','syncU','busy','Saving date for #'+offer+'…');
