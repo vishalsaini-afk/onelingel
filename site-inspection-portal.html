@@ -298,7 +298,7 @@
   <button class="btn addpos-btn no-print" id="addPos">+ Add Position</button>
 
   <div class="matbar">
-    <h3>Extra Material at Site</h3>
+    <h3>Materials at Site</h3>
     <div class="counts" id="matCounts"></div>
   </div>
   <div class="materials" id="materials"></div>
@@ -520,7 +520,7 @@ function renderMaterials(){
   const wrap=$("#materials");if(!wrap)return;
   if(!materials.length){
     wrap.innerHTML=`<div class="empty no-print"><div class="big">\uD83D\uDCE6</div>
-      <p>NO EXTRA MATERIAL RECORDED</p><p style="opacity:.6">Add an item to photograph left-over material lying at site (not installed)</p></div>`;
+      <p>NO MATERIALS RECORDED</p><p style="opacity:.6">Add an item to photograph material lying at site</p></div>`;
   }else{
     wrap.innerHTML=materials.map((m,i)=>{
       const photos=(m.photos||[]).map(ph=>
@@ -528,7 +528,7 @@ function renderMaterials(){
       return `<div class="mat" data-mc="${m.cond||''}">
         <div class="mat-head">
           <span class="mat-no">M${i+1}</span>
-          <span class="pos-ref"><input data-mf="item" data-mid="${m.id}" value="${esc(m.item)}" placeholder="Extra material lying at site (e.g. uPVC frames \u2014 offer 75057/15)"></span>
+          <span class="pos-ref"><input data-mf="item" data-mid="${m.id}" value="${esc(m.item)}" placeholder="Material at site (e.g. uPVC frames \u2014 offer 75057/15)"></span>
           <span class="mat-qty"><input data-mf="qty" data-mid="${m.id}" value="${esc(m.qty)}" placeholder="Qty e.g. 12 nos"></span>
           <button class="pos-del" data-delmat="${m.id}" title="Delete material item">\uD83D\uDDD1</button>
         </div>
@@ -538,7 +538,7 @@ function renderMaterials(){
           </div>
           <div class="obs"><label>Remark
               <button class="dictate" data-matdictate="${m.id}" title="Voice typing">\uD83C\uDFA4 Dictate</button></label>
-            <textarea data-mf="note" data-mid="${m.id}" placeholder="Where it is lying, why not installed, condition\u2026">${esc(m.note)}</textarea></div>
+            <textarea data-mf="note" data-mid="${m.id}" placeholder="Where it is lying, condition\u2026">${esc(m.note)}</textarea></div>
           <div><span class="tiny-label">Photos of material at site</span>
             <div class="photos">${photos}
               <label class="addphoto"><input type="file" accept="image/*" capture="environment" hidden data-addmatphoto="${m.id}">
@@ -983,9 +983,9 @@ function reportData(){
   const matPhotoTotal=materials.reduce((a,m)=>a+((m.photos||[]).filter(ph=>imgCache[ph]).length),0);
   const materialTable=materials.length?`
     <div class="sumwrap">
-      <div class="sumhead">\uD83D\uDCE6 Extra Material at Site (not installed) \u2014 ${materials.length} item${materials.length>1?"s":""} \u00B7 ${matPhotoTotal} photo${matPhotoTotal===1?"":"s"}</div>
+      <div class="sumhead">\uD83D\uDCE6 Materials at Site \u2014 ${materials.length} item${materials.length>1?"s":""} \u00B7 ${matPhotoTotal} photo${matPhotoTotal===1?"":"s"}</div>
       <table class="sumtbl">
-        <thead><tr><th style="width:42px">No.</th><th>Extra material lying at site</th><th style="width:90px">Qty</th><th style="width:104px">Condition</th><th>Remark</th><th style="width:56px">Photos</th></tr></thead>
+        <thead><tr><th style="width:42px">No.</th><th>Materials at site</th><th style="width:90px">Qty</th><th style="width:104px">Condition</th><th>Remark</th><th style="width:56px">Photos</th></tr></thead>
         <tbody>${materials.map((m,i)=>{
           const bg=matBgFor(m.cond);
           const cl=(MATCOND[m.cond]||{label:"\u2014"}).label;
@@ -1001,7 +1001,7 @@ function reportData(){
     const cond=MATCOND[m.cond];
     const photos=phList.map(ph=>`<img src="${imgCache[ph]}">`).join("");
     const pcls=phList.length===1?"p1":(phList.length<=4?"p"+phList.length:"p5");
-    const head=true?`<div class="grouphead" style="border-left-color:${bg.bd}"><span class="stdot" style="background:${bg.bd}"></span>Extra Material at Site</div>`:"";
+    const head=true?`<div class="grouphead" style="border-left-color:${bg.bd}"><span class="stdot" style="background:${bg.bd}"></span>Materials at Site</div>`:"";
     return `<div class="rcard" style="background:${bg.bg};border:1px solid ${bg.bd};border-left:6px solid ${bg.bd};border-radius:8px;padding:12px 14px;margin:12px 0">
       ${head}
       <div class="rhd">
