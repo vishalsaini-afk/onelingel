@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1">
+<title>Labour Request — Lingel Field Tools</title>
+<meta name="theme-color" content="#13161b">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;900&family=Archivo+Narrow:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Spline+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#13161b;--panel:#1a1e25;--panel-2:#222732;--text:#e8e4d9;--muted:#7c8694;--line:#2a2f3a;--hivis:#e2f14d;--bad:#ff6b5e;--ok:#7ddb8f;--high:#ffa94d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);font-family:'Spline Sans','Noto Sans Devanagari',sans-serif;color:var(--text);padding-bottom:40px}
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:2px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:12px}
+header a.home{color:var(--hivis);text-decoration:none;font-size:22px}
+h1{margin:0;font-family:Archivo;font-weight:900;font-size:16px;text-transform:uppercase;letter-spacing:.04em;color:var(--hivis)}
+.sub{font-family:'JetBrains Mono';font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.wrap{max-width:640px;margin:0 auto;padding:14px 16px}
+.tabs{display:flex;gap:6px;max-width:640px;margin:12px auto 0;padding:0 16px}
+.tabs button{flex:1;padding:11px 6px;border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;background:var(--panel);color:var(--muted);
+  font-family:'Archivo Narrow','Noto Sans Devanagari';font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.tabs button.on{background:var(--hivis);color:#111;border-color:var(--hivis)}
+.badge{display:inline-block;min-width:18px;padding:1px 6px;border-radius:10px;background:var(--bad);color:#fff;font-size:10px;font-family:'JetBrains Mono';margin-left:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.full{grid-column:1/-1}
+label{display:block;font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+label .hi{font-family:'Noto Sans Devanagari';text-transform:none;letter-spacing:0}
+input,textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:11px;font-size:15px;font-family:inherit}
+input:focus,textarea:focus{outline:2px solid var(--hivis);outline-offset:-1px}
+input.err{border-color:var(--bad)}
+textarea{min-height:56px;resize:vertical}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:8px}
+.seg button{padding:12px 6px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit}
+.seg button[aria-pressed=true]{background:var(--hivis);color:#111;border-color:var(--hivis)}
+.seg button.u[aria-pressed=true]{background:var(--bad);color:#fff;border-color:var(--bad)}
+.seg button.h[aria-pressed=true]{background:var(--high);color:#111;border-color:var(--high)}
+.seg button.rw[aria-pressed=true]{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn{width:100%;padding:14px;border:0;border-radius:10px;background:var(--hivis);color:#111;font-family:'Archivo Narrow','Noto Sans Devanagari';font-weight:700;
+  font-size:15px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;margin-top:12px}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.btn.wa{background:#25d366;color:#08130c}
+.btn.no{background:transparent;color:var(--bad);border:1px solid var(--bad)}
+.btn:disabled{opacity:.5}
+.row{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:10px;padding:12px;margin-bottom:10px}
+.row.Pending{border-left-color:var(--hivis)} .row.Approved{border-left-color:var(--ok)} .row.Rejected{border-left-color:var(--bad)}
+.r1{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.offer{font-family:'JetBrains Mono';font-weight:700;color:var(--hivis)}
+.cust{font-size:15px;font-weight:600;margin:3px 0}
+.meta{font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tag{font-family:'JetBrains Mono';font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;border:1px solid var(--line);background:var(--panel-2)}
+.tag.Pending{color:var(--hivis)} .tag.Approved{color:var(--ok);border-color:#2f4f37} .tag.Rejected{color:#fff;background:var(--bad);border-color:var(--bad)}
+.tag.Urgent{color:#fff;background:var(--bad);border-color:var(--bad)} .tag.High{color:#111;background:var(--high);border-color:var(--high)}
+.why{margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(255,107,94,.12);color:#ffb3ab;font-size:13px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btns .btn{margin-top:0;flex:1;min-width:110px;padding:12px}
+.empty{text-align:center;color:var(--muted);padding:30px 16px;border:1px dashed var(--line);border-radius:12px;font-size:13px}
+.note{font-size:12px;color:var(--muted);font-style:italic;margin-top:6px}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.hide{display:none !important}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(100px);background:var(--hivis);color:#111;padding:11px 18px;border-radius:30px;font-weight:700;font-size:13px;transition:transform .25s;z-index:60;max-width:90vw;text-align:center}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.gate{text-align:center;padding:60px 20px}
+.gate a{color:var(--hivis)}
+@media(max-width:420px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <a class="home" href="index.html" aria-label="Home">⌂</a>
+  <div style="flex:1"><h1>Labour Request</h1><div class="sub" id="who">—</div></div>
+</header>
+
+<div id="gate" class="gate hide">
+  <p>Please log in to Field Tools first.<br><span style="font-family:'Noto Sans Devanagari'">पहले Field Tools में लॉग इन करें।</span></p>
+  <p><a href="index.html">Go to login →</a></p>
+</div>
+
+<div id="app" class="hide">
+<div class="tabs">
+  <button class="on" data-tab="new">New · नई</button>
+  <button data-tab="mine">My requests<b id="bMine" class="badge hide">0</b></button>
+  <button data-tab="verify">Verify<b id="bVer" class="badge hide">0</b></button>
+</div>
+
+<div class="wrap">
+  <!-- NEW / EDIT -->
+  <section id="tab-new">
+    <div class="card">
+      <div class="grid">
+        <div><label>Offer no. * <span class="hi">ऑफर नं.</span></label><input id="f_offer" placeholder="75057/14" autocomplete="off"></div>
+        <div><label>Date needed <span class="hi">कब चाहिए</span></label><input type="date" id="f_date"></div>
+        <div class="full"><label>Customer <span class="hi">ग्राहक</span></label><input id="f_cust" autocomplete="off"></div>
+        <div class="full"><label>Location <span class="hi">लोकेशन</span></label><input id="f_loc" autocomplete="off"></div>
+        <div><label>No. of labours * <span class="hi">लेबर</span></label><input type="number" id="f_num" min="1" value="2" inputmode="numeric"></div>
+        <div><label>Purpose <span class="hi">काम</span></label>
+          <div class="seg" id="sPurpose"><button type="button" data-v="Unloading" aria-pressed="true">Unloading</button><button type="button" data-v="Shifting" aria-pressed="false">Shifting</button></div></div>
+        <div class="full"><label>Work or rework <span class="hi">काम या री-वर्क</span></label>
+          <div class="seg" id="sReason"><button type="button" data-v="Work" aria-pressed="true">Work · काम</button><button type="button" class="rw" data-v="Rework" aria-pressed="false">Rework · री-वर्क</button></div></div>
+        <div class="full"><label>Priority <span class="hi">प्राथमिकता</span></label>
+          <div class="seg" id="sPri"><button type="button" class="u" data-v="Urgent" aria-pressed="false">🔴 Urgent</button><button type="button" class="h" data-v="High" aria-pressed="false">🟠 High</button><button type="button" data-v="Normal" aria-pressed="true">⚪ Normal</button></div>
+          <div class="hint">Urgent = same day · High = next day · Normal = planned</div></div>
+        <div class="full">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;text-transform:none;font-family:inherit;font-size:14px;color:var(--text)">
+            <input type="checkbox" id="f_pulley" style="width:20px;height:20px;accent-color:#e2f14d;flex:none"> Chain pulley needed · चेन पुली</label>
+          <div class="grid hide" id="pulleyWrap" style="margin-top:8px">
+            <div><label>Pulleys</label><input type="number" id="f_pn" min="1" value="1"></div>
+            <div><label>Days</label><input type="number" id="f_pd" min="1" value="1"></div>
+          </div>
+        </div>
+        <div class="full"><label>Remarks <span class="hi">टिप्पणी</span></label><textarea id="f_note" placeholder="Floor, truck, contractor…"></textarea></div>
+      </div>
+      <button class="btn" id="send">Send request · भेजें</button>
+      <button class="btn ghost hide" id="cancelEdit">Cancel edit</button>
+    </div>
+    <div class="card hide" id="sentCard">
+      <div style="font-weight:600">✓ Request sent to the loading-shifting team</div>
+      <div class="hint">Tell them on WhatsApp too — one tap:</div>
+      <button class="btn wa" id="waBtn">Send on WhatsApp</button>
+    </div>
+  </section>
+
+  <!-- MY REQUESTS -->
+  <section id="tab-mine" class="hide"><div id="mineList"></div></section>
+
+  <!-- VERIFY -->
+  <section id="tab-verify" class="hide">
+    <div class="hint" style="margin:0 0 10px">Confirm the labour was used, and whether it was for <b>Work</b> or <b>Rework</b>. Only verified entries are billed.<br>
+      <span style="font-family:'Noto Sans Devanagari'">पुष्टि करें कि लेबर लगी — काम के लिए या री-वर्क के लिए। सिर्फ जाँची गई एंट्री का बिल बनेगा।</span></div>
+    <div id="verList"></div>
+  </section>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* Same Apps Script as the Labour Log app */
+const LABOUR_API='https://script.google.com/macros/s/AKfycbxnfeXlM8IWE2MpDze8o1z7rnfUzpchlvZnjkDG4zQsHLvjkqzIkTzHdYZjTOyj_WA0/exec';
+/* Optional: loading-shifting team's WhatsApp number with country code, e.g. '919876543210'.
+   Leave '' to pick the chat or group yourself each time. */
+const WA_NUMBER='';
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(m){const x=$('toast');x.textContent=m;x.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>x.classList.remove('on'),2600);}
+const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);};
+
+let sup=''; try{sup=(JSON.parse(localStorage.getItem('lingel_supervisor')||'null')||{}).name||'';}catch(e){}
+let mine=[], ver=[], editId=null, lastSent=null;
+let known={}; try{known=JSON.parse(localStorage.getItem('lr_known')||'{}');}catch(e){}
+
+async function api(payload){
+  const r=await fetch(LABOUR_API,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(Object.assign({sup,user:sup},payload))});
+  return await r.json();
+}
+
+/* ---- segmented buttons ---- */
+function seg(id){const box=$(id);
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b)));
+  return {get:()=>(box.querySelector('[aria-pressed=true]')||{}).dataset?.v,
+          set:v=>box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===v))};}
+const P=seg('sPurpose'), R=seg('sReason'), PR=seg('sPri');
+$('f_pulley').onchange=()=>$('pulleyWrap').classList.toggle('hide',!$('f_pulley').checked);
+
+/* ---- tabs ---- */
+function tab(n){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===n));
+  ['new','mine','verify'].forEach(s=>$('tab-'+s).classList.toggle('hide',s!==n));
+  if(n==='mine') loadMine(); if(n==='verify') loadVerify();
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
+
+/* ---- new / edit ---- */
+function readForm(){
+  const pul=$('f_pulley').checked;
+  return {offer:$('f_offer').value.trim(),customer:$('f_cust').value.trim(),location:$('f_loc').value.trim(),
+    date:$('f_date').value,labours:parseInt($('f_num').value,10)||0,purpose:P.get(),reason:R.get(),priority:PR.get(),
+    pulleys:pul?Math.max(1,parseInt($('f_pn').value,10)||1):0,pulleyDays:pul?Math.max(1,parseInt($('f_pd').value,10)||1):0,
+    note:$('f_note').value.trim()};
+}
+function fillForm(q){
+  $('f_offer').value=q.offer||''; $('f_cust').value=q.customer||''; $('f_loc').value=q.location||'';
+  $('f_date').value=(q.date&&q.date>=today())?q.date:today(); $('f_num').value=q.labours||2;
+  P.set(q.purpose||'Unloading'); R.set(q.reason||'Work'); PR.set(q.priority||'Normal');
+  const pd=Number(q.pulleyDays)||0; $('f_pulley').checked=!!pd; $('pulleyWrap').classList.toggle('hide',!pd);
+  $('f_pn').value=Number(q.pulleys)||1; $('f_pd').value=pd||1; $('f_note').value=q.note||'';
+}
+function resetForm(){ editId=null; fillForm({}); $('f_offer').classList.remove('err');
+  $('send').textContent='Send request · भेजें'; $('cancelEdit').classList.add('hide'); }
+$('cancelEdit').onclick=resetForm;
+$('send').onclick=async()=>{
+  const q=readForm();
+  if(!/^\d{3,}/.test(q.offer)){$('f_offer').classList.add('err');$('f_offer').focus();toast('Offer no. is required — e.g. 75057/14');return;}
+  $('f_offer').classList.remove('err');
+  if(q.labours<1){toast('Enter no. of labours');return;}
+  $('send').disabled=true;
+  try{
+    const r=await api(editId?{action:'reqResend',id:editId,req:q}:{action:'reqCreate',req:q});
+    if(!r.ok){toast(r.error||'Could not send');return;}
+    lastSent=Object.assign({},q,{resend:!!editId});
+    toast(editId?'Request sent again ✓':'Request sent ✓');
+    resetForm(); $('sentCard').classList.remove('hide'); window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+    loadMine(true);
+  }catch(e){toast('No connection — try again');}
+  finally{$('send').disabled=false;}
+};
+$('waBtn').onclick=()=>{
+  if(!lastSent) return; const q=lastSent;
+  const pri=q.priority==='Urgent'?'🔴 URGENT':q.priority==='High'?'🟠 HIGH':'⚪ Normal';
+  const msg=`${pri} · ${q.purpose} labour request${q.resend?' (resent)':''}\n`
+    +`Offer ${q.offer}${q.customer?' · '+q.customer:''}${q.location?', '+q.location:''}\n`
+    +`${q.labours} labours · ${q.reason} · needed ${q.date||'today'}`
+    +(q.pulleyDays?`\nChain pulley: ${q.pulleys} × ${q.pulleyDays} day(s)`:'')
+    +(q.note?`\nNote: ${q.note}`:'')+`\n— ${sup} (approve in Labour Log)`;
+  window.open((WA_NUMBER?`https://wa.me/${WA_NUMBER}`:'https://wa.me/')+'?text='+encodeURIComponent(msg),'_blank');
+};
+
+/* ---- my requests ---- */
+async function loadMine(quiet){
+  try{
+    const r=await api({action:'reqMine'});
+    if(!r.ok) return;
+    mine=r.requests||[];
+    const news=[];
+    mine.forEach(q=>{ if(known[q.id] && known[q.id]!==q.status && q.status!=='Pending') news.push(q); known[q.id]=q.status; });
+    try{localStorage.setItem('lr_known',JSON.stringify(known));}catch(e){}
+    if(news.length) toast(news.map(q=>`${q.offer}: ${q.status}`).join(' · '));
+    const rej=mine.filter(q=>q.status==='Rejected').length;
+    $('bMine').textContent=rej; $('bMine').classList.toggle('hide',!rej);
+    renderMine();
+  }catch(e){ if(!quiet) toast('No connection'); }
+}
+function renderMine(){
+  const order={Rejected:0,Pending:1,Approved:2};
+  const list=mine.slice().sort((a,b)=>(order[a.status]??3)-(order[b.status]??3)||String(b.raisedAt).localeCompare(String(a.raisedAt)));
+  $('mineList').innerHTML=list.length?list.map(q=>`<div class="row ${esc(q.status)}">
+    <div class="r1"><span class="offer">${esc(q.offer)}</span><span class="tag ${esc(q.status)}">${esc(q.status)}</span></div>
+    <div class="cust">${esc(q.customer)||'—'}</div>
+    <div class="meta"><span class="tag">${esc(q.purpose)}</span><span class="tag">${esc(q.reason)}</span>
+      ${q.priority!=='Normal'?`<span class="tag ${esc(q.priority)}">${esc(q.priority)}</span>`:''}
+      <span>👷 ${esc(q.labours)}</span><span>📅 ${esc(q.date)}</span>
+      ${Number(q.resends)?`<span>↻ ${esc(q.resends)}×</span>`:''}</div>
+    ${q.status==='Rejected'?`<div class="why">✗ ${esc(q.rejectReason)} <span style="opacity:.7">— ${esc(q.decidedBy)}</span></div>`:''}
+    ${q.status==='Approved'?`<div class="note">✓ ${esc(q.decidedBy)} · ₹${esc(q.rate)}/labour · ${esc(q.decidedAt)}</div>`:''}
+    ${q.status!=='Approved'?`<div class="btns"><button class="btn ${q.status==='Rejected'?'':'ghost'}" onclick="editReq('${esc(q.id)}')">${q.status==='Rejected'?'Edit & resend':'Edit'}</button></div>`:''}
+  </div>`).join(''):'<div class="empty">No requests yet.</div>';
+}
+function editReq(id){
+  const q=mine.find(x=>x.id===id); if(!q) return;
+  editId=id; fillForm(q); tab('new'); $('sentCard').classList.add('hide');
+  $('send').textContent='Resend request · दोबारा भेजें'; $('cancelEdit').classList.remove('hide');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+window.editReq=editReq;
+
+/* ---- verify work / rework ---- */
+async function loadVerify(quiet){
+  try{
+    const r=await api({action:'verifyList'});
+    if(!r.ok) return;
+    ver=(r.entries||[]).sort((a,b)=>(b.mine?1:0)-(a.mine?1:0)||String(b.date).localeCompare(String(a.date)));
+    $('bVer').textContent=ver.length; $('bVer').classList.toggle('hide',!ver.length);
+    renderVerify();
+  }catch(e){ if(!quiet) toast('No connection'); }
+}
+function renderVerify(){
+  $('verList').innerHTML=ver.length?ver.map(x=>{const id=esc(x.id);return `<div class="row ${x.mine?'Pending':''}">
+    <div class="r1"><span class="offer">${esc(x.offer)}</span><span class="meta">${esc(x.date)}</span></div>
+    <div class="cust">${esc(x.customer)||'—'}</div>
+    <div class="meta"><span class="tag">${esc(x.purpose)}</span><span>👷 ${esc(x.labours)} × ₹${esc(x.rate)}</span>
+      ${x.pulleyDays?`<span>⛓ ${x.pulleys>1?x.pulleys+' × ':''}${esc(x.pulleyDays)}d</span>`:''}
+      ${x.location?`<span>📍 ${esc(x.location)}</span>`:''}</div>
+    <div class="meta" style="margin-top:4px">${x.requestedBy?`📨 requested by ${esc(x.requestedBy)}${x.mine?' (you)':''} · `:'✍ direct entry · '}logged by ${esc(x.by)||'—'} · said: <b>${esc(x.reason)}</b></div>
+    ${x.note?`<div class="note">${esc(x.note)}</div>`:''}
+    <div class="btns">
+      <button class="btn" onclick="doVerify('${id}','Work',this)">✓ Work · काम</button>
+      <button class="btn no" onclick="doVerify('${id}','Rework',this)">✓ Rework · री-वर्क</button>
+    </div>
+    <div class="btns"><input id="pb_${id}" placeholder="Problem? e.g. only 3 labours came" style="flex:2;min-width:160px">
+      <button class="btn ghost" onclick="doProblem('${id}',this)">Report</button></div>
+  </div>`;}).join(''):'<div class="empty">Nothing to verify. ✓</div>';
+}
+async function doVerify(id,reason,btn){
+  btn.disabled=true;
+  try{const r=await api({action:'verify',id,reason});
+    if(r.ok){toast('Verified as '+reason+' ✓'); ver=ver.filter(x=>x.id!==id); renderVerify();
+      $('bVer').textContent=ver.length; $('bVer').classList.toggle('hide',!ver.length);}
+    else {toast(r.error||'Could not save'); btn.disabled=false;}
+  }catch(e){toast('No connection'); btn.disabled=false;}
+}
+async function doProblem(id,btn){
+  const p=$('pb_'+id).value.trim(); if(!p){toast('Write the problem first');$('pb_'+id).focus();return;}
+  btn.disabled=true;
+  try{const r=await api({action:'verify',id,problem:p});
+    toast(r.ok?'Problem noted — the loading-shifting team will see it in Remarks':(r.error||'Could not save'));
+    if(r.ok) $('pb_'+id).value=''; btn.disabled=false; loadVerify(true);
+  }catch(e){toast('No connection'); btn.disabled=false;}
+}
+window.doVerify=doVerify; window.doProblem=doProblem;
+
+/* ---- boot ---- */
+if(!sup){ $('gate').classList.remove('hide'); }
+else{
+  $('app').classList.remove('hide'); $('who').textContent='Supervisor · '+sup;
+  resetForm(); loadMine(true); loadVerify(true);
+  setInterval(()=>{ if(!document.hidden){ loadMine(true); loadVerify(true); } },45000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ loadMine(true); loadVerify(true); } });
+}
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
