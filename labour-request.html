@@ -90,7 +90,11 @@ textarea{min-height:56px;resize:vertical}
         <div><label>Offer no. * <span class="hi">ऑफर नं.</span></label><input id="f_offer" placeholder="75057/14" autocomplete="off"></div>
         <div><label>Date needed <span class="hi">कब चाहिए</span></label><input type="date" id="f_date"></div>
         <div class="full"><label>Customer <span class="hi">ग्राहक</span></label><input id="f_cust" autocomplete="off"></div>
-        <div class="full"><label>Location <span class="hi">लोकेशन</span></label><input id="f_loc" autocomplete="off"></div>
+        <div class="full"><label>Location <span class="hi">लोकेशन</span></label><input id="f_loc" autocomplete="off" placeholder="Area / building / floor"></div>
+        <div class="full"><label>Map link <span class="hi">मैप लिंक</span></label>
+          <div style="display:flex;gap:8px"><input id="f_map" autocomplete="off" inputmode="url" placeholder="Paste Google Maps link" style="flex:1">
+            <button type="button" class="btn ghost" id="gpsBtn" style="width:auto;margin:0;padding:0 12px;white-space:nowrap">📍 Here</button></div>
+          <div class="hint" id="mapHint">Tap 📍 Here at the site, or paste a link from Google Maps / WhatsApp.</div></div>
         <div><label>No. of labours * <span class="hi">लेबर</span></label><input type="number" id="f_num" min="1" value="2" inputmode="numeric"></div>
         <div><label>Purpose <span class="hi">काम</span></label>
           <div class="seg" id="sPurpose"><button type="button" data-v="Unloading" aria-pressed="true">Unloading</button><button type="button" data-v="Shifting" aria-pressed="false">Shifting</button></div></div>
@@ -176,14 +180,27 @@ function readForm(){
   return {offer:$('f_offer').value.trim(),customer:$('f_cust').value.trim(),location:$('f_loc').value.trim(),
     date:$('f_date').value,labours:parseInt($('f_num').value,10)||0,purpose:P.get(),reason:R.get(),priority:PR.get(),
     pulleys:pul?Math.max(1,parseInt($('f_pn').value,10)||1):0,pulleyDays:pul?Math.max(1,parseInt($('f_pd').value,10)||1):0,
-    note:$('f_note').value.trim()};
+    note:$('f_note').value.trim(),mapLink:mapUrl($('f_map').value)};
 }
+/* first http(s) link in what was pasted (WhatsApp shares add text around it) */
+function mapUrl(x){const m=String(x||'').match(/https?:\/\/[^\s<>"']+/i);return m?m[0]:'';}
+$('gpsBtn').onclick=()=>{
+  if(!navigator.geolocation){toast('Location not available on this phone');return;}
+  $('mapHint').textContent='Getting location…';
+  navigator.geolocation.getCurrentPosition(p=>{
+    const la=p.coords.latitude.toFixed(6), lo=p.coords.longitude.toFixed(6);
+    $('f_map').value=`https://maps.google.com/?q=${la},${lo}`;
+    $('mapHint').textContent=`📍 Location added (±${Math.round(p.coords.accuracy)} m)`;
+  },()=>{$('mapHint').textContent='Could not get location — allow location access, or paste a link';},
+  {enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+};
 function fillForm(q){
   $('f_offer').value=q.offer||''; $('f_cust').value=q.customer||''; $('f_loc').value=q.location||'';
   $('f_date').value=(q.date&&q.date>=today())?q.date:today(); $('f_num').value=q.labours||2;
   P.set(q.purpose||'Unloading'); R.set(q.reason||'Work'); PR.set(q.priority||'Normal');
   const pd=Number(q.pulleyDays)||0; $('f_pulley').checked=!!pd; $('pulleyWrap').classList.toggle('hide',!pd);
   $('f_pn').value=Number(q.pulleys)||1; $('f_pd').value=pd||1; $('f_note').value=q.note||'';
+  $('f_map').value=q.mapLink||''; $('mapHint').textContent='Tap 📍 Here at the site, or paste a link from Google Maps / WhatsApp.';
 }
 function resetForm(){ editId=null; fillForm({}); $('f_offer').classList.remove('err');
   $('send').textContent='Send request · भेजें'; $('cancelEdit').classList.add('hide'); }
@@ -193,6 +210,7 @@ $('send').onclick=async()=>{
   if(!/^\d{3,}/.test(q.offer)){$('f_offer').classList.add('err');$('f_offer').focus();toast('Offer no. is required — e.g. 75057/14');return;}
   $('f_offer').classList.remove('err');
   if(q.labours<1){toast('Enter no. of labours');return;}
+  if($('f_map').value.trim()&&!q.mapLink){toast('Map link should start with https://');$('f_map').focus();return;}
   $('send').disabled=true;
   try{
     const r=await api(editId?{action:'reqResend',id:editId,req:q}:{action:'reqCreate',req:q});
@@ -211,6 +229,7 @@ $('waBtn').onclick=()=>{
     +`Offer ${q.offer}${q.customer?' · '+q.customer:''}${q.location?', '+q.location:''}\n`
     +`${q.labours} labours · ${q.reason} · needed ${q.date||'today'}`
     +(q.pulleyDays?`\nChain pulley: ${q.pulleys} × ${q.pulleyDays} day(s)`:'')
+    +(q.mapLink?`\nMap: ${q.mapLink}`:'')
     +(q.note?`\nNote: ${q.note}`:'')+`\n— ${sup} (approve in Labour Log)`;
   window.open((WA_NUMBER?`https://wa.me/${WA_NUMBER}`:'https://wa.me/')+'?text='+encodeURIComponent(msg),'_blank');
 };
@@ -239,6 +258,7 @@ function renderMine(){
     <div class="meta"><span class="tag">${esc(q.purpose)}</span><span class="tag">${esc(q.reason)}</span>
       ${q.priority!=='Normal'?`<span class="tag ${esc(q.priority)}">${esc(q.priority)}</span>`:''}
       <span>👷 ${esc(q.labours)}</span><span>📅 ${esc(q.date)}</span>
+      ${/^https?:\/\//i.test(q.mapLink||'')?`<a class="tag" style="color:var(--hivis);text-decoration:none" href="${esc(q.mapLink)}" target="_blank" rel="noopener">🗺 Map</a>`:''}
       ${Number(q.resends)?`<span>↻ ${esc(q.resends)}×</span>`:''}</div>
     ${q.status==='Rejected'?`<div class="why">✗ ${esc(q.rejectReason)} <span style="opacity:.7">— ${esc(q.decidedBy)}</span></div>`:''}
     ${q.status==='Approved'?`<div class="note">✓ ${esc(q.decidedBy)} · ₹${esc(q.rate)}/labour · ${esc(q.decidedAt)}</div>`:''}
